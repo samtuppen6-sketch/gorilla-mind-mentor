@@ -71,8 +71,33 @@ const JournalSchema = z.object({
   patternFlags: z.array(z.string()),
 });
 
+const DailyProgressSchema = z.object({
+  date: z.string(),
+  breathworkCompleted: z.boolean(),
+  meditationCompleted: z.boolean(),
+  mindfulnessCompleted: z.boolean(),
+  trainingCompleted: z.boolean(),
+  pilatesCompleted: z.boolean(),
+  mobilityCompleted: z.boolean(),
+  nutritionCompleted: z.boolean(),
+  coldExposureCompleted: z.boolean(),
+  heatExposureCompleted: z.boolean(),
+  journalCompleted: z.boolean(),
+  guidedPracticeCompleted: z.boolean(),
+  completedPracticeIdsToday: z.array(z.string()),
+  disciplinePointsToday: z.number(),
+  dailyMinimumMet: z.boolean(),
+  fullProtocolCompleted: z.boolean(),
+  practiceStreak: z.number().optional(),
+  protocolStreak: z.number().optional(),
+  lastCompletedPracticeId: z.string().nullable().optional(),
+  lastCompletedPracticeCategory: z.string().nullable().optional(),
+});
+
 type Profile = z.infer<typeof ProfileSchema>;
 type Journal = z.infer<typeof JournalSchema>;
+type DailyProgressCtx = z.infer<typeof DailyProgressSchema>;
+
 
 export type CoachRoute =
   | "SAFETY_CRISIS"
