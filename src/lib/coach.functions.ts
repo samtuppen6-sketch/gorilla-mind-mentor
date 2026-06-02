@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { selectGuidedPractice, type GuidedPracticeRec } from "@/lib/practices";
 
 const SYSTEM_INSTRUCTIONS = `You are the Gorilla Mind AI Coach.
 
