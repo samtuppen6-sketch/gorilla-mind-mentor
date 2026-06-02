@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import {
   useProfile,
-  useJournal,
+  
   setProfile,
   setJournal,
   DEFAULT_PROFILE,
