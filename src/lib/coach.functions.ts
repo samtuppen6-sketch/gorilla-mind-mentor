@@ -278,11 +278,13 @@ function detectRoute(
     };
   }
 
-  if (/\b(breath|breathwork|box breathing|panic|anxious|anxiety|grounding)\b/i.test(message)) {
+  if (/\b(breath|breathwork|box breathing|panic|panicky|anxious|anxiety|grounding|stressed|wired|overwhelm|racing thoughts|switch off|activated|unfocused|scattered|distracted|mentally noisy|wind ?down)\b/i.test(message)) {
+    const sub = detectBreathworkSubRoute(message, profile, journal);
     return {
       route: "BREATHWORK",
-      reason: "Current message explicitly asks about breath / stress / grounding.",
-      query: "breathwork protocol stress anxiety grounding box breathing coherent breathing recovery safety",
+      reason: `Breathwork route — sub-route ${sub.sub}. ${sub.reason}`,
+      query: sub.query,
+      breathworkSubRoute: sub.sub,
     };
   }
 
