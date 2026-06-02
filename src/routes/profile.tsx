@@ -164,54 +164,139 @@ function ProfilePanel() {
 }
 
 
+const JOURNAL_STORAGE_KEY = "gm.latestJournalEntry.v1";
+const JOURNAL_LEGACY_KEY = "gm.latestJournal.v1"; // kept in sync for AI Coach request
+
 function JournalPanel() {
-  const existing = useJournal();
-  const today = new Date().toISOString().slice(0, 10);
-  const [draft, setDraft] = useState<JournalEntry>(existing ?? { ...DEFAULT_JOURNAL, date: today });
-  const [saved, setSaved] = useState(false);
+  const [journalDraft, setJournalDraft] = useState<JournalEntry>(() => ({ ...DEFAULT_JOURNAL }));
+  const [journalSaved, setJournalSaved] = useState(false);
+  const [savedJournalJson, setSavedJournalJson] = useState<string>("");
+  const [journalSaveClicks, setJournalSaveClicks] = useState(0);
+
+  // One-shot hydration after mount — avoids SSR/client mismatch from
+  // reading localStorage or new Date() during render.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw =
+      localStorage.getItem(JOURNAL_STORAGE_KEY) ??
+      localStorage.getItem(JOURNAL_LEGACY_KEY);
+    const today = new Date().toISOString().slice(0, 10);
+    if (raw) {
+      try {
+        const parsed = { ...DEFAULT_JOURNAL, ...JSON.parse(raw) } as JournalEntry;
+        setJournalDraft(parsed);
+        setSavedJournalJson(JSON.stringify(parsed, null, 2));
+        return;
+      } catch { /* fall through */ }
+    }
+    setJournalDraft((d) => ({ ...d, date: d.date || today }));
+  }, []);
 
   function update<K extends keyof JournalEntry>(k: K, v: JournalEntry[K]) {
-    setDraft((d) => ({ ...d, [k]: v }));
-    setSaved(false);
+    setJournalDraft((d) => ({ ...d, [k]: v }));
+    setJournalSaved(false);
   }
-  function save() { setJournal({ ...draft, date: draft.date || today }); setSaved(true); }
-  function clear() { setJournal(null); setDraft({ ...DEFAULT_JOURNAL, date: today }); setSaved(true); }
+
+  function handleSaveJournal() {
+    console.log("SAVE JOURNAL CLICKED");
+    console.log(journalDraft);
+    localStorage.setItem("gm.latestJournalEntry.v1", JSON.stringify(journalDraft));
+    // Mirror to legacy key so the AI Coach request continues to receive it.
+    setJournal(journalDraft);
+    setJournalSaved(true);
+    setJournalSaveClicks((previous) => previous + 1);
+    setSavedJournalJson(JSON.stringify(journalDraft, null, 2));
+  }
+
+  function handleForceTestJournalSave() {
+    const testJournal = {
+      __test: true,
+      date: new Date().toISOString().slice(0, 10),
+      mood: 7,
+      energy: 6,
+      stress: 4,
+      sleep: 7.5,
+      cravingLevel: 1,
+      trainingCompleted: true,
+      nutritionCompleted: true,
+      morningProtocolCompleted: true,
+      eveningProtocolCompleted: false,
+      journalText: "FORCE TEST JOURNAL — hardcoded write to localStorage.",
+      patternFlags: ["test", "force-save"],
+    };
+    console.log("FORCE TEST JOURNAL SAVE CLICKED", testJournal);
+    localStorage.setItem("gm.latestJournalEntry.v1", JSON.stringify(testJournal));
+    localStorage.setItem(JOURNAL_LEGACY_KEY, JSON.stringify(testJournal));
+    setSavedJournalJson(JSON.stringify(testJournal, null, 2));
+    setJournalSaved(true);
+    setJournalSaveClicks((previous) => previous + 1);
+  }
+
+  function handleClearJournal() {
+    setJournal(null);
+    localStorage.removeItem("gm.latestJournalEntry.v1");
+    setJournalDraft({ ...DEFAULT_JOURNAL });
+    setSavedJournalJson("");
+    setJournalSaved(false);
+  }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-4 space-y-3">
+    <section className="relative rounded-xl border border-border bg-card p-4 space-y-3">
+      {journalSaved && (
+        <div className="rounded-md border border-gold/50 bg-gold/10 px-3 py-2 text-xs font-semibold text-gold">
+          Journal saved
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Latest journal / check-in</p>
-        <span className="text-[10px] text-muted-foreground">{saved ? "saved" : existing ? "loaded" : "empty"}</span>
+        <span className={`text-[10px] ${journalSaved ? "text-gold" : "text-muted-foreground"}`}>{journalSaved ? "saved" : "unsaved"}</span>
       </div>
 
-      <Text label="date" v={draft.date} onChange={(v) => update("date", v)} />
-      <Num label="mood (0-10)" v={draft.mood} onChange={(v) => update("mood", v)} />
-      <Num label="energy (0-10)" v={draft.energy} onChange={(v) => update("energy", v)} />
-      <Num label="stress (0-10)" v={draft.stress} onChange={(v) => update("stress", v)} />
-      <Num label="sleep (hours)" v={draft.sleep} onChange={(v) => update("sleep", v)} />
-      <Num label="cravingLevel (0-10)" v={draft.cravingLevel} onChange={(v) => update("cravingLevel", v)} />
-      <Bool label="trainingCompleted" v={draft.trainingCompleted} onChange={(v) => update("trainingCompleted", v)} />
-      <Bool label="nutritionCompleted" v={draft.nutritionCompleted} onChange={(v) => update("nutritionCompleted", v)} />
-      <Bool label="morningProtocolCompleted" v={draft.morningProtocolCompleted} onChange={(v) => update("morningProtocolCompleted", v)} />
-      <Bool label="eveningProtocolCompleted" v={draft.eveningProtocolCompleted} onChange={(v) => update("eveningProtocolCompleted", v)} />
-      <Text label="patternFlags (comma-separated)" v={draft.patternFlags.join(", ")} onChange={(v) => update("patternFlags", v.split(",").map((s) => s.trim()).filter(Boolean))} />
+      <Text label="date" v={journalDraft.date} onChange={(v) => update("date", v)} />
+      <Num label="mood (0-10)" v={journalDraft.mood} onChange={(v) => update("mood", v)} />
+      <Num label="energy (0-10)" v={journalDraft.energy} onChange={(v) => update("energy", v)} />
+      <Num label="stress (0-10)" v={journalDraft.stress} onChange={(v) => update("stress", v)} />
+      <Num label="sleep (hours)" v={journalDraft.sleep} onChange={(v) => update("sleep", v)} />
+      <Num label="cravingLevel (0-10)" v={journalDraft.cravingLevel} onChange={(v) => update("cravingLevel", v)} />
+      <Bool label="trainingCompleted" v={journalDraft.trainingCompleted} onChange={(v) => update("trainingCompleted", v)} />
+      <Bool label="nutritionCompleted" v={journalDraft.nutritionCompleted} onChange={(v) => update("nutritionCompleted", v)} />
+      <Bool label="morningProtocolCompleted" v={journalDraft.morningProtocolCompleted} onChange={(v) => update("morningProtocolCompleted", v)} />
+      <Bool label="eveningProtocolCompleted" v={journalDraft.eveningProtocolCompleted} onChange={(v) => update("eveningProtocolCompleted", v)} />
+      <Text label="patternFlags (comma-separated)" v={journalDraft.patternFlags.join(", ")} onChange={(v) => update("patternFlags", v.split(",").map((s) => s.trim()).filter(Boolean))} />
       <div>
         <label className="block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">journalText</label>
         <textarea
-          value={draft.journalText}
+          value={journalDraft.journalText}
           onChange={(e) => update("journalText", e.target.value)}
           rows={4}
           className="w-full bg-background border border-border rounded-md p-2 text-sm text-foreground focus:outline-none focus:border-gold"
         />
       </div>
 
-      <div className="flex gap-2 pt-2">
-        <button onClick={save} className="flex-1 rounded-lg bg-gold py-2 text-xs font-semibold text-primary-foreground">Save journal</button>
-        <button onClick={clear} className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">Clear</button>
+      <div className="pt-2 text-xs">
+        <span className="text-muted-foreground">Status: </span>
+        <span className={journalSaved ? "text-gold font-semibold" : "text-foreground"}>{journalSaved ? "Saved" : "Unsaved"}</span>
+      </div>
+
+      <div className="relative flex flex-wrap gap-2" style={{ zIndex: 50 }}>
+        <button type="button" onClick={handleSaveJournal} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 flex-1 min-w-[120px] rounded-lg bg-gold py-3 text-xs font-semibold text-primary-foreground hover:opacity-90">Save journal</button>
+        <button type="button" onClick={handleForceTestJournalSave} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border-2 border-gold bg-gold/10 px-3 py-2 text-xs font-bold uppercase tracking-wider text-gold">FORCE TEST JOURNAL SAVE</button>
+        <button type="button" onClick={handleClearJournal} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">Clear</button>
+      </div>
+
+      <p className="text-xs text-muted-foreground">Journal save clicks: <span className="text-gold font-semibold">{journalSaveClicks}</span></p>
+
+      <div className="mt-4 rounded-lg border border-dashed border-gold/40 bg-background/60 p-3">
+        <p className="text-[10px] uppercase tracking-[0.3em] text-gold mb-2">SAVED JOURNAL DEBUG</p>
+        <p className="text-[10px] text-muted-foreground mb-1">localStorage key: <span className="text-foreground">gm.latestJournalEntry.v1</span></p>
+        <pre className="text-[10px] leading-relaxed text-foreground whitespace-pre-wrap break-all max-h-64 overflow-auto">
+{savedJournalJson || "(nothing saved yet)"}
+        </pre>
       </div>
     </section>
   );
 }
+
 
 function Text({ label, v, onChange }: { label: string; v: string; onChange: (v: string) => void }) {
   return (
