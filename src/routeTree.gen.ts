@@ -14,6 +14,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as CoachRouteImport } from './routes/coach'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PracticePracticeIdRouteImport } from './routes/practice.$practiceId'
 
 const ProtocolRoute = ProtocolRouteImport.update({
   id: '/protocol',
@@ -40,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PracticePracticeIdRoute = PracticePracticeIdRouteImport.update({
+  id: '/practice/$practiceId',
+  path: '/practice/$practiceId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/library': typeof LibraryRoute
   '/profile': typeof ProfileRoute
   '/protocol': typeof ProtocolRoute
+  '/practice/$practiceId': typeof PracticePracticeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/library': typeof LibraryRoute
   '/profile': typeof ProfileRoute
   '/protocol': typeof ProtocolRoute
+  '/practice/$practiceId': typeof PracticePracticeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,33 @@ export interface FileRoutesById {
   '/library': typeof LibraryRoute
   '/profile': typeof ProfileRoute
   '/protocol': typeof ProtocolRoute
+  '/practice/$practiceId': typeof PracticePracticeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/coach' | '/library' | '/profile' | '/protocol'
+  fullPaths:
+    | '/'
+    | '/coach'
+    | '/library'
+    | '/profile'
+    | '/protocol'
+    | '/practice/$practiceId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/coach' | '/library' | '/profile' | '/protocol'
-  id: '__root__' | '/' | '/coach' | '/library' | '/profile' | '/protocol'
+  to:
+    | '/'
+    | '/coach'
+    | '/library'
+    | '/profile'
+    | '/protocol'
+    | '/practice/$practiceId'
+  id:
+    | '__root__'
+    | '/'
+    | '/coach'
+    | '/library'
+    | '/profile'
+    | '/protocol'
+    | '/practice/$practiceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +105,7 @@ export interface RootRouteChildren {
   LibraryRoute: typeof LibraryRoute
   ProfileRoute: typeof ProfileRoute
   ProtocolRoute: typeof ProtocolRoute
+  PracticePracticeIdRoute: typeof PracticePracticeIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/practice/$practiceId': {
+      id: '/practice/$practiceId'
+      path: '/practice/$practiceId'
+      fullPath: '/practice/$practiceId'
+      preLoaderRoute: typeof PracticePracticeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,6 +161,7 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRoute,
   ProfileRoute: ProfileRoute,
   ProtocolRoute: ProtocolRoute,
+  PracticePracticeIdRoute: PracticePracticeIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

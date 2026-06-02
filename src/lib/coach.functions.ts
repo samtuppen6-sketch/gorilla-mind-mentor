@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { selectGuidedPractice, type GuidedPracticeRec } from "@/lib/practices";
 
 const SYSTEM_INSTRUCTIONS = `You are the Gorilla Mind AI Coach.
 
@@ -118,9 +119,15 @@ export type CoachDebug = {
   primaryGapUsed: string | null;
   protocolDayUsed: number | null;
   safetyFlagsUsed: string[];
+  guidedPracticeId: string | null;
+  guidedPracticeReason: string | null;
 };
 
-export type CoachResponse = { answer: string; debug: CoachDebug };
+export type CoachResponse = {
+  answer: string;
+  debug: CoachDebug;
+  guidedPractice: GuidedPracticeRec | null;
+};
 
 const SAFETY_PATTERNS = [
   /\bsuicid/i, /\bkill myself\b/i, /\bend (my|it all) life\b/i, /\bself.?harm\b/i,
@@ -524,6 +531,14 @@ export const askCoach = createServerFn({ method: "POST" })
     const breathworkSubRoute: BreathworkSubRoute =
       routing.route === "BREATHWORK" ? (routing.breathworkSubRoute ?? "DOWNREGULATE") : "NONE";
 
+    const guidedPractice = routing.route === "SAFETY_CRISIS"
+      ? null
+      : selectGuidedPractice({
+          route: routing.route,
+          breathworkSubRoute,
+          message: data.question,
+        });
+
     const debug: CoachDebug = {
       selectedRoute: routing.route,
       breathworkSubRoute,
@@ -542,15 +557,17 @@ export const askCoach = createServerFn({ method: "POST" })
       primaryGapUsed: profile?.primaryGap ?? null,
       protocolDayUsed: profile?.protocolDay ?? null,
       safetyFlagsUsed: safetyFlags,
+      guidedPracticeId: guidedPractice?.id ?? null,
+      guidedPracticeReason: guidedPractice?.reason ?? null,
     };
 
     if (!apiKey) {
       debug.apiError = "OPENAI_API_KEY missing on server";
-      return { answer: "Coach is offline. Backend secret missing.", debug };
+      return { answer: "Coach is offline. Backend secret missing.", debug, guidedPractice };
     }
     if (!vectorStoreId) {
       debug.apiError = "GORILLA_MIND_VECTOR_STORE_ID missing on server";
-      return { answer: "Coach is offline. Vector store secret missing.", debug };
+      return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice };
     }
 
     const contextBlock = buildContextBlock(profile, journal);
@@ -599,7 +616,11 @@ export const askCoach = createServerFn({ method: "POST" })
       data.question,
     ].join("\n");
 
-    const instructions = `${SYSTEM_INSTRUCTIONS}\n\n${routeInstruction}`;
+    const guidedPracticeInstruction = guidedPractice
+      ? `\n\nGUIDED PRACTICE SECTION: After TODAY'S NON-NEGOTIABLES and before COACH CLOSE, add a section labelled exactly "GUIDED PRACTICE" with two short lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
+      : "";
+
+    const instructions = `${SYSTEM_INSTRUCTIONS}\n\n${routeInstruction}${guidedPracticeInstruction}`;
 
     try {
       const res = await fetch("https://api.openai.com/v1/responses", {
@@ -621,7 +642,7 @@ export const askCoach = createServerFn({ method: "POST" })
       if (!res.ok) {
         const text = await res.text();
         debug.apiError = `OpenAI ${res.status}: ${text.slice(0, 500)}`;
-        return { answer: "Coach failed to respond. See debug panel.", debug };
+        return { answer: "Coach failed to respond. See debug panel.", debug, guidedPractice };
       }
 
       const json: any = await res.json();
@@ -651,17 +672,17 @@ export const askCoach = createServerFn({ method: "POST" })
 
       if (routing.route !== "SAFETY_CRISIS" && !debug.fileSearchCalled) {
         debug.apiError = "Knowledge-base retrieval was required, but OpenAI did not call file_search.";
-        return { answer: "Coach could not access the knowledge base. See debug panel.", debug };
+        return { answer: "Coach could not access the knowledge base. See debug panel.", debug, guidedPractice };
       }
 
       if (routing.route !== "SAFETY_CRISIS" && debug.fileSearchCalled && debug.retrievedChunksCount === 0) {
         debug.apiError = "Knowledge-base retrieval returned zero chunks for the selected route.";
-        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug };
+        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice };
       }
 
-      return { answer: answer || "(empty response)", debug };
+      return { answer: answer || "(empty response)", debug, guidedPractice };
     } catch (err) {
       debug.apiError = err instanceof Error ? err.message : String(err);
-      return { answer: "Coach request failed. See debug panel.", debug };
+      return { answer: "Coach request failed. See debug panel.", debug, guidedPractice };
     }
   });
