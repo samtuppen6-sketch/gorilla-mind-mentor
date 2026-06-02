@@ -83,7 +83,16 @@ function ProfilePanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-4 space-y-3">
+    <section className="relative rounded-xl border border-border bg-card p-4 space-y-3">
+      <button
+        type="button"
+        onClick={handleSaveProfile}
+        style={{ pointerEvents: "auto", cursor: "pointer", position: "relative", zIndex: 50 }}
+        className="block w-full rounded-lg border-2 border-gold bg-gold/20 py-3 text-xs font-bold uppercase tracking-[0.2em] text-gold hover:bg-gold/30"
+      >
+        TEST SAVE PROFILE
+      </button>
+
       {saved && (
         <div className="rounded-md border border-gold/50 bg-gold/10 px-3 py-2 text-xs font-semibold text-gold">
           Profile saved
@@ -93,6 +102,7 @@ function ProfilePanel() {
         <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Test profile</p>
         <span className={`text-[10px] ${saved ? "text-gold" : "text-muted-foreground"}`}>{saved ? "saved" : "unsaved"}</span>
       </div>
+
 
       <Text label="name" v={draft.name} onChange={(v) => update("name", v)} />
       <Text label="identityAnchor" v={draft.identityAnchor} onChange={(v) => update("identityAnchor", v)} />
