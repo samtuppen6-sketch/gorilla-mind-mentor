@@ -79,36 +79,57 @@ const listeners = new Set<() => void>();
 function emit() { listeners.forEach((l) => l()); }
 function subscribe(l: () => void) { listeners.add(l); return () => { listeners.delete(l); }; }
 
-function read<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return { ...fallback, ...JSON.parse(raw) } as T;
-  } catch {
-    return fallback;
-  }
+// Cached snapshots — useSyncExternalStore requires referentially stable
+// snapshots between calls when the underlying data hasn't changed.
+// Previously getProfile/getJournal returned a fresh object every render,
+// which caused React's "Maximum update depth exceeded" infinite loop.
+let profileCache: UserProfile = DEFAULT_PROFILE;
+let profileCacheRaw: string | null = "__init__";
+let journalCache: JournalEntry | null = null;
+let journalCacheRaw: string | null = "__init__";
+
+export function getProfile(): UserProfile {
+  if (typeof window === "undefined") return DEFAULT_PROFILE;
+  const raw = localStorage.getItem(PROFILE_KEY);
+  if (raw === profileCacheRaw) return profileCache;
+  profileCacheRaw = raw;
+  if (!raw) { profileCache = DEFAULT_PROFILE; return profileCache; }
+  try { profileCache = { ...DEFAULT_PROFILE, ...JSON.parse(raw) }; }
+  catch { profileCache = DEFAULT_PROFILE; }
+  return profileCache;
 }
 
-export function getProfile(): UserProfile { return read(PROFILE_KEY, DEFAULT_PROFILE); }
 export function getJournal(): JournalEntry | null {
   if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(JOURNAL_KEY);
-    if (!raw) return null;
-    return { ...DEFAULT_JOURNAL, ...JSON.parse(raw) };
-  } catch { return null; }
+  const raw = localStorage.getItem(JOURNAL_KEY);
+  if (raw === journalCacheRaw) return journalCache;
+  journalCacheRaw = raw;
+  if (!raw) { journalCache = null; return null; }
+  try { journalCache = { ...DEFAULT_JOURNAL, ...JSON.parse(raw) }; }
+  catch { journalCache = null; }
+  return journalCache;
 }
 
 export function setProfile(p: UserProfile) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+  const serialized = JSON.stringify(p);
+  localStorage.setItem(PROFILE_KEY, serialized);
+  profileCache = p;
+  profileCacheRaw = serialized;
   emit();
 }
 export function setJournal(j: JournalEntry | null) {
   if (typeof window === "undefined") return;
-  if (j) localStorage.setItem(JOURNAL_KEY, JSON.stringify(j));
-  else localStorage.removeItem(JOURNAL_KEY);
+  if (j) {
+    const serialized = JSON.stringify(j);
+    localStorage.setItem(JOURNAL_KEY, serialized);
+    journalCache = j;
+    journalCacheRaw = serialized;
+  } else {
+    localStorage.removeItem(JOURNAL_KEY);
+    journalCache = null;
+    journalCacheRaw = null;
+  }
   emit();
 }
 
