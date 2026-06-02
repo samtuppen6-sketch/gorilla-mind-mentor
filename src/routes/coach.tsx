@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import { askCoach, type CoachResponse } from "@/lib/coach.functions";
+import { useProfile, useJournal } from "@/lib/profile-store";
 import { Loader2, Send } from "lucide-react";
 
 export const Route = createFileRoute("/coach")({
@@ -24,6 +25,8 @@ const SEED = "According to the Gorilla Mind knowledge base, what should I do if 
 
 function CoachPage() {
   const ask = useServerFn(askCoach);
+  const profile = useProfile();
+  const journal = useJournal();
   const [question, setQuestion] = useState(SEED);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CoachResponse | null>(null);
@@ -34,7 +37,7 @@ function CoachPage() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await ask({ data: { question: question.trim() } });
+      const res = await ask({ data: { question: question.trim(), profile, journal } });
       setResult(res);
     } catch (err) {
       setResult({
@@ -48,6 +51,11 @@ function CoachPage() {
           groundedInRetrieval: false,
           apiError: err instanceof Error ? err.message : String(err),
           model: "",
+          profileContextSent: !!profile,
+          latestJournalSent: !!journal,
+          primaryGapUsed: profile?.primaryGap ?? null,
+          protocolDayUsed: profile?.protocolDay ?? null,
+          safetyFlagsUsed: [],
         },
       });
     } finally {
@@ -57,8 +65,12 @@ function CoachPage() {
 
   return (
     <>
-      <SectionHeader eyebrow="AI" title="Coach." sub="Direct. Calm. Grounded in the Gorilla Mind knowledge base." />
+      <SectionHeader eyebrow="AI" title="Coach." sub="Direct. Calm. Grounded in profile, journal and the Gorilla Mind knowledge base." />
       <div className="px-5 space-y-4">
+        <div className="rounded-xl border border-border bg-card/60 p-3 text-[11px] text-muted-foreground">
+          <span className="text-gold-muted">Context loaded:</span> profile · {profile.name} · day {profile.protocolDay} · gap "{profile.primaryGap}" {journal ? `· journal ${journal.date}` : "· no journal yet"}
+        </div>
+
         <form onSubmit={submit} className="rounded-xl border border-border bg-card p-3">
           <textarea
             value={question}
@@ -100,6 +112,11 @@ function DebugPanel({ result, loading }: { result: CoachResponse | null; loading
       {d && (
         <dl className="space-y-2 text-muted-foreground">
           <Row k="model" v={d.model} />
+          <Row k="profile context sent" v={String(d.profileContextSent)} />
+          <Row k="latest journal sent" v={String(d.latestJournalSent)} />
+          <Row k="primaryGap used" v={d.primaryGapUsed ?? "—"} />
+          <Row k="protocolDay used" v={d.protocolDayUsed === null ? "—" : String(d.protocolDayUsed)} />
+          <Row k="safety flags used" v={d.safetyFlagsUsed.length ? d.safetyFlagsUsed.join(", ") : "none"} />
           <Row k="file_search called" v={String(d.fileSearchCalled)} />
           <Row k="vector store ID" v={d.vectorStoreId ?? "—"} />
           <Row k="retrieved chunks" v={String(d.retrievedChunksCount)} />
