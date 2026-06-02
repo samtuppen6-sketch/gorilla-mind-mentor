@@ -521,8 +521,12 @@ export const askCoach = createServerFn({ method: "POST" })
 
     const routing = detectRoute(data.question, profile, journal);
 
+    const breathworkSubRoute: BreathworkSubRoute =
+      routing.route === "BREATHWORK" ? (routing.breathworkSubRoute ?? "DOWNREGULATE") : "NONE";
+
     const debug: CoachDebug = {
       selectedRoute: routing.route,
+      breathworkSubRoute,
       routeReason: routing.reason,
       retrievalQuery: routing.query,
       fileSearchCalled: false,
