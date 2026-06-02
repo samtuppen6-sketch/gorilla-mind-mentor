@@ -44,6 +44,7 @@ function CoachPage() {
         answer: "Request failed.",
         debug: {
           selectedRoute: "GENERAL_COACHING",
+          breathworkSubRoute: "NONE",
           routeReason: "Client-side request failure before route detector ran.",
           retrievalQuery: "",
           fileSearchCalled: false,
