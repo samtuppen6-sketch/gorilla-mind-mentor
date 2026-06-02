@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import { askCoach, type CoachResponse } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, Play, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/coach")({
   head: () => ({
