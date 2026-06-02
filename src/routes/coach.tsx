@@ -44,6 +44,7 @@ function CoachPage() {
         answer: "Request failed.",
         debug: {
           selectedRoute: "GENERAL_COACHING",
+          breathworkSubRoute: "NONE",
           routeReason: "Client-side request failure before route detector ran.",
           retrievalQuery: "",
           fileSearchCalled: false,
@@ -115,6 +116,7 @@ function DebugPanel({ result, loading }: { result: CoachResponse | null; loading
       {d && (
         <dl className="space-y-2 text-muted-foreground">
           <Row k="selected route" v={d.selectedRoute} />
+          <Row k="breathwork sub-route" v={d.breathworkSubRoute} />
           <Row k="route reason" v={d.routeReason} />
           <Row k="retrieval query" v={d.retrievalQuery || "—"} />
           <Row k="model" v={d.model} />

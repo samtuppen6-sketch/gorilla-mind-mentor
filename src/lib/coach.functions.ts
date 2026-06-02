@@ -93,8 +93,16 @@ export type CoachRoute =
   | "IDENTITY_MINDSET"
   | "GENERAL_COACHING";
 
+export type BreathworkSubRoute =
+  | "DOWNREGULATE"
+  | "FOCUS"
+  | "ENERGISE"
+  | "WIND_DOWN"
+  | "NONE";
+
 export type CoachDebug = {
   selectedRoute: CoachRoute;
+  breathworkSubRoute: BreathworkSubRoute;
   routeReason: string;
   retrievalQuery: string;
   fileSearchCalled: boolean;
@@ -125,11 +133,68 @@ function hasMatch(text: string, patterns: RegExp[]): boolean {
   return patterns.some((p) => p.test(text));
 }
 
+function detectBreathworkSubRoute(
+  message: string,
+  profile: Profile | null,
+  journal: Journal | null,
+): { sub: BreathworkSubRoute; reason: string; query: string } {
+  const m = message.toLowerCase();
+  const downregulate = /(stress|stressed|wired|anxious|anxiety|overwhelm|racing thoughts|activated|panicky|panic|can'?t switch off|cannot switch off|on edge|tense)/i.test(message);
+  const windDown = /(sleep|evening|night|wind ?down|bedtime|scrolling at night|before bed)/i.test(message);
+  const energise = /(tired|flat|low energy|foggy|brain fog|sluggish|struggling to activate|need energy|wake up)/i.test(message);
+  const focus = /(unfocused|scattered|distracted|mentally noisy|can'?t focus|cannot focus|focus)/i.test(message);
+
+  // Safety gate for energising: don't recommend intense breathwork if poor sleep / panic / medical risk
+  const poorSleep = (journal && journal.sleep < 6) || /(slept badly|poor sleep|no sleep|bad sleep)/i.test(message);
+  const medicalRisk = /(chest pain|dizzy|dizziness|faint|pregnan|heart|cardiac)/i.test(message);
+
+  if (downregulate) {
+    return {
+      sub: "DOWNREGULATE",
+      reason: "User reports stress / wired / anxious / overwhelmed / racing thoughts — needs down-regulating protocol (extended exhale or coherent breathing), not box breathing or breath holds.",
+      query: "down regulate breathwork extended exhale coherent breathing nasal slow exhale parasympathetic stress anxiety wired calm physiological sigh",
+    };
+  }
+  if (windDown) {
+    return {
+      sub: "WIND_DOWN",
+      reason: "User mentions sleep / evening / wind-down — needs calming nasal extended-exhale breathwork, no intense breath holds.",
+      query: "wind down breathwork evening nasal extended exhale slow breathing pre sleep calming parasympathetic no breath holds",
+    };
+  }
+  if (energise && !poorSleep && !medicalRisk) {
+    return {
+      sub: "ENERGISE",
+      reason: "User reports tired / flat / low energy without poor-sleep or medical risk flags — energising protocol acceptable within safety limits.",
+      query: "energising breathwork morning activation safe controlled nasal breathing arousal alertness no intense breath holds contraindications",
+    };
+  }
+  if (energise && (poorSleep || medicalRisk)) {
+    return {
+      sub: "DOWNREGULATE",
+      reason: "User reports tired/flat but also poor sleep or medical risk flag — intense breathwork is unsafe. Default to gentle down-regulating protocol.",
+      query: "gentle breathwork poor sleep safety contraindications nasal slow breathing recovery no intense breath holds",
+    };
+  }
+  if (focus) {
+    return {
+      sub: "FOCUS",
+      reason: "User reports unfocused / scattered / mentally noisy but not panicked — box breathing or coherent breathing fits.",
+      query: "focus breathwork box breathing coherent breathing 4 4 4 4 concentration mental clarity nasal",
+    };
+  }
+  return {
+    sub: "DOWNREGULATE",
+    reason: "No specific breathwork sub-signal — default to safe down-regulating coherent / extended-exhale breathing rather than box breathing.",
+    query: "general breathwork coherent breathing extended exhale nasal safe default protocol",
+  };
+}
+
 function detectRoute(
   message: string,
   profile: Profile | null,
   journal: Journal | null,
-): { route: CoachRoute; reason: string; query: string } {
+): { route: CoachRoute; reason: string; query: string; breathworkSubRoute?: BreathworkSubRoute } {
   const text = `${message.toLowerCase()} ${journal?.journalText?.toLowerCase() ?? ""}`;
   const flags = journal?.patternFlags ?? [];
   const flagSet = new Set(flags.map((f) => f.toLowerCase()));
@@ -213,11 +278,13 @@ function detectRoute(
     };
   }
 
-  if (/\b(breath|breathwork|box breathing|panic|anxious|anxiety|grounding)\b/i.test(message)) {
+  if (/\b(breath|breathwork|box breathing|panic|panicky|anxious|anxiety|grounding|stressed|wired|overwhelm|racing thoughts|switch off|activated|unfocused|scattered|distracted|mentally noisy|wind ?down)\b/i.test(message)) {
+    const sub = detectBreathworkSubRoute(message, profile, journal);
     return {
       route: "BREATHWORK",
-      reason: "Current message explicitly asks about breath / stress / grounding.",
-      query: "breathwork protocol stress anxiety grounding box breathing coherent breathing recovery safety",
+      reason: `Breathwork route — sub-route ${sub.sub}. ${sub.reason}`,
+      query: sub.query,
+      breathworkSubRoute: sub.sub,
     };
   }
 
@@ -454,8 +521,12 @@ export const askCoach = createServerFn({ method: "POST" })
 
     const routing = detectRoute(data.question, profile, journal);
 
+    const breathworkSubRoute: BreathworkSubRoute =
+      routing.route === "BREATHWORK" ? (routing.breathworkSubRoute ?? "DOWNREGULATE") : "NONE";
+
     const debug: CoachDebug = {
       selectedRoute: routing.route,
+      breathworkSubRoute,
       routeReason: routing.reason,
       retrievalQuery: routing.query,
       fileSearchCalled: false,
@@ -487,17 +558,35 @@ export const askCoach = createServerFn({ method: "POST" })
     const routeBlock = [
       "=== ACTIVE ROUTE (selected by backend route detector) ===",
       `route: ${routing.route}`,
+      `breathwork_sub_route: ${breathworkSubRoute}`,
       `reason: ${routing.reason}`,
       `retrieval_query: ${routing.query}`,
       `safety_flags: ${safetyFlags.length ? safetyFlags.join(", ") : "none"}`,
       "=== END ROUTE ===",
     ].join("\n");
 
+    const breathworkProtocolGuidance: Record<BreathworkSubRoute, string> = {
+      DOWNREGULATE:
+        "BREATHWORK sub-route DOWNREGULATE. User is stressed / wired / anxious / overwhelmed / racing thoughts. Recommend a DOWN-REGULATING protocol: coherent breathing or extended-exhale breathing. DO NOT default to box breathing. DO NOT make breath holds the main protocol. Example: sit down; inhale through the nose for 4s; exhale slowly for 6–8s; repeat for 3–5 minutes; keep the breath quiet, controlled, nasal where possible.",
+      FOCUS:
+        "BREATHWORK sub-route FOCUS. User is unfocused / scattered / mentally noisy but not panicked. Recommend box breathing or coherent breathing. Box: 4s inhale, 4s hold, 4s exhale, 4s hold, minimum 4 rounds.",
+      ENERGISE:
+        "BREATHWORK sub-route ENERGISE. User is tired / flat / low energy / foggy. Recommend a safer energising protocol from the knowledge base. Keep safety constraints. DO NOT recommend intense breathwork if there are any poor-sleep, panic, chest pain, dizziness, pregnancy, heart, or medical risk flags.",
+      WIND_DOWN:
+        "BREATHWORK sub-route WIND_DOWN. User mentions sleep / evening / night / wind-down / scrolling at night. Recommend wind-down breathwork: nasal, slow, extended-exhale, calming. NO intense breath holds.",
+      NONE: "",
+    };
+
     // Route-specific instruction nudges
+    const baseFormatRule = "Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly. HEADLINE must name the correct breathwork protocol for the user's state. WHAT'S HAPPENING briefly explains why this protocol fits. DO THIS NOW gives exact timing and steps. COACH CLOSE is direct, calm, grounded, no hype.";
+    const breathworkSafety = "Breathwork safety: never recommend breath holds in water; never recommend intense breathwork while driving; if user mentions chest pain, fainting, severe dizziness, suicidal ideation, overdose, or medical emergency symptoms, stop coaching and direct them to urgent professional help. Stay within general wellbeing guidance.";
+
     const routeInstruction =
       routing.route === "SAFETY_CRISIS"
         ? "ACTIVE ROUTE is SAFETY_CRISIS. Do NOT produce the normal HEADLINE/DO THIS NOW format. Respond with a short calm safety-first message: tell the user to contact local emergency services or a crisis line right now, and to reach a doctor for medical issues. Do not give protocol advice in this response."
-        : `ACTIVE ROUTE is ${routing.route}. Answer against this route. Use the smallest useful next action. Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly.`;
+        : routing.route === "BREATHWORK"
+          ? `ACTIVE ROUTE is BREATHWORK. ${breathworkProtocolGuidance[breathworkSubRoute]} ${breathworkSafety} ${baseFormatRule}`
+          : `ACTIVE ROUTE is ${routing.route}. Answer against this route. Use the smallest useful next action. Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly.`;
 
     const userInput = [
       routeBlock,
