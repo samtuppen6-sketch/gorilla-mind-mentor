@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import {
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/profile")({
   component: () => (
     <AppShell>
       <SectionHeader eyebrow="Identity" title="Profile." sub="Temporary test profile + journal. Feeds the AI Coach." />
-      <div className="px-5 space-y-6 pb-6">
+      <div className="px-5 space-y-6 pb-40">
         <ProfilePanel />
         <JournalPanel />
       </div>
@@ -32,10 +32,15 @@ function ProfilePanel() {
   const profile = useProfile();
   const [draft, setDraft] = useState<UserProfile>(profile);
   const [saved, setSaved] = useState(false);
-  const [savedJson, setSavedJson] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem(PROFILE_STORAGE_KEY) ?? "";
-  });
+  const [savedJson, setSavedJson] = useState<string>("");
+
+  // One-shot hydration from localStorage AFTER mount. Avoids SSR/client
+  // hydration mismatch that React was resolving by discarding the tree
+  // and re-rendering — which silently ate the first click on Save.
+  useEffect(() => {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(PROFILE_STORAGE_KEY) : null;
+    if (raw) setSavedJson(raw);
+  }, []);
 
   function update<K extends keyof UserProfile>(k: K, v: UserProfile[K]) {
     setDraft((d) => ({ ...d, [k]: v }));
@@ -78,7 +83,16 @@ function ProfilePanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-4 space-y-3">
+    <section className="relative rounded-xl border border-border bg-card p-4 space-y-3">
+      <button
+        type="button"
+        onClick={handleSaveProfile}
+        style={{ pointerEvents: "auto", cursor: "pointer", position: "relative", zIndex: 50 }}
+        className="block w-full rounded-lg border-2 border-gold bg-gold/20 py-3 text-xs font-bold uppercase tracking-[0.2em] text-gold hover:bg-gold/30"
+      >
+        TEST SAVE PROFILE
+      </button>
+
       {saved && (
         <div className="rounded-md border border-gold/50 bg-gold/10 px-3 py-2 text-xs font-semibold text-gold">
           Profile saved
@@ -88,6 +102,7 @@ function ProfilePanel() {
         <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Test profile</p>
         <span className={`text-[10px] ${saved ? "text-gold" : "text-muted-foreground"}`}>{saved ? "saved" : "unsaved"}</span>
       </div>
+
 
       <Text label="name" v={draft.name} onChange={(v) => update("name", v)} />
       <Text label="identityAnchor" v={draft.identityAnchor} onChange={(v) => update("identityAnchor", v)} />
@@ -108,11 +123,12 @@ function ProfilePanel() {
       <Bool label="processAddictionFlag" v={draft.processAddictionFlag} onChange={(v) => update("processAddictionFlag", v)} />
       <Bool label="foodBoundaryActive" v={draft.foodBoundaryActive} onChange={(v) => update("foodBoundaryActive", v)} />
 
-      <div className="flex flex-wrap gap-2 pt-2">
-        <button type="button" onClick={handleSaveProfile} className="flex-1 min-w-[120px] rounded-lg bg-gold py-2 text-xs font-semibold text-primary-foreground">Save profile</button>
-        <button type="button" onClick={handleLoadProfile} className="rounded-lg border border-gold/40 px-3 py-2 text-xs text-gold">Load saved profile</button>
-        <button type="button" onClick={handleReset} className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">Reset</button>
+      <div className="relative flex flex-wrap gap-2 pt-2" style={{ zIndex: 50 }}>
+        <button type="button" onClick={handleSaveProfile} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 flex-1 min-w-[120px] rounded-lg bg-gold py-3 text-xs font-semibold text-primary-foreground hover:opacity-90">Save profile</button>
+        <button type="button" onClick={handleLoadProfile} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border border-gold/40 px-3 py-2 text-xs text-gold">Load saved profile</button>
+        <button type="button" onClick={handleReset} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">Reset</button>
       </div>
+
 
       <div className="mt-4 rounded-lg border border-dashed border-gold/40 bg-background/60 p-3">
         <p className="text-[10px] uppercase tracking-[0.3em] text-gold mb-2">SAVED PROFILE DEBUG</p>
