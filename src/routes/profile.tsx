@@ -30,6 +30,7 @@ function ProfilePanel() {
   const profile = useProfile();
   const [draft, setDraft] = useState<UserProfile>(profile);
   const [saved, setSaved] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   function update<K extends keyof UserProfile>(k: K, v: UserProfile[K]) {
     setDraft((d) => ({ ...d, [k]: v }));
@@ -37,20 +38,31 @@ function ProfilePanel() {
   }
 
   function save() {
+    console.log("Profile save clicked");
     setProfile(draft);
+    console.log("Profile saved to localStorage", draft);
     setSaved(true);
+    setToast("Profile saved");
+    window.setTimeout(() => setToast(null), 2500);
   }
   function reset() {
     setDraft(DEFAULT_PROFILE);
     setProfile(DEFAULT_PROFILE);
     setSaved(true);
+    setToast("Profile reset to defaults");
+    window.setTimeout(() => setToast(null), 2500);
   }
 
   return (
     <section className="rounded-xl border border-border bg-card p-4 space-y-3">
+      {toast && (
+        <div className="rounded-md border border-gold/40 bg-gold/10 px-3 py-2 text-xs text-gold">
+          {toast}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Test profile</p>
-        <span className="text-[10px] text-muted-foreground">{saved ? "saved" : "unsaved"}</span>
+        <span className={`text-[10px] ${saved ? "text-gold" : "text-muted-foreground"}`}>{saved ? "saved" : "unsaved"}</span>
       </div>
 
       <Text label="name" v={draft.name} onChange={(v) => update("name", v)} />
