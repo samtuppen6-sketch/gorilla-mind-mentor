@@ -43,6 +43,9 @@ function CoachPage() {
       setResult({
         answer: "Request failed.",
         debug: {
+          selectedRoute: "GENERAL_COACHING",
+          routeReason: "Client-side request failure before route detector ran.",
+          retrievalQuery: "",
           fileSearchCalled: false,
           vectorStoreId: null,
           retrievedChunksCount: 0,
@@ -111,6 +114,9 @@ function DebugPanel({ result, loading }: { result: CoachResponse | null; loading
       {!loading && !d && <p className="text-muted-foreground">No request yet.</p>}
       {d && (
         <dl className="space-y-2 text-muted-foreground">
+          <Row k="selected route" v={d.selectedRoute} />
+          <Row k="route reason" v={d.routeReason} />
+          <Row k="retrieval query" v={d.retrievalQuery || "—"} />
           <Row k="model" v={d.model} />
           <Row k="profile context sent" v={String(d.profileContextSent)} />
           <Row k="latest journal sent" v={String(d.latestJournalSent)} />
