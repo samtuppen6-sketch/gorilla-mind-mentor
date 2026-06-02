@@ -637,7 +637,7 @@ export const askCoach = createServerFn({ method: "POST" })
       return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice };
     }
 
-    const contextBlock = buildContextBlock(profile, journal);
+    const contextBlock = buildContextBlock(profile, journal, progress);
 
     const routeBlock = [
       "=== ACTIVE ROUTE (selected by backend route detector) ===",
