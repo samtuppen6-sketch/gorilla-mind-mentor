@@ -147,7 +147,7 @@ function detectRoute(
   }
 
   // 2. Clear current user message intent. This must beat stale journal/profile context.
-  if ((poorSleepMessage && trainingMessage) || hardTrainingMessage) {
+  if (poorSleepMessage && (trainingMessage || hardTrainingMessage)) {
     return {
       route: "RECOVERY_DAY",
       reason: "Current message explicitly combines poor sleep / low readiness with intent to train hard, so recovery caution overrides missed-day journal context.",
