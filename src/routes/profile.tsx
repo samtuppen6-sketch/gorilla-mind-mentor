@@ -18,7 +18,7 @@ export const Route = createFileRoute("/profile")({
   component: () => (
     <AppShell>
       <SectionHeader eyebrow="Identity" title="Profile." sub="Temporary test profile + journal. Feeds the AI Coach." />
-      <div className="px-5 space-y-6 pb-6">
+      <div className="px-5 space-y-6 pb-40">
         <ProfilePanel />
         <JournalPanel />
       </div>
