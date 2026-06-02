@@ -119,9 +119,15 @@ export type CoachDebug = {
   primaryGapUsed: string | null;
   protocolDayUsed: number | null;
   safetyFlagsUsed: string[];
+  guidedPracticeId: string | null;
+  guidedPracticeReason: string | null;
 };
 
-export type CoachResponse = { answer: string; debug: CoachDebug };
+export type CoachResponse = {
+  answer: string;
+  debug: CoachDebug;
+  guidedPractice: GuidedPracticeRec | null;
+};
 
 const SAFETY_PATTERNS = [
   /\bsuicid/i, /\bkill myself\b/i, /\bend (my|it all) life\b/i, /\bself.?harm\b/i,
