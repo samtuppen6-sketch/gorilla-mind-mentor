@@ -616,7 +616,11 @@ export const askCoach = createServerFn({ method: "POST" })
       data.question,
     ].join("\n");
 
-    const instructions = `${SYSTEM_INSTRUCTIONS}\n\n${routeInstruction}`;
+    const guidedPracticeInstruction = guidedPractice
+      ? `\n\nGUIDED PRACTICE SECTION: After TODAY'S NON-NEGOTIABLES and before COACH CLOSE, add a section labelled exactly "GUIDED PRACTICE" with two short lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
+      : "";
+
+    const instructions = `${SYSTEM_INSTRUCTIONS}\n\n${routeInstruction}${guidedPracticeInstruction}`;
 
     try {
       const res = await fetch("https://api.openai.com/v1/responses", {
