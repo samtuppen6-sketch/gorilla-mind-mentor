@@ -123,11 +123,12 @@ function ProfilePanel() {
       <Bool label="processAddictionFlag" v={draft.processAddictionFlag} onChange={(v) => update("processAddictionFlag", v)} />
       <Bool label="foodBoundaryActive" v={draft.foodBoundaryActive} onChange={(v) => update("foodBoundaryActive", v)} />
 
-      <div className="flex flex-wrap gap-2 pt-2">
-        <button type="button" onClick={handleSaveProfile} className="flex-1 min-w-[120px] rounded-lg bg-gold py-2 text-xs font-semibold text-primary-foreground">Save profile</button>
-        <button type="button" onClick={handleLoadProfile} className="rounded-lg border border-gold/40 px-3 py-2 text-xs text-gold">Load saved profile</button>
-        <button type="button" onClick={handleReset} className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">Reset</button>
+      <div className="relative flex flex-wrap gap-2 pt-2" style={{ zIndex: 50 }}>
+        <button type="button" onClick={handleSaveProfile} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 flex-1 min-w-[120px] rounded-lg bg-gold py-3 text-xs font-semibold text-primary-foreground hover:opacity-90">Save profile</button>
+        <button type="button" onClick={handleLoadProfile} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border border-gold/40 px-3 py-2 text-xs text-gold">Load saved profile</button>
+        <button type="button" onClick={handleReset} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">Reset</button>
       </div>
+
 
       <div className="mt-4 rounded-lg border border-dashed border-gold/40 bg-background/60 p-3">
         <p className="text-[10px] uppercase tracking-[0.3em] text-gold mb-2">SAVED PROFILE DEBUG</p>
