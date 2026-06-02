@@ -1,11 +1,24 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useParams, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getPracticeById } from "@/lib/practices";
-import { ArrowLeft, Play, Pause, Check, Clock, Music, Video, ShieldAlert } from "lucide-react";
+import {
+  completePracticeSession,
+  dailyActionLabel,
+  type CompletionResult,
+  type PracticeSource,
+} from "@/lib/practice-progress";
+import { ArrowLeft, Play, Pause, Check, Clock, Music, Video, ShieldAlert, CalendarCheck } from "lucide-react";
+
+const searchSchema = z.object({
+  source: z.enum(["coach", "library", "protocol"]).optional(),
+  route: z.string().optional(),
+});
 
 export const Route = createFileRoute("/practice/$practiceId")({
+  validateSearch: searchSchema,
   head: () => ({
     meta: [
       { title: "Guided Practice — Gorilla Mind" },
@@ -23,8 +36,13 @@ type PlayerState = "idle" | "playing" | "paused" | "complete";
 
 function PracticePlayerPage() {
   const { practiceId } = useParams({ from: "/practice/$practiceId" });
+  const search = useSearch({ from: "/practice/$practiceId" });
+  const source: PracticeSource = search.source ?? "library";
+  const linkedCoachRoute = search.route ?? null;
+
   const practice = getPracticeById(practiceId);
   const [state, setState] = useState<PlayerState>("idle");
+  const [completion, setCompletion] = useState<CompletionResult | null>(null);
 
   if (!practice) {
     return (
@@ -43,6 +61,13 @@ function PracticePlayerPage() {
     );
   }
 
+  function handleComplete() {
+    if (!practice || state === "complete") return;
+    const result = completePracticeSession({ practice, source, linkedCoachRoute });
+    setCompletion(result);
+    setState("complete");
+  }
+
   return (
     <>
       <SectionHeader eyebrow={practice.category} title={practice.title} sub={practice.description} />
@@ -54,6 +79,7 @@ function PracticePlayerPage() {
           </span>
           <span>Intensity: {practice.intensity}</span>
           <span>Sub-route: {practice.subRoute}</span>
+          <span>Source: {source}</span>
         </div>
 
         {/* Media placeholders */}
@@ -66,7 +92,7 @@ function PracticePlayerPage() {
           <p className="text-xs text-muted-foreground">Visual guide coming soon</p>
         </div>
 
-        {/* Instruction text */}
+        {/* Instructions */}
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Instructions</p>
           <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{practice.instructionText}</p>
@@ -130,7 +156,7 @@ function PracticePlayerPage() {
           </button>
           <button
             type="button"
-            onClick={() => setState("complete")}
+            onClick={handleComplete}
             disabled={state === "complete"}
             className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gold/40 bg-card py-3 text-sm font-semibold text-foreground disabled:opacity-50"
           >
@@ -139,14 +165,100 @@ function PracticePlayerPage() {
           </button>
         </div>
 
-        <Link
-          to="/coach"
-          className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card/60 py-3 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Coach
-        </Link>
+        {/* Success banner */}
+        {completion && (
+          <div className="rounded-xl border border-gold/60 bg-gold/10 p-5 space-y-3">
+            <p className="text-sm font-bold text-gold inline-flex items-center gap-2">
+              <Check className="w-4 h-4" />
+              Practice complete
+            </p>
+            <div className="text-xs text-foreground space-y-1">
+              <p>
+                <span className="text-gold-muted">Discipline points awarded: </span>
+                <span className="font-semibold text-gold">
+                  +{completion.pointsAwarded}
+                  {completion.duplicate && " (duplicate today — no DP)"}
+                </span>
+              </p>
+              <p>
+                <span className="text-gold-muted">Daily action: </span>
+                <span className="font-semibold">{dailyActionLabel(completion.dailyActionUpdated)}</span>
+              </p>
+              <p>
+                <span className="text-gold-muted">Practice streak: </span>
+                {completion.practiceStreakUpdated ? "incremented today" : "already counted today"}
+              </p>
+              <p>
+                <span className="text-gold-muted">Protocol streak: </span>
+                {completion.protocolStreakUpdated
+                  ? "daily minimum met — incremented"
+                  : completion.dailyProgress.dailyMinimumMet
+                    ? "already counted today"
+                    : "daily minimum not yet met"}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Link
+                to="/coach"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-gold py-3 text-xs font-semibold text-primary-foreground"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Coach
+              </Link>
+              <Link
+                to="/"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-gold/50 bg-card py-3 text-xs font-semibold text-foreground"
+              >
+                <CalendarCheck className="w-4 h-4" />
+                View Today
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {!completion && (
+          <Link
+            to="/coach"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card/60 py-3 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Coach
+          </Link>
+        )}
+
+        {/* Debug panel */}
+        <div className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-[11px] font-mono space-y-1">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Practice debug</p>
+          <DRow k="practiceId" v={practice.id} />
+          <DRow k="category" v={practice.category} />
+          <DRow k="source" v={source} />
+          <DRow k="linkedCoachRoute" v={linkedCoachRoute ?? "—"} />
+          <DRow k="completion saved" v={String(!!completion)} />
+          <DRow k="duplicate today" v={completion ? String(completion.duplicate) : "—"} />
+          <DRow k="DP awarded" v={completion ? `+${completion.pointsAwarded}` : "—"} />
+          <DRow k="daily action updated" v={completion ? (completion.dailyActionUpdated ?? "none") : "—"} />
+          <DRow k="daily progress updated" v={completion ? "true" : "false"} />
+          <DRow k="practice streak updated" v={completion ? String(completion.practiceStreakUpdated) : "—"} />
+          <DRow k="protocol streak updated" v={completion ? String(completion.protocolStreakUpdated) : "—"} />
+          <DRow k="dailyMinimumMet" v={completion ? String(completion.dailyProgress.dailyMinimumMet) : "—"} />
+          <DRow k="fullProtocolCompleted" v={completion ? String(completion.dailyProgress.fullProtocolCompleted) : "—"} />
+          <DRow k="DP today (total)" v={completion ? String(completion.dailyProgress.disciplinePointsToday) : "—"} />
+          <DRow
+            k="completedPracticeIdsToday"
+            v={completion ? (completion.dailyProgress.completedPracticeIdsToday.join(", ") || "—") : "—"}
+          />
+          <DRow k="localStorage keys written" v={completion ? completion.keysWritten.join(", ") : "—"} />
+        </div>
       </div>
     </>
+  );
+}
+
+function DRow({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex gap-2 text-muted-foreground">
+      <span className="text-foreground shrink-0">{k}:</span>
+      <span className="break-all">{v}</span>
+    </div>
   );
 }
