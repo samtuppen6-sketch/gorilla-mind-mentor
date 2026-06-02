@@ -26,38 +26,62 @@ export const Route = createFileRoute("/profile")({
   ),
 });
 
+const PROFILE_STORAGE_KEY = "gm.userProfile.v1";
+
 function ProfilePanel() {
   const profile = useProfile();
   const [draft, setDraft] = useState<UserProfile>(profile);
   const [saved, setSaved] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [savedJson, setSavedJson] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem(PROFILE_STORAGE_KEY) ?? "";
+  });
 
   function update<K extends keyof UserProfile>(k: K, v: UserProfile[K]) {
     setDraft((d) => ({ ...d, [k]: v }));
     setSaved(false);
   }
 
-  function save() {
+  function handleSaveProfile() {
     console.log("Profile save clicked");
-    setProfile(draft);
+    const serialized = JSON.stringify(draft);
+    localStorage.setItem(PROFILE_STORAGE_KEY, serialized);
+    setProfile(draft); // keep in-memory store + Coach request in sync
     console.log("Profile saved to localStorage", draft);
     setSaved(true);
-    setToast("Profile saved");
-    window.setTimeout(() => setToast(null), 2500);
+    setSavedJson(serialized);
   }
-  function reset() {
+
+  function handleLoadProfile() {
+    const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (!raw) {
+      setSavedJson("");
+      return;
+    }
+    try {
+      const parsed = { ...DEFAULT_PROFILE, ...JSON.parse(raw) } as UserProfile;
+      setDraft(parsed);
+      setProfile(parsed);
+      setSaved(true);
+      setSavedJson(raw);
+    } catch (e) {
+      console.error("Failed to parse saved profile", e);
+    }
+  }
+
+  function handleReset() {
     setDraft(DEFAULT_PROFILE);
     setProfile(DEFAULT_PROFILE);
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(DEFAULT_PROFILE));
+    setSavedJson(JSON.stringify(DEFAULT_PROFILE));
     setSaved(true);
-    setToast("Profile reset to defaults");
-    window.setTimeout(() => setToast(null), 2500);
   }
 
   return (
     <section className="rounded-xl border border-border bg-card p-4 space-y-3">
-      {toast && (
-        <div className="rounded-md border border-gold/40 bg-gold/10 px-3 py-2 text-xs text-gold">
-          {toast}
+      {saved && (
+        <div className="rounded-md border border-gold/50 bg-gold/10 px-3 py-2 text-xs font-semibold text-gold">
+          Profile saved
         </div>
       )}
       <div className="flex items-center justify-between">
@@ -84,13 +108,23 @@ function ProfilePanel() {
       <Bool label="processAddictionFlag" v={draft.processAddictionFlag} onChange={(v) => update("processAddictionFlag", v)} />
       <Bool label="foodBoundaryActive" v={draft.foodBoundaryActive} onChange={(v) => update("foodBoundaryActive", v)} />
 
-      <div className="flex gap-2 pt-2">
-        <button onClick={save} className="flex-1 rounded-lg bg-gold py-2 text-xs font-semibold text-primary-foreground">Save profile</button>
-        <button onClick={reset} className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">Reset</button>
+      <div className="flex flex-wrap gap-2 pt-2">
+        <button type="button" onClick={handleSaveProfile} className="flex-1 min-w-[120px] rounded-lg bg-gold py-2 text-xs font-semibold text-primary-foreground">Save profile</button>
+        <button type="button" onClick={handleLoadProfile} className="rounded-lg border border-gold/40 px-3 py-2 text-xs text-gold">Load saved profile</button>
+        <button type="button" onClick={handleReset} className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">Reset</button>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-dashed border-gold/40 bg-background/60 p-3">
+        <p className="text-[10px] uppercase tracking-[0.3em] text-gold mb-2">SAVED PROFILE DEBUG</p>
+        <p className="text-[10px] text-muted-foreground mb-1">localStorage key: <span className="text-foreground">{PROFILE_STORAGE_KEY}</span></p>
+        <pre className="text-[10px] leading-relaxed text-foreground whitespace-pre-wrap break-all max-h-64 overflow-auto">
+{savedJson ? (() => { try { return JSON.stringify(JSON.parse(savedJson), null, 2); } catch { return savedJson; } })() : "(nothing saved yet)"}
+        </pre>
       </div>
     </section>
   );
 }
+
 
 function JournalPanel() {
   const existing = useJournal();
