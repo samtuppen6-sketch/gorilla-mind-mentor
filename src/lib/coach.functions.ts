@@ -93,8 +93,16 @@ export type CoachRoute =
   | "IDENTITY_MINDSET"
   | "GENERAL_COACHING";
 
+export type BreathworkSubRoute =
+  | "DOWNREGULATE"
+  | "FOCUS"
+  | "ENERGISE"
+  | "WIND_DOWN"
+  | "NONE";
+
 export type CoachDebug = {
   selectedRoute: CoachRoute;
+  breathworkSubRoute: BreathworkSubRoute;
   routeReason: string;
   retrievalQuery: string;
   fileSearchCalled: boolean;
