@@ -531,6 +531,14 @@ export const askCoach = createServerFn({ method: "POST" })
     const breathworkSubRoute: BreathworkSubRoute =
       routing.route === "BREATHWORK" ? (routing.breathworkSubRoute ?? "DOWNREGULATE") : "NONE";
 
+    const guidedPractice = routing.route === "SAFETY_CRISIS"
+      ? null
+      : selectGuidedPractice({
+          route: routing.route,
+          breathworkSubRoute,
+          message: data.question,
+        });
+
     const debug: CoachDebug = {
       selectedRoute: routing.route,
       breathworkSubRoute,
@@ -549,15 +557,17 @@ export const askCoach = createServerFn({ method: "POST" })
       primaryGapUsed: profile?.primaryGap ?? null,
       protocolDayUsed: profile?.protocolDay ?? null,
       safetyFlagsUsed: safetyFlags,
+      guidedPracticeId: guidedPractice?.id ?? null,
+      guidedPracticeReason: guidedPractice?.reason ?? null,
     };
 
     if (!apiKey) {
       debug.apiError = "OPENAI_API_KEY missing on server";
-      return { answer: "Coach is offline. Backend secret missing.", debug };
+      return { answer: "Coach is offline. Backend secret missing.", debug, guidedPractice };
     }
     if (!vectorStoreId) {
       debug.apiError = "GORILLA_MIND_VECTOR_STORE_ID missing on server";
-      return { answer: "Coach is offline. Vector store secret missing.", debug };
+      return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice };
     }
 
     const contextBlock = buildContextBlock(profile, journal);
