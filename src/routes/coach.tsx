@@ -42,6 +42,7 @@ function CoachPage() {
     } catch (err) {
       setResult({
         answer: "Request failed.",
+        guidedPractice: null,
         debug: {
           selectedRoute: "GENERAL_COACHING",
           breathworkSubRoute: "NONE",
@@ -60,6 +61,8 @@ function CoachPage() {
           primaryGapUsed: profile?.primaryGap ?? null,
           protocolDayUsed: profile?.protocolDay ?? null,
           safetyFlagsUsed: [],
+          guidedPracticeId: null,
+          guidedPracticeReason: null,
         },
       });
     } finally {
