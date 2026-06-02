@@ -16,8 +16,11 @@ export const Route = createFileRoute("/")({
   ),
 });
 
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 function TodayPage() {
-  const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  const d = new Date();
+  const today = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
   return (
     <>
       <SectionHeader eyebrow={today} title="Today." sub="One clean win. No phone-first behaviour. Execute the protocol." />
