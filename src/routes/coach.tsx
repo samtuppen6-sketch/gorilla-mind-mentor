@@ -39,7 +39,9 @@ function CoachPage() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await ask({ data: { question: question.trim(), profile, journal } });
+      const dailyProgress = loadDailyProgress();
+      const res = await ask({ data: { question: question.trim(), profile, journal, dailyProgress } });
+
       setResult(res);
     } catch (err) {
       setResult({
