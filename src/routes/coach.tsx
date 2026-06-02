@@ -103,6 +103,30 @@ function CoachPage() {
           </div>
         )}
 
+        {result?.guidedPractice && (
+          <div className="rounded-xl border border-gold/40 bg-card p-5 space-y-3">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Guided practice</p>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">{result.guidedPractice.title}</h3>
+              <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1">
+                <span>{result.guidedPractice.category}</span>
+                <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{result.guidedPractice.durationMinutes} min</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              <span className="text-gold-muted">Why: </span>{result.guidedPractice.reason}
+            </p>
+            <Link
+              to="/practice/$practiceId"
+              params={{ practiceId: result.guidedPractice.id }}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gold py-3 text-sm font-semibold text-primary-foreground"
+            >
+              <Play className="w-4 h-4" />
+              {result.guidedPractice.buttonLabel}
+            </Link>
+          </div>
+        )}
+
         <DebugPanel result={result} loading={loading} />
       </div>
     </>
