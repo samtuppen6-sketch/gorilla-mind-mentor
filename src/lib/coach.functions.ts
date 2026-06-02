@@ -130,8 +130,12 @@ function detectRoute(
   profile: Profile | null,
   journal: Journal | null,
 ): { route: CoachRoute; reason: string; query: string } {
-  const m = message.toLowerCase();
-  const text = `${m} ${journal?.journalText?.toLowerCase() ?? ""}`;
+  const text = `${message.toLowerCase()} ${journal?.journalText?.toLowerCase() ?? ""}`;
+  const flags = journal?.patternFlags ?? [];
+  const flagSet = new Set(flags.map((f) => f.toLowerCase()));
+  const poorSleepMessage = /\b(slept badly|slept poorly|bad sleep|poor sleep|little sleep|no sleep|sleep deprived|rough sleep|terrible sleep|exhausted|wiped|tired)\b/i.test(message);
+  const trainingMessage = /\b(train|training|trained|gym|lift|lifting|workout|session|squat|bench|deadlift|press|run|cardio)\b/i.test(message);
+  const hardTrainingMessage = /\b(train hard|training hard|go hard|push hard|lift heavy|heavy session|max out|pr attempt|personal record|all out|smash.*workout)\b/i.test(message);
 
   // 1. SAFETY override
   if (hasMatch(text, SAFETY_PATTERNS)) {
@@ -142,36 +146,156 @@ function detectRoute(
     };
   }
 
-  const flags = journal?.patternFlags ?? [];
-  const flagSet = new Set(flags.map((f) => f.toLowerCase()));
+  // 2. Clear current user message intent. This must beat stale journal/profile context.
+  if (poorSleepMessage && (trainingMessage || hardTrainingMessage)) {
+    return {
+      route: "RECOVERY_DAY",
+      reason: "Current message explicitly combines poor sleep / low readiness with intent to train hard, so recovery caution overrides missed-day journal context.",
+      query: "poor sleep training hard readiness recovery day reduced intensity mobility walk Pilates no overtraining soreness pain flag",
+    };
+  }
 
-  // 2. Sobriety / process addiction (high priority safety-adjacent)
-  if (
-    profile?.alcoholFlag ||
-    (profile?.recoveryState && profile.recoveryState !== "none") ||
-    (journal && journal.cravingLevel >= 7) ||
-    /\b(craving|drink|relapse|lapse|sober|alcohol)\b/i.test(message)
-  ) {
+  if (/\b(craving|drink|relapse|lapse|sober|alcohol)\b/i.test(message)) {
     return {
       route: "SOBRIETY_CRAVING",
-      reason: `Sobriety context active (alcoholFlag=${!!profile?.alcoholFlag}, recoveryState=${profile?.recoveryState ?? "none"}, craving=${journal?.cravingLevel ?? "?"}).`,
+      reason: "Current message explicitly asks about sobriety / craving / relapse risk.",
       query: "sobriety recovery craving relapse lapse support contact environment change repair protocol",
     };
   }
 
-  if (
-    profile?.processAddictionFlag ||
-    profile?.foodBoundaryActive ||
-    /\b(scroll(ing)?|phone|porn|binge|shame loop|urge)\b/i.test(message)
-  ) {
+  if (/\b(scroll(ing)?|phone|porn|binge|shame loop|urge)\b/i.test(message)) {
     return {
       route: "PROCESS_ADDICTION",
-      reason: `Process addiction context (processAddictionFlag=${!!profile?.processAddictionFlag}, foodBoundaryActive=${!!profile?.foodBoundaryActive}).`,
+      reason: "Current message explicitly asks about process addiction / urge interruption.",
       query: "process addiction scrolling urge interruption phone hijack shame loop replacement behaviour",
     };
   }
 
-  // 3. Missed morning vs missed day
+  if (/\b(missed (the )?day|broken streak|fell off)\b/i.test(message)) {
+    return {
+      route: "MISSED_DAY_REPAIR",
+      reason: "Current message explicitly uses missed-day / broken-streak language.",
+      query: "missed day repair broken streak no shame minimum standard restart protocol identity anchor",
+    };
+  }
+
+  if (/\b(missed (the )?morning|wasted morning|slept in|phone in bed)\b/i.test(message)) {
+    return {
+      route: "MISSED_MORNING",
+      reason: "Current message explicitly uses missed-morning language.",
+      query: "missed morning repair morning protocol hydration box breathing light exposure no phone first protein anchor",
+    };
+  }
+
+  if (/\b(recovery day|rest day|sore|deload|pain flag)\b/i.test(message)) {
+    return {
+      route: "RECOVERY_DAY",
+      reason: "Current message explicitly asks for recovery / deload / soreness handling.",
+      query: "recovery day deload soreness pain flag light movement walk mobility sleep nutrition recovery",
+    };
+  }
+
+  if (trainingMessage) {
+    return {
+      route: "TRAINING",
+      reason: "Current message explicitly asks about training / gym / lifting.",
+      query: poorSleepMessage
+        ? "poor sleep training hard readiness recovery day reduced intensity mobility walk Pilates no overtraining soreness pain flag"
+        : "training readiness beginner intermediate gym access soreness pain flag missed training next clean session",
+    };
+  }
+
+  if (poorSleepMessage || /\b(sleep|insomnia|wind ?down|can'?t sleep)\b/i.test(message)) {
+    return {
+      route: "SLEEP_WIND_DOWN",
+      reason: "Current message explicitly asks about poor sleep / wind-down.",
+      query: "sleep architecture wind down sleep onset poor sleep evening protocol phone boundary calming breathwork",
+    };
+  }
+
+  if (/\b(breath|breathwork|box breathing|panic|anxious|anxiety|grounding)\b/i.test(message)) {
+    return {
+      route: "BREATHWORK",
+      reason: "Current message explicitly asks about breath / stress / grounding.",
+      query: "breathwork protocol stress anxiety grounding box breathing coherent breathing recovery safety",
+    };
+  }
+
+  if (/\b(meditat|mindful|focus|presence|identity)\b/i.test(message)) {
+    return {
+      route: "MEDITATION_MINDFULNESS",
+      reason: "Current message explicitly asks about meditation / mindfulness / identity work.",
+      query: "meditation mindfulness identity anchor focus meditation shame spiral sleep onset urge surfing",
+    };
+  }
+
+  if (/\bpilates\b/i.test(message)) {
+    return {
+      route: "PILATES",
+      reason: "Current message explicitly mentions Pilates.",
+      query: "Pilates beginner foundation mobility core control low impact recovery day",
+    };
+  }
+
+  if (/\b(mobility|stretch|hips|shoulders|tight)\b/i.test(message)) {
+    return {
+      route: "MOBILITY",
+      reason: "Current message explicitly asks about mobility / stiffness.",
+      query: "mobility routine hips shoulders thoracic spine daily mobility movement quality",
+    };
+  }
+
+  if (/\bcold (shower|plunge|exposure)|ice bath\b/i.test(message)) {
+    return {
+      route: "COLD_EXPOSURE",
+      reason: "Current message explicitly asks about cold exposure.",
+      query: "cold exposure cold shower plunge safety dose duration contraindications recovery",
+    };
+  }
+
+  if (/\b(sauna|heat exposure|hot bath)\b/i.test(message)) {
+    return {
+      route: "HEAT_EXPOSURE",
+      reason: "Current message explicitly asks about heat exposure / sauna.",
+      query: "heat exposure sauna protocol dose duration hydration safety recovery",
+    };
+  }
+
+  if (/\b(eat|meal|protein|food|nutrition|hungry|calorie|macro)\b/i.test(message)) {
+    return {
+      route: "NUTRITION_MEAL",
+      reason: "Current message explicitly asks about food / meal / protein.",
+      query: "meal library protein anchor next meal nutrition missed meal food boundary recovery",
+    };
+  }
+
+  if (/\b(streak|discipline points?|points?|consistency|momentum)\b/i.test(message)) {
+    return {
+      route: "DISCIPLINE_POINTS_STREAK",
+      reason: "Current message explicitly asks about streak / discipline points / consistency.",
+      query: "discipline points streak consistency momentum identity reinforcement scoring system",
+    };
+  }
+
+  if (/\b(identity|who am i|mindset|purpose|values|operator)\b/i.test(message)) {
+    return {
+      route: "IDENTITY_MINDSET",
+      reason: "Current message explicitly asks about identity / mindset / values.",
+      query: "identity anchor masculine operating system mindset values purpose discipline transformation",
+    };
+  }
+
+  // 3. Latest journal / check-in context.
+  if (
+    journal && journal.cravingLevel >= 7
+  ) {
+    return {
+      route: "SOBRIETY_CRAVING",
+      reason: `Latest journal shows high craving level (${journal.cravingLevel}/10).`,
+      query: "sobriety recovery craving relapse lapse support contact environment change repair protocol",
+    };
+  }
+
   const morningMissed = journal && !journal.morningProtocolCompleted;
   const dayMissed =
     journal &&
@@ -179,138 +303,82 @@ function detectRoute(
     !journal.eveningProtocolCompleted &&
     !journal.trainingCompleted;
 
-  if (dayMissed || flagSet.has("missed_day") || /\b(missed (the )?day|broken streak|fell off)\b/i.test(message)) {
+  if (dayMissed || flagSet.has("missed_day")) {
     return {
       route: "MISSED_DAY_REPAIR",
-      reason: "Journal shows missed morning + evening + training, or missed-day language in message.",
+      reason: "Latest journal shows missed morning + evening + training, or missed_day flag.",
       query: "missed day repair broken streak no shame minimum standard restart protocol identity anchor",
     };
   }
-  if (morningMissed || flagSet.has("missed_morning") || /\b(missed (the )?morning|wasted morning|slept in|phone in bed)\b/i.test(message)) {
+  if (morningMissed || flagSet.has("missed_morning")) {
     return {
       route: "MISSED_MORNING",
-      reason: "morningProtocolCompleted is false or missed-morning language in message.",
+      reason: "Latest journal has morningProtocolCompleted=false or missed_morning flag.",
       query: "missed morning repair morning protocol hydration box breathing light exposure no phone first protein anchor",
     };
   }
 
-  // 4. Sleep
-  if (
-    (journal && journal.sleep < 6) ||
-    profile?.sleepQuality === "poor" || profile?.sleepQuality === "inconsistent" ||
-    /\b(sleep|insomnia|wind ?down|can'?t sleep|tired)\b/i.test(message)
-  ) {
+  if (journal && (journal.energy <= 3 || flagSet.has("sore") || flagSet.has("pain"))) {
+    return {
+      route: "RECOVERY_DAY",
+      reason: "Latest journal shows low energy, soreness, or pain flag.",
+      query: "recovery day deload soreness pain flag light movement walk mobility sleep nutrition recovery",
+    };
+  }
+
+  if (journal && journal.sleep < 6) {
     return {
       route: "SLEEP_WIND_DOWN",
-      reason: `Sleep deficit or poor sleep quality (sleep=${journal?.sleep ?? "?"}h, quality=${profile?.sleepQuality ?? "?"}).`,
+      reason: `Latest journal shows short sleep (${journal.sleep}h).`,
       query: "sleep architecture wind down sleep onset poor sleep evening protocol phone boundary calming breathwork",
     };
   }
 
-  // 5. Breathwork / meditation
-  if (/\b(breath|breathwork|box breathing|panic|anxious|anxiety|grounding)\b/i.test(message)) {
+  if (journal && journal.nutritionCompleted === false) {
     return {
-      route: "BREATHWORK",
-      reason: "User asked about breath / stress / grounding.",
-      query: "breathwork protocol stress anxiety grounding box breathing coherent breathing recovery safety",
-    };
-  }
-  if (/\b(meditat|mindful|focus|presence|identity)\b/i.test(message)) {
-    return {
-      route: "MEDITATION_MINDFULNESS",
-      reason: "User asked about meditation / mindfulness / identity work.",
-      query: "meditation mindfulness identity anchor focus meditation shame spiral sleep onset urge surfing",
+      route: "NUTRITION_MEAL",
+      reason: "Latest journal shows nutritionCompleted=false.",
+      query: "meal library protein anchor next meal nutrition missed meal food boundary recovery",
     };
   }
 
-  // 6. Training family
-  if (/\bpilates\b/i.test(message)) {
+  // 4. Profile context.
+  if (profile?.alcoholFlag || (profile?.recoveryState && profile.recoveryState !== "none")) {
     return {
-      route: "PILATES",
-      reason: "User mentioned Pilates.",
-      query: "Pilates beginner foundation mobility core control low impact recovery day",
-    };
-  }
-  if (/\b(mobility|stretch|hips|shoulders|tight)\b/i.test(message)) {
-    return {
-      route: "MOBILITY",
-      reason: "User asked about mobility / stiffness.",
-      query: "mobility routine hips shoulders thoracic spine daily mobility movement quality",
-    };
-  }
-  if (
-    (journal && (journal.energy <= 3 || flagSet.has("sore") || flagSet.has("pain"))) ||
-    /\b(recovery day|rest day|sore|deload)\b/i.test(message)
-  ) {
-    return {
-      route: "RECOVERY_DAY",
-      reason: "Low energy / soreness / pain flag, or explicit recovery-day ask.",
-      query: "recovery day deload soreness pain flag light movement walk mobility sleep nutrition recovery",
-    };
-  }
-  if (
-    /\b(train|gym|lift|workout|session|squat|bench|deadlift|press)\b/i.test(message) ||
-    (journal && journal.trainingCompleted === false && /\btrain/i.test(message))
-  ) {
-    return {
-      route: "TRAINING",
-      reason: "User asked about training / gym / lifting.",
-      query: "training readiness beginner intermediate gym access soreness pain flag missed training next clean session",
+      route: "SOBRIETY_CRAVING",
+      reason: `Profile sobriety context active (alcoholFlag=${!!profile.alcoholFlag}, recoveryState=${profile.recoveryState ?? "none"}).`,
+      query: "sobriety recovery craving relapse lapse support contact environment change repair protocol",
     };
   }
 
-  // 7. Exposure
-  if (/\bcold (shower|plunge|exposure)|ice bath\b/i.test(message)) {
+  if (profile?.processAddictionFlag || profile?.foodBoundaryActive) {
     return {
-      route: "COLD_EXPOSURE",
-      reason: "User asked about cold exposure.",
-      query: "cold exposure cold shower plunge safety dose duration contraindications recovery",
-    };
-  }
-  if (/\b(sauna|heat exposure|hot bath)\b/i.test(message)) {
-    return {
-      route: "HEAT_EXPOSURE",
-      reason: "User asked about heat exposure / sauna.",
-      query: "heat exposure sauna protocol dose duration hydration safety recovery",
+      route: "PROCESS_ADDICTION",
+      reason: `Profile process-addiction context active (processAddictionFlag=${!!profile.processAddictionFlag}, foodBoundaryActive=${!!profile.foodBoundaryActive}).`,
+      query: "process addiction scrolling urge interruption phone hijack shame loop replacement behaviour",
     };
   }
 
-  // 8. Nutrition
-  if (
-    (journal && journal.nutritionCompleted === false) ||
-    profile?.nutritionStatus !== "" && /\b(eat|meal|protein|food|nutrition|hungry|calorie|macro)\b/i.test(message)
-  ) {
-    if (/\b(eat|meal|protein|food|nutrition|hungry|calorie|macro)\b/i.test(message) || (journal && !journal.nutritionCompleted)) {
-      return {
-        route: "NUTRITION_MEAL",
-        reason: "Nutrition not completed, or user asked about food / meal / protein.",
-        query: "meal library protein anchor next meal nutrition missed meal food boundary recovery",
-      };
-    }
-  }
-
-  // 9. Discipline / streak
-  if (/\b(streak|discipline points?|points?|consistency|momentum)\b/i.test(message)) {
+  if (profile?.sleepQuality === "poor" || profile?.sleepQuality === "inconsistent") {
     return {
-      route: "DISCIPLINE_POINTS_STREAK",
-      reason: "User asked about streak / discipline points / consistency.",
-      query: "discipline points streak consistency momentum identity reinforcement scoring system",
+      route: "SLEEP_WIND_DOWN",
+      reason: `Profile sleepQuality is ${profile.sleepQuality}.`,
+      query: "sleep architecture wind down sleep onset poor sleep evening protocol phone boundary calming breathwork",
     };
   }
 
-  // 10. Identity / mindset
-  if (/\b(identity|who am i|mindset|purpose|values|operator)\b/i.test(message) || (profile && /identity/i.test(profile.primaryGap))) {
+  if (profile && /identity/i.test(profile.primaryGap)) {
     return {
       route: "IDENTITY_MINDSET",
-      reason: "User asked about identity / mindset / values, or primaryGap is identity-shaped.",
+      reason: "Profile primaryGap is identity-shaped.",
       query: "identity anchor masculine operating system mindset values purpose discipline transformation",
     };
   }
 
-  // 11. Fallback
+  // 5. Fallback.
   return {
     route: "GENERAL_COACHING",
-    reason: "No specific route triggered. Falling back to general coaching grounded in profile + journal.",
+    reason: "No current-message, journal, or profile-specific route triggered. Falling back to general coaching grounded in profile + journal.",
     query: `general coaching ${profile?.primaryGap ?? ""} ${profile?.primaryGoal ?? ""}`.trim() || "general coaching daily protocol",
   };
 }
@@ -456,6 +524,7 @@ export const askCoach = createServerFn({ method: "POST" })
           instructions,
           input: userInput,
           tools: [{ type: "file_search", vector_store_ids: [vectorStoreId], max_num_results: 8 }],
+          tool_choice: routing.route === "SAFETY_CRISIS" ? "none" : { type: "file_search" },
           include: ["file_search_call.results"],
         }),
       });
@@ -490,6 +559,16 @@ export const askCoach = createServerFn({ method: "POST" })
 
       if (!answer && typeof json.output_text === "string") answer = json.output_text;
       debug.groundedInRetrieval = debug.fileSearchCalled && debug.retrievedChunksCount > 0;
+
+      if (routing.route !== "SAFETY_CRISIS" && !debug.fileSearchCalled) {
+        debug.apiError = "Knowledge-base retrieval was required, but OpenAI did not call file_search.";
+        return { answer: "Coach could not access the knowledge base. See debug panel.", debug };
+      }
+
+      if (routing.route !== "SAFETY_CRISIS" && debug.fileSearchCalled && debug.retrievedChunksCount === 0) {
+        debug.apiError = "Knowledge-base retrieval returned zero chunks for the selected route.";
+        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug };
+      }
 
       return { answer: answer || "(empty response)", debug };
     } catch (err) {
