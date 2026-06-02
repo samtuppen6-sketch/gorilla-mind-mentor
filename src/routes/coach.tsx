@@ -152,6 +152,9 @@ function DebugPanel({ result, loading }: { result: CoachResponse | null; loading
           <Row k="primaryGap used" v={d.primaryGapUsed ?? "—"} />
           <Row k="protocolDay used" v={d.protocolDayUsed === null ? "—" : String(d.protocolDayUsed)} />
           <Row k="safety flags used" v={d.safetyFlagsUsed.length ? d.safetyFlagsUsed.join(", ") : "none"} />
+          <Row k="guided practice selected" v={d.guidedPracticeId ? "true" : "false"} />
+          <Row k="guided practice id" v={d.guidedPracticeId ?? "—"} />
+          <Row k="guided practice reason" v={d.guidedPracticeReason ?? "—"} />
           <Row k="file_search called" v={String(d.fileSearchCalled)} />
           <Row k="vector store ID" v={d.vectorStoreId ?? "—"} />
           <Row k="retrieved chunks" v={String(d.retrievedChunksCount)} />
