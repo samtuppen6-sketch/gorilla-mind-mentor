@@ -119,11 +119,13 @@ function CoachPage() {
             <Link
               to="/practice/$practiceId"
               params={{ practiceId: result.guidedPractice.id }}
+              search={{ source: "coach", route: result.debug.selectedRoute }}
               className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gold py-3 text-sm font-semibold text-primary-foreground"
             >
               <Play className="w-4 h-4" />
               {result.guidedPractice.buttonLabel}
             </Link>
+
           </div>
         )}
 
