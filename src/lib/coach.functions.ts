@@ -194,7 +194,7 @@ function detectRoute(
   message: string,
   profile: Profile | null,
   journal: Journal | null,
-): { route: CoachRoute; reason: string; query: string; breathworkSubRoute: BreathworkSubRoute } {
+): { route: CoachRoute; reason: string; query: string; breathworkSubRoute?: BreathworkSubRoute } {
   const text = `${message.toLowerCase()} ${journal?.journalText?.toLowerCase() ?? ""}`;
   const flags = journal?.patternFlags ?? [];
   const flagSet = new Set(flags.map((f) => f.toLowerCase()));
