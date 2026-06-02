@@ -33,10 +33,11 @@ function ProfilePanel() {
   const [draft, setDraft] = useState<UserProfile>(profile);
   const [saved, setSaved] = useState(false);
   const [savedJson, setSavedJson] = useState<string>("");
+  const [saveClicks, setSaveClicks] = useState(0);
 
   // One-shot hydration from localStorage AFTER mount. Avoids SSR/client
   // hydration mismatch that React was resolving by discarding the tree
-  // and re-rendering — which silently ate the first click on Save.
+  // and silently eating clicks.
   useEffect(() => {
     const raw = typeof window !== "undefined" ? localStorage.getItem(PROFILE_STORAGE_KEY) : null;
     if (raw) setSavedJson(raw);
@@ -48,39 +49,51 @@ function ProfilePanel() {
   }
 
   function handleSaveProfile() {
-    console.log("Profile save clicked");
-    const serialized = JSON.stringify(draft);
-    localStorage.setItem(PROFILE_STORAGE_KEY, serialized);
-    setProfile(draft); // keep in-memory store + Coach request in sync
-    console.log("Profile saved to localStorage", draft);
+    console.log("SAVE PROFILE CLICKED");
+    console.log(draft);
+    localStorage.setItem("gm.userProfile.v1", JSON.stringify(draft));
+    setProfile(draft); // keep AI Coach request in sync
     setSaved(true);
-    setSavedJson(serialized);
+    setSaveClicks((previous) => previous + 1);
+    setSavedJson(JSON.stringify(draft, null, 2));
+  }
+
+  function handleForceTestSave() {
+    const testObject = {
+      __test: true,
+      savedAt: new Date().toISOString(),
+      name: "FORCE_TEST_OPERATOR",
+      identityAnchor: "hardcoded test value",
+      primaryGap: "hardcoded gap",
+      protocolDay: 99,
+    };
+    console.log("FORCE TEST SAVE CLICKED", testObject);
+    localStorage.setItem("gm.userProfile.v1", JSON.stringify(testObject));
+    setSavedJson(JSON.stringify(testObject, null, 2));
+    setSaved(true);
+    setSaveClicks((previous) => previous + 1);
   }
 
   function handleLoadProfile() {
     const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
-    if (!raw) {
-      setSavedJson("");
-      return;
-    }
+    if (!raw) { setSavedJson(""); return; }
     try {
       const parsed = { ...DEFAULT_PROFILE, ...JSON.parse(raw) } as UserProfile;
       setDraft(parsed);
       setProfile(parsed);
       setSaved(true);
-      setSavedJson(raw);
-    } catch (e) {
-      console.error("Failed to parse saved profile", e);
-    }
+      setSavedJson(JSON.stringify(JSON.parse(raw), null, 2));
+    } catch (e) { console.error("Failed to parse saved profile", e); }
   }
 
   function handleReset() {
     setDraft(DEFAULT_PROFILE);
     setProfile(DEFAULT_PROFILE);
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(DEFAULT_PROFILE));
-    setSavedJson(JSON.stringify(DEFAULT_PROFILE));
+    setSavedJson(JSON.stringify(DEFAULT_PROFILE, null, 2));
     setSaved(true);
   }
+
 
   return (
     <section className="relative rounded-xl border border-border bg-card p-4 space-y-3">
@@ -123,11 +136,20 @@ function ProfilePanel() {
       <Bool label="processAddictionFlag" v={draft.processAddictionFlag} onChange={(v) => update("processAddictionFlag", v)} />
       <Bool label="foodBoundaryActive" v={draft.foodBoundaryActive} onChange={(v) => update("foodBoundaryActive", v)} />
 
-      <div className="relative flex flex-wrap gap-2 pt-2" style={{ zIndex: 50 }}>
+      <div className="pt-2 text-xs">
+        <span className="text-muted-foreground">Status: </span>
+        <span className={saved ? "text-gold font-semibold" : "text-foreground"}>{saved ? "Saved" : "Unsaved"}</span>
+      </div>
+
+      <div className="relative flex flex-wrap gap-2" style={{ zIndex: 50 }}>
         <button type="button" onClick={handleSaveProfile} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 flex-1 min-w-[120px] rounded-lg bg-gold py-3 text-xs font-semibold text-primary-foreground hover:opacity-90">Save profile</button>
+        <button type="button" onClick={handleForceTestSave} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border-2 border-gold bg-gold/10 px-3 py-2 text-xs font-bold uppercase tracking-wider text-gold">FORCE TEST SAVE</button>
         <button type="button" onClick={handleLoadProfile} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border border-gold/40 px-3 py-2 text-xs text-gold">Load saved profile</button>
         <button type="button" onClick={handleReset} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">Reset</button>
       </div>
+
+      <p className="text-xs text-muted-foreground">Save clicks: <span className="text-gold font-semibold">{saveClicks}</span></p>
+
 
 
       <div className="mt-4 rounded-lg border border-dashed border-gold/40 bg-background/60 p-3">
