@@ -33,10 +33,11 @@ function ProfilePanel() {
   const [draft, setDraft] = useState<UserProfile>(profile);
   const [saved, setSaved] = useState(false);
   const [savedJson, setSavedJson] = useState<string>("");
+  const [saveClicks, setSaveClicks] = useState(0);
 
   // One-shot hydration from localStorage AFTER mount. Avoids SSR/client
   // hydration mismatch that React was resolving by discarding the tree
-  // and re-rendering — which silently ate the first click on Save.
+  // and silently eating clicks.
   useEffect(() => {
     const raw = typeof window !== "undefined" ? localStorage.getItem(PROFILE_STORAGE_KEY) : null;
     if (raw) setSavedJson(raw);
@@ -48,39 +49,51 @@ function ProfilePanel() {
   }
 
   function handleSaveProfile() {
-    console.log("Profile save clicked");
-    const serialized = JSON.stringify(draft);
-    localStorage.setItem(PROFILE_STORAGE_KEY, serialized);
-    setProfile(draft); // keep in-memory store + Coach request in sync
-    console.log("Profile saved to localStorage", draft);
+    console.log("SAVE PROFILE CLICKED");
+    console.log(draft);
+    localStorage.setItem("gm.userProfile.v1", JSON.stringify(draft));
+    setProfile(draft); // keep AI Coach request in sync
     setSaved(true);
-    setSavedJson(serialized);
+    setSaveClicks((previous) => previous + 1);
+    setSavedJson(JSON.stringify(draft, null, 2));
+  }
+
+  function handleForceTestSave() {
+    const testObject = {
+      __test: true,
+      savedAt: new Date().toISOString(),
+      name: "FORCE_TEST_OPERATOR",
+      identityAnchor: "hardcoded test value",
+      primaryGap: "hardcoded gap",
+      protocolDay: 99,
+    };
+    console.log("FORCE TEST SAVE CLICKED", testObject);
+    localStorage.setItem("gm.userProfile.v1", JSON.stringify(testObject));
+    setSavedJson(JSON.stringify(testObject, null, 2));
+    setSaved(true);
+    setSaveClicks((previous) => previous + 1);
   }
 
   function handleLoadProfile() {
     const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
-    if (!raw) {
-      setSavedJson("");
-      return;
-    }
+    if (!raw) { setSavedJson(""); return; }
     try {
       const parsed = { ...DEFAULT_PROFILE, ...JSON.parse(raw) } as UserProfile;
       setDraft(parsed);
       setProfile(parsed);
       setSaved(true);
-      setSavedJson(raw);
-    } catch (e) {
-      console.error("Failed to parse saved profile", e);
-    }
+      setSavedJson(JSON.stringify(JSON.parse(raw), null, 2));
+    } catch (e) { console.error("Failed to parse saved profile", e); }
   }
 
   function handleReset() {
     setDraft(DEFAULT_PROFILE);
     setProfile(DEFAULT_PROFILE);
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(DEFAULT_PROFILE));
-    setSavedJson(JSON.stringify(DEFAULT_PROFILE));
+    setSavedJson(JSON.stringify(DEFAULT_PROFILE, null, 2));
     setSaved(true);
   }
+
 
   return (
     <section className="relative rounded-xl border border-border bg-card p-4 space-y-3">
