@@ -133,11 +133,68 @@ function hasMatch(text: string, patterns: RegExp[]): boolean {
   return patterns.some((p) => p.test(text));
 }
 
+function detectBreathworkSubRoute(
+  message: string,
+  profile: Profile | null,
+  journal: Journal | null,
+): { sub: BreathworkSubRoute; reason: string; query: string } {
+  const m = message.toLowerCase();
+  const downregulate = /(stress|stressed|wired|anxious|anxiety|overwhelm|racing thoughts|activated|panicky|panic|can'?t switch off|cannot switch off|on edge|tense)/i.test(message);
+  const windDown = /(sleep|evening|night|wind ?down|bedtime|scrolling at night|before bed)/i.test(message);
+  const energise = /(tired|flat|low energy|foggy|brain fog|sluggish|struggling to activate|need energy|wake up)/i.test(message);
+  const focus = /(unfocused|scattered|distracted|mentally noisy|can'?t focus|cannot focus|focus)/i.test(message);
+
+  // Safety gate for energising: don't recommend intense breathwork if poor sleep / panic / medical risk
+  const poorSleep = (journal && journal.sleep < 6) || /(slept badly|poor sleep|no sleep|bad sleep)/i.test(message);
+  const medicalRisk = /(chest pain|dizzy|dizziness|faint|pregnan|heart|cardiac)/i.test(message);
+
+  if (downregulate) {
+    return {
+      sub: "DOWNREGULATE",
+      reason: "User reports stress / wired / anxious / overwhelmed / racing thoughts — needs down-regulating protocol (extended exhale or coherent breathing), not box breathing or breath holds.",
+      query: "down regulate breathwork extended exhale coherent breathing nasal slow exhale parasympathetic stress anxiety wired calm physiological sigh",
+    };
+  }
+  if (windDown) {
+    return {
+      sub: "WIND_DOWN",
+      reason: "User mentions sleep / evening / wind-down — needs calming nasal extended-exhale breathwork, no intense breath holds.",
+      query: "wind down breathwork evening nasal extended exhale slow breathing pre sleep calming parasympathetic no breath holds",
+    };
+  }
+  if (energise && !poorSleep && !medicalRisk) {
+    return {
+      sub: "ENERGISE",
+      reason: "User reports tired / flat / low energy without poor-sleep or medical risk flags — energising protocol acceptable within safety limits.",
+      query: "energising breathwork morning activation safe controlled nasal breathing arousal alertness no intense breath holds contraindications",
+    };
+  }
+  if (energise && (poorSleep || medicalRisk)) {
+    return {
+      sub: "DOWNREGULATE",
+      reason: "User reports tired/flat but also poor sleep or medical risk flag — intense breathwork is unsafe. Default to gentle down-regulating protocol.",
+      query: "gentle breathwork poor sleep safety contraindications nasal slow breathing recovery no intense breath holds",
+    };
+  }
+  if (focus) {
+    return {
+      sub: "FOCUS",
+      reason: "User reports unfocused / scattered / mentally noisy but not panicked — box breathing or coherent breathing fits.",
+      query: "focus breathwork box breathing coherent breathing 4 4 4 4 concentration mental clarity nasal",
+    };
+  }
+  return {
+    sub: "DOWNREGULATE",
+    reason: "No specific breathwork sub-signal — default to safe down-regulating coherent / extended-exhale breathing rather than box breathing.",
+    query: "general breathwork coherent breathing extended exhale nasal safe default protocol",
+  };
+}
+
 function detectRoute(
   message: string,
   profile: Profile | null,
   journal: Journal | null,
-): { route: CoachRoute; reason: string; query: string } {
+): { route: CoachRoute; reason: string; query: string; breathworkSubRoute: BreathworkSubRoute } {
   const text = `${message.toLowerCase()} ${journal?.journalText?.toLowerCase() ?? ""}`;
   const flags = journal?.patternFlags ?? [];
   const flagSet = new Set(flags.map((f) => f.toLowerCase()));
