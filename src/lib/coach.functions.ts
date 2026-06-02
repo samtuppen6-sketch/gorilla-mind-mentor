@@ -524,6 +524,7 @@ export const askCoach = createServerFn({ method: "POST" })
           instructions,
           input: userInput,
           tools: [{ type: "file_search", vector_store_ids: [vectorStoreId], max_num_results: 8 }],
+          tool_choice: routing.route === "SAFETY_CRISIS" ? "none" : { type: "file_search" },
           include: ["file_search_call.results"],
         }),
       });
@@ -558,6 +559,16 @@ export const askCoach = createServerFn({ method: "POST" })
 
       if (!answer && typeof json.output_text === "string") answer = json.output_text;
       debug.groundedInRetrieval = debug.fileSearchCalled && debug.retrievedChunksCount > 0;
+
+      if (routing.route !== "SAFETY_CRISIS" && !debug.fileSearchCalled) {
+        debug.apiError = "Knowledge-base retrieval was required, but OpenAI did not call file_search.";
+        return { answer: "Coach could not access the knowledge base. See debug panel.", debug };
+      }
+
+      if (routing.route !== "SAFETY_CRISIS" && debug.fileSearchCalled && debug.retrievedChunksCount === 0) {
+        debug.apiError = "Knowledge-base retrieval returned zero chunks for the selected route.";
+        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug };
+      }
 
       return { answer: answer || "(empty response)", debug };
     } catch (err) {
