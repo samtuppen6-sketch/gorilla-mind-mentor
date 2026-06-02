@@ -32,10 +32,15 @@ function ProfilePanel() {
   const profile = useProfile();
   const [draft, setDraft] = useState<UserProfile>(profile);
   const [saved, setSaved] = useState(false);
-  const [savedJson, setSavedJson] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem(PROFILE_STORAGE_KEY) ?? "";
-  });
+  const [savedJson, setSavedJson] = useState<string>("");
+
+  // One-shot hydration from localStorage AFTER mount. Avoids SSR/client
+  // hydration mismatch that React was resolving by discarding the tree
+  // and re-rendering — which silently ate the first click on Save.
+  useEffect(() => {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(PROFILE_STORAGE_KEY) : null;
+    if (raw) setSavedJson(raw);
+  }, []);
 
   function update<K extends keyof UserProfile>(k: K, v: UserProfile[K]) {
     setDraft((d) => ({ ...d, [k]: v }));
