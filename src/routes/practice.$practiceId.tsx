@@ -98,25 +98,37 @@ function PracticePlayerPage() {
           <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{practice.instructionText}</p>
         </div>
 
-        {/* When to use */}
+        {/* Use when */}
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Use when</p>
           <ul className="text-sm text-foreground space-y-1">
-            {practice.whenToUse.map((u) => (
+            {practice.recommendedWhen.map((u: string) => (
               <li key={u}>• {u}</li>
             ))}
           </ul>
         </div>
 
-        {/* Contraindications */}
-        {practice.contraindications.length > 0 && (
+        {/* Avoid when */}
+        {practice.avoidWhen.length > 0 && (
+          <div className="rounded-xl border border-border bg-card p-5">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Avoid when</p>
+            <ul className="text-sm text-foreground space-y-1">
+              {practice.avoidWhen.map((u: string) => (
+                <li key={u}>• {u}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Safety notes */}
+        {practice.safetyNotes.length > 0 && (
           <div className="rounded-xl border border-border bg-card p-5">
             <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2 inline-flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5" />
               Safety
             </p>
             <ul className="text-sm text-foreground space-y-1">
-              {practice.contraindications.map((c) => (
+              {practice.safetyNotes.map((c: string) => (
                 <li key={c}>• {c}</li>
               ))}
             </ul>
@@ -231,6 +243,9 @@ function PracticePlayerPage() {
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Practice debug</p>
           <DRow k="practiceId" v={practice.id} />
           <DRow k="category" v={practice.category} />
+          <DRow k="route" v={practice.route} />
+          <DRow k="subRoute" v={practice.subRoute ?? "—"} />
+          <DRow k="dailyActionKey" v={practice.dailyActionKey} />
           <DRow k="source" v={source} />
           <DRow k="linkedCoachRoute" v={linkedCoachRoute ?? "—"} />
           <DRow k="completion saved" v={String(!!completion)} />
@@ -240,6 +255,22 @@ function PracticePlayerPage() {
           <DRow k="daily progress updated" v={completion ? "true" : "false"} />
           <DRow k="practice streak updated" v={completion ? String(completion.practiceStreakUpdated) : "—"} />
           <DRow k="protocol streak updated" v={completion ? String(completion.protocolStreakUpdated) : "—"} />
+          <DRow
+            k="daily minimum count"
+            v={
+              completion
+                ? `${[
+                    completion.dailyProgress.breathworkCompleted,
+                    completion.dailyProgress.meditationCompleted || completion.dailyProgress.mindfulnessCompleted,
+                    completion.dailyProgress.trainingCompleted || completion.dailyProgress.mobilityCompleted || completion.dailyProgress.pilatesCompleted,
+                    completion.dailyProgress.nutritionCompleted,
+                    completion.dailyProgress.journalCompleted,
+                    completion.dailyProgress.coldExposureCompleted,
+                    completion.dailyProgress.heatExposureCompleted,
+                  ].filter(Boolean).length} / 3`
+                : "—"
+            }
+          />
           <DRow k="dailyMinimumMet" v={completion ? String(completion.dailyProgress.dailyMinimumMet) : "—"} />
           <DRow k="fullProtocolCompleted" v={completion ? String(completion.dailyProgress.fullProtocolCompleted) : "—"} />
           <DRow k="DP today (total)" v={completion ? String(completion.dailyProgress.disciplinePointsToday) : "—"} />

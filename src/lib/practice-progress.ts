@@ -133,34 +133,16 @@ export function loadPracticeLog(): PracticeLogEntry[] {
   }
 }
 
-// ---------- DP scoring ----------
+// ---------- Registry-driven DP scoring ----------
+// Every practice carries its own DP value in the registry. The engine just
+// reads it — no per-category hardcoded fallbacks.
 function awardPoints(practice: GuidedPractice): number {
-  const cat = practice.category;
-  if (cat === "Breathwork") return 30;
-  if (cat === "Mobility") return 20;
-  if (cat === "Cold Exposure") return 30;
-  if (cat === "Meditation") {
-    if (practice.durationMinutes >= 15) return 60;
-    if (practice.durationMinutes >= 10) return 40;
-    return 25;
-  }
-  return 20;
+  return practice.disciplinePoints;
 }
 
-// ---------- Category -> daily-action key ----------
+// ---------- Registry-driven daily-action key ----------
 function categoryToDailyAction(practice: GuidedPractice): DailyActionKey | null {
-  switch (practice.category) {
-    case "Breathwork":
-      return "breathworkCompleted";
-    case "Meditation":
-      return "meditationCompleted";
-    case "Mobility":
-      return "mobilityCompleted";
-    case "Cold Exposure":
-      return "coldExposureCompleted";
-    default:
-      return null;
-  }
+  return (practice.dailyActionKey as DailyActionKey) ?? null;
 }
 
 // Some meditation practices also count as mindfulness.
