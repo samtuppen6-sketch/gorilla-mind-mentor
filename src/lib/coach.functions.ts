@@ -558,17 +558,35 @@ export const askCoach = createServerFn({ method: "POST" })
     const routeBlock = [
       "=== ACTIVE ROUTE (selected by backend route detector) ===",
       `route: ${routing.route}`,
+      `breathwork_sub_route: ${breathworkSubRoute}`,
       `reason: ${routing.reason}`,
       `retrieval_query: ${routing.query}`,
       `safety_flags: ${safetyFlags.length ? safetyFlags.join(", ") : "none"}`,
       "=== END ROUTE ===",
     ].join("\n");
 
+    const breathworkProtocolGuidance: Record<BreathworkSubRoute, string> = {
+      DOWNREGULATE:
+        "BREATHWORK sub-route DOWNREGULATE. User is stressed / wired / anxious / overwhelmed / racing thoughts. Recommend a DOWN-REGULATING protocol: coherent breathing or extended-exhale breathing. DO NOT default to box breathing. DO NOT make breath holds the main protocol. Example: sit down; inhale through the nose for 4s; exhale slowly for 6–8s; repeat for 3–5 minutes; keep the breath quiet, controlled, nasal where possible.",
+      FOCUS:
+        "BREATHWORK sub-route FOCUS. User is unfocused / scattered / mentally noisy but not panicked. Recommend box breathing or coherent breathing. Box: 4s inhale, 4s hold, 4s exhale, 4s hold, minimum 4 rounds.",
+      ENERGISE:
+        "BREATHWORK sub-route ENERGISE. User is tired / flat / low energy / foggy. Recommend a safer energising protocol from the knowledge base. Keep safety constraints. DO NOT recommend intense breathwork if there are any poor-sleep, panic, chest pain, dizziness, pregnancy, heart, or medical risk flags.",
+      WIND_DOWN:
+        "BREATHWORK sub-route WIND_DOWN. User mentions sleep / evening / night / wind-down / scrolling at night. Recommend wind-down breathwork: nasal, slow, extended-exhale, calming. NO intense breath holds.",
+      NONE: "",
+    };
+
     // Route-specific instruction nudges
+    const baseFormatRule = "Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly. HEADLINE must name the correct breathwork protocol for the user's state. WHAT'S HAPPENING briefly explains why this protocol fits. DO THIS NOW gives exact timing and steps. COACH CLOSE is direct, calm, grounded, no hype.";
+    const breathworkSafety = "Breathwork safety: never recommend breath holds in water; never recommend intense breathwork while driving; if user mentions chest pain, fainting, severe dizziness, suicidal ideation, overdose, or medical emergency symptoms, stop coaching and direct them to urgent professional help. Stay within general wellbeing guidance.";
+
     const routeInstruction =
       routing.route === "SAFETY_CRISIS"
         ? "ACTIVE ROUTE is SAFETY_CRISIS. Do NOT produce the normal HEADLINE/DO THIS NOW format. Respond with a short calm safety-first message: tell the user to contact local emergency services or a crisis line right now, and to reach a doctor for medical issues. Do not give protocol advice in this response."
-        : `ACTIVE ROUTE is ${routing.route}. Answer against this route. Use the smallest useful next action. Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly.`;
+        : routing.route === "BREATHWORK"
+          ? `ACTIVE ROUTE is BREATHWORK. ${breathworkProtocolGuidance[breathworkSubRoute]} ${breathworkSafety} ${baseFormatRule}`
+          : `ACTIVE ROUTE is ${routing.route}. Answer against this route. Use the smallest useful next action. Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly.`;
 
     const userInput = [
       routeBlock,
