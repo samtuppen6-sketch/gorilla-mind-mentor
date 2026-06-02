@@ -243,6 +243,9 @@ function PracticePlayerPage() {
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Practice debug</p>
           <DRow k="practiceId" v={practice.id} />
           <DRow k="category" v={practice.category} />
+          <DRow k="route" v={practice.route} />
+          <DRow k="subRoute" v={practice.subRoute ?? "—"} />
+          <DRow k="dailyActionKey" v={practice.dailyActionKey} />
           <DRow k="source" v={source} />
           <DRow k="linkedCoachRoute" v={linkedCoachRoute ?? "—"} />
           <DRow k="completion saved" v={String(!!completion)} />
@@ -252,6 +255,22 @@ function PracticePlayerPage() {
           <DRow k="daily progress updated" v={completion ? "true" : "false"} />
           <DRow k="practice streak updated" v={completion ? String(completion.practiceStreakUpdated) : "—"} />
           <DRow k="protocol streak updated" v={completion ? String(completion.protocolStreakUpdated) : "—"} />
+          <DRow
+            k="daily minimum count"
+            v={
+              completion
+                ? `${[
+                    completion.dailyProgress.breathworkCompleted,
+                    completion.dailyProgress.meditationCompleted || completion.dailyProgress.mindfulnessCompleted,
+                    completion.dailyProgress.trainingCompleted || completion.dailyProgress.mobilityCompleted || completion.dailyProgress.pilatesCompleted,
+                    completion.dailyProgress.nutritionCompleted,
+                    completion.dailyProgress.journalCompleted,
+                    completion.dailyProgress.coldExposureCompleted,
+                    completion.dailyProgress.heatExposureCompleted,
+                  ].filter(Boolean).length} / 3`
+                : "—"
+            }
+          />
           <DRow k="dailyMinimumMet" v={completion ? String(completion.dailyProgress.dailyMinimumMet) : "—"} />
           <DRow k="fullProtocolCompleted" v={completion ? String(completion.dailyProgress.fullProtocolCompleted) : "—"} />
           <DRow k="DP today (total)" v={completion ? String(completion.dailyProgress.disciplinePointsToday) : "—"} />
