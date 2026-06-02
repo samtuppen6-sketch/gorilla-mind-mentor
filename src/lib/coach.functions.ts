@@ -131,7 +131,6 @@ function detectRoute(
   journal: Journal | null,
 ): { route: CoachRoute; reason: string; query: string } {
   const text = `${message.toLowerCase()} ${journal?.journalText?.toLowerCase() ?? ""}`;
-  const messageOnly = message.toLowerCase();
   const flags = journal?.patternFlags ?? [];
   const flagSet = new Set(flags.map((f) => f.toLowerCase()));
   const poorSleepMessage = /\b(slept badly|slept poorly|bad sleep|poor sleep|little sleep|no sleep|sleep deprived|rough sleep|terrible sleep|exhausted|wiped|tired)\b/i.test(message);
