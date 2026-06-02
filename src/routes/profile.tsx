@@ -136,11 +136,20 @@ function ProfilePanel() {
       <Bool label="processAddictionFlag" v={draft.processAddictionFlag} onChange={(v) => update("processAddictionFlag", v)} />
       <Bool label="foodBoundaryActive" v={draft.foodBoundaryActive} onChange={(v) => update("foodBoundaryActive", v)} />
 
-      <div className="relative flex flex-wrap gap-2 pt-2" style={{ zIndex: 50 }}>
+      <div className="pt-2 text-xs">
+        <span className="text-muted-foreground">Status: </span>
+        <span className={saved ? "text-gold font-semibold" : "text-foreground"}>{saved ? "Saved" : "Unsaved"}</span>
+      </div>
+
+      <div className="relative flex flex-wrap gap-2" style={{ zIndex: 50 }}>
         <button type="button" onClick={handleSaveProfile} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 flex-1 min-w-[120px] rounded-lg bg-gold py-3 text-xs font-semibold text-primary-foreground hover:opacity-90">Save profile</button>
+        <button type="button" onClick={handleForceTestSave} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border-2 border-gold bg-gold/10 px-3 py-2 text-xs font-bold uppercase tracking-wider text-gold">FORCE TEST SAVE</button>
         <button type="button" onClick={handleLoadProfile} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border border-gold/40 px-3 py-2 text-xs text-gold">Load saved profile</button>
         <button type="button" onClick={handleReset} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">Reset</button>
       </div>
+
+      <p className="text-xs text-muted-foreground">Save clicks: <span className="text-gold font-semibold">{saveClicks}</span></p>
+
 
 
       <div className="mt-4 rounded-lg border border-dashed border-gold/40 bg-background/60 p-3">
