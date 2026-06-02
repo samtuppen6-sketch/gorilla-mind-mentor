@@ -5,7 +5,9 @@ import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import { askCoach, type CoachResponse } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
+import { loadDailyProgress } from "@/lib/practice-progress";
 import { Loader2, Send, Play, Clock } from "lucide-react";
+
 
 export const Route = createFileRoute("/coach")({
   head: () => ({
@@ -37,7 +39,9 @@ function CoachPage() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await ask({ data: { question: question.trim(), profile, journal } });
+      const dailyProgress = loadDailyProgress();
+      const res = await ask({ data: { question: question.trim(), profile, journal, dailyProgress } });
+
       setResult(res);
     } catch (err) {
       setResult({
@@ -119,11 +123,13 @@ function CoachPage() {
             <Link
               to="/practice/$practiceId"
               params={{ practiceId: result.guidedPractice.id }}
+              search={{ source: "coach", route: result.debug.selectedRoute }}
               className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gold py-3 text-sm font-semibold text-primary-foreground"
             >
               <Play className="w-4 h-4" />
               {result.guidedPractice.buttonLabel}
             </Link>
+
           </div>
         )}
 
