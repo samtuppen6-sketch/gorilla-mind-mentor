@@ -98,25 +98,37 @@ function PracticePlayerPage() {
           <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{practice.instructionText}</p>
         </div>
 
-        {/* When to use */}
+        {/* Use when */}
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Use when</p>
           <ul className="text-sm text-foreground space-y-1">
-            {practice.whenToUse.map((u) => (
+            {practice.recommendedWhen.map((u: string) => (
               <li key={u}>• {u}</li>
             ))}
           </ul>
         </div>
 
-        {/* Contraindications */}
-        {practice.contraindications.length > 0 && (
+        {/* Avoid when */}
+        {practice.avoidWhen.length > 0 && (
+          <div className="rounded-xl border border-border bg-card p-5">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Avoid when</p>
+            <ul className="text-sm text-foreground space-y-1">
+              {practice.avoidWhen.map((u: string) => (
+                <li key={u}>• {u}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Safety notes */}
+        {practice.safetyNotes.length > 0 && (
           <div className="rounded-xl border border-border bg-card p-5">
             <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2 inline-flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5" />
               Safety
             </p>
             <ul className="text-sm text-foreground space-y-1">
-              {practice.contraindications.map((c) => (
+              {practice.safetyNotes.map((c: string) => (
                 <li key={c}>• {c}</li>
               ))}
             </ul>
