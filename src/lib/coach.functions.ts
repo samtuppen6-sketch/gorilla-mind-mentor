@@ -638,7 +638,7 @@ export const askCoach = createServerFn({ method: "POST" })
       if (!res.ok) {
         const text = await res.text();
         debug.apiError = `OpenAI ${res.status}: ${text.slice(0, 500)}`;
-        return { answer: "Coach failed to respond. See debug panel.", debug };
+        return { answer: "Coach failed to respond. See debug panel.", debug, guidedPractice };
       }
 
       const json: any = await res.json();
@@ -668,17 +668,17 @@ export const askCoach = createServerFn({ method: "POST" })
 
       if (routing.route !== "SAFETY_CRISIS" && !debug.fileSearchCalled) {
         debug.apiError = "Knowledge-base retrieval was required, but OpenAI did not call file_search.";
-        return { answer: "Coach could not access the knowledge base. See debug panel.", debug };
+        return { answer: "Coach could not access the knowledge base. See debug panel.", debug, guidedPractice };
       }
 
       if (routing.route !== "SAFETY_CRISIS" && debug.fileSearchCalled && debug.retrievedChunksCount === 0) {
         debug.apiError = "Knowledge-base retrieval returned zero chunks for the selected route.";
-        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug };
+        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice };
       }
 
-      return { answer: answer || "(empty response)", debug };
+      return { answer: answer || "(empty response)", debug, guidedPractice };
     } catch (err) {
       debug.apiError = err instanceof Error ? err.message : String(err);
-      return { answer: "Coach request failed. See debug panel.", debug };
+      return { answer: "Coach request failed. See debug panel.", debug, guidedPractice };
     }
   });
