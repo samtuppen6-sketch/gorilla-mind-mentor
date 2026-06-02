@@ -482,7 +482,11 @@ function detectRoute(
   };
 }
 
-function buildContextBlock(profile: Profile | null, journal: Journal | null): string {
+function buildContextBlock(
+  profile: Profile | null,
+  journal: Journal | null,
+  progress: DailyProgressCtx | null,
+): string {
   const lines: string[] = ["=== OPERATOR CONTEXT ==="];
   if (profile) {
     lines.push("[USER PROFILE]");
@@ -525,6 +529,41 @@ function buildContextBlock(profile: Profile | null, journal: Journal | null): st
   } else {
     lines.push("[LATEST JOURNAL / CHECK-IN] none");
   }
+  lines.push("");
+  if (progress) {
+    lines.push("[TODAY'S PROGRESS — guided practice completions]");
+    lines.push(`date: ${progress.date}`);
+    lines.push(`breathworkCompleted: ${progress.breathworkCompleted}`);
+    lines.push(`meditationCompleted: ${progress.meditationCompleted}`);
+    lines.push(`mindfulnessCompleted: ${progress.mindfulnessCompleted}`);
+    lines.push(`trainingCompleted: ${progress.trainingCompleted}`);
+    lines.push(`pilatesCompleted: ${progress.pilatesCompleted}`);
+    lines.push(`mobilityCompleted: ${progress.mobilityCompleted}`);
+    lines.push(`nutritionCompleted: ${progress.nutritionCompleted}`);
+    lines.push(`coldExposureCompleted: ${progress.coldExposureCompleted}`);
+    lines.push(`heatExposureCompleted: ${progress.heatExposureCompleted}`);
+    lines.push(`journalCompleted: ${progress.journalCompleted}`);
+    lines.push(`completedPracticeIdsToday: ${progress.completedPracticeIdsToday.join(", ") || "none"}`);
+    lines.push(`disciplinePointsToday: ${progress.disciplinePointsToday}`);
+    lines.push(`dailyMinimumMet: ${progress.dailyMinimumMet}`);
+    lines.push(`fullProtocolCompleted: ${progress.fullProtocolCompleted}`);
+    if (progress.practiceStreak !== undefined) lines.push(`practiceStreak: ${progress.practiceStreak}`);
+    if (progress.protocolStreak !== undefined) lines.push(`protocolStreak: ${progress.protocolStreak}`);
+    if (progress.lastCompletedPracticeId) lines.push(`lastCompletedPracticeId: ${progress.lastCompletedPracticeId}`);
+    if (progress.lastCompletedPracticeCategory) lines.push(`lastCompletedPracticeCategory: ${progress.lastCompletedPracticeCategory}`);
+
+    const outstanding: string[] = [];
+    if (!progress.breathworkCompleted) outstanding.push("breathwork");
+    if (!progress.meditationCompleted && !progress.mindfulnessCompleted) outstanding.push("meditation/mindfulness");
+    if (!progress.trainingCompleted && !progress.mobilityCompleted && !progress.pilatesCompleted) outstanding.push("training/mobility");
+    if (!progress.nutritionCompleted) outstanding.push("nutrition");
+    if (!progress.journalCompleted) outstanding.push("journal");
+    lines.push(`outstandingToday: ${outstanding.join(", ") || "none"}`);
+    lines.push("");
+    lines.push("RULE: Do NOT re-recommend an action already completed today unless it is clinically or safety appropriate. Reinforce momentum and recommend an outstanding action instead.");
+  } else {
+    lines.push("[TODAY'S PROGRESS] none");
+  }
   lines.push("=== END CONTEXT ===");
   return lines.join("\n");
 }
@@ -535,6 +574,7 @@ export const askCoach = createServerFn({ method: "POST" })
       question: z.string().min(1).max(4000),
       profile: ProfileSchema.nullable().optional(),
       journal: JournalSchema.nullable().optional(),
+      dailyProgress: DailyProgressSchema.nullable().optional(),
     }).parse(input),
   )
   .handler(async ({ data }): Promise<CoachResponse> => {
@@ -544,12 +584,14 @@ export const askCoach = createServerFn({ method: "POST" })
 
     const profile = data.profile ?? null;
     const journal = data.journal ?? null;
+    const progress = data.dailyProgress ?? null;
 
     const safetyFlags: string[] = [];
     if (profile?.alcoholFlag) safetyFlags.push("alcoholFlag");
     if (profile?.processAddictionFlag) safetyFlags.push("processAddictionFlag");
     if (profile?.foodBoundaryActive) safetyFlags.push("foodBoundaryActive");
     if (profile && profile.recoveryState && profile.recoveryState !== "none") safetyFlags.push(`recoveryState:${profile.recoveryState}`);
+
 
     const routing = detectRoute(data.question, profile, journal);
 
