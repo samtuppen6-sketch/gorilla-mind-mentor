@@ -43,6 +43,9 @@ function CoachPage() {
       setResult({
         answer: "Request failed.",
         debug: {
+          selectedRoute: "GENERAL_COACHING",
+          routeReason: "Client-side request failure before route detector ran.",
+          retrievalQuery: "",
           fileSearchCalled: false,
           vectorStoreId: null,
           retrievedChunksCount: 0,
