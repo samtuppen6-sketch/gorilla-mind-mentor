@@ -537,6 +537,7 @@ export function selectGuidedPractice(args: {
       return byId("journal_checkin_3min",
         "Active route EVENING_REVIEW — one-standard check-in closes the day honestly.");
     case "NUTRITION":
+    case "NUTRITION_MEAL":
     case "LOW_ENERGY":
       return byId("nutrition_next_meal",
         `Active route ${route} — anchor the next meal on protein and real food.`);
