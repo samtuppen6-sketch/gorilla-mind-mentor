@@ -1036,10 +1036,41 @@ export const askCoach = createServerFn({ method: "POST" })
     if (profile?.foodBoundaryActive) safetyFlags.push("foodBoundaryActive");
     if (profile && profile.recoveryState && profile.recoveryState !== "none") safetyFlags.push(`recoveryState:${profile.recoveryState}`);
 
-    const routing = detectRoute(data.question, profile, journal, temporal);
+    let routing = detectRoute(data.question, profile, journal, temporal);
+
+    // ---------- Continuation override (after safety, before everything else) ----------
+    const previousCoachReplyOptions = (() => {
+      const last = [...history].reverse().find((h) => h.role === "assistant");
+      return last ? extractReplyOptions(last.content) : [];
+    })();
+    const continuation = detectContinuationCommand(data.question, history);
+    const isSafetyCrisis = routing.route === "SAFETY_CRISIS";
+    let routeOverrideApplied = false;
+    let routeOverrideReason: string | null = null;
+    let selectedRouteBeforeOverride: CoachRoute | null = null;
+    let selectedRouteAfterOverride: CoachRoute | null = null;
+    let continuationCommand: ContinuationCommand = "NONE";
+
+    if (continuation && !isSafetyCrisis) {
+      selectedRouteBeforeOverride = routing.route;
+      continuationCommand = continuation.command;
+      routing = {
+        route: continuation.route,
+        reason: `Continuation override: user replied "${data.question.trim().toUpperCase()}" to previous coach turn. Explicit continuation command takes priority over journal/profile routing.`,
+        query: `gorilla mind continuation ${continuation.command.toLowerCase().replace(/_/g, " ")} 7 day plan body first work clarity discipline standards`,
+      };
+      selectedRouteAfterOverride = routing.route;
+      routeOverrideApplied = true;
+      routeOverrideReason = "User selected explicit continuation command.";
+    }
 
     const breathworkSubRoute: BreathworkSubRoute =
       routing.route === "BREATHWORK" ? (routing.breathworkSubRoute ?? "DOWNREGULATE") : "NONE";
+
+    // Continuation routes force PLAN_BUILDING response mode.
+    if (continuation && !isSafetyCrisis) {
+      responseMode = "PLAN_BUILDING";
+    }
 
     const guidedPractice = routing.route === "SAFETY_CRISIS"
       ? null
@@ -1059,18 +1090,29 @@ export const askCoach = createServerFn({ method: "POST" })
       reasonForSuppression = "Process addiction content not used because user did not mention addiction/compulsion/relapse.";
     }
 
-    // Quick replies surfaced in the UI for this route.
-    const quickRepliesByRoute: Partial<Record<CoachRoute, string[]>> = {
-      GENERAL_LIFE_STUCK: ["FITNESS", "JOB", "BOTH", "BUILD MY PLAN", "I'M STRUGGLING TONIGHT"],
+    // Duplicate-advice suppression: detect what the last coach response already prescribed.
+    const suppressedAdvice = continuation ? detectPreviousAdvice(history) : [];
+    const duplicateAdviceSuppressed = suppressedAdvice.length > 0;
+
+    const conversationContinuation = history.length > 0;
+
+    // Initial quickReplies guess (route-based); may be overridden after answer parsing.
+    const fallbackQuickRepliesByRoute: Partial<Record<CoachRoute, string[]>> = {
+      GENERAL_LIFE_STUCK: ["FITNESS", "JOB", "BOTH"],
       GENERAL_TRANSFORMATION_REQUEST: ["20-DAY", "60-DAY", "90-DAY", "START TONIGHT"],
       EVENING_REVIEW: ["BUILD TOMORROW", "WIND DOWN NOW", "MORNING PLAN"],
       SLEEP_WIND_DOWN: ["BREATHWORK", "PHONE DOWN", "MORNING PLAN"],
       MISSED_DAY_REPAIR: ["RESET", "MINIMUM STANDARD", "BUILD MY PLAN"],
       MISSED_MORNING: ["MORNING", "BUILD MY PLAN"],
+      CONTINUATION_BOTH_PLAN: ["BUILD MY PLAN"],
+      CONTINUATION_BUILD_MY_PLAN: ["FITNESS", "JOB", "BOTH"],
+      CONTINUATION_FITNESS_PLAN: ["BUILD MY PLAN", "JOB"],
+      CONTINUATION_JOB_PLAN: ["BUILD MY PLAN", "FITNESS"],
+      CONTINUATION_RESET_NOW: ["BUILD MY PLAN", "MINIMUM STANDARD"],
+      CONTINUATION_MINIMUM_STANDARD: ["BUILD MY PLAN"],
+      CONTINUATION_MORNING_SETUP: ["BUILD MY PLAN", "FITNESS"],
     };
-    const quickReplies = quickRepliesByRoute[routing.route] ?? [];
-
-    const conversationContinuation = history.length > 0;
+    let quickReplies: string[] = fallbackQuickRepliesByRoute[routing.route] ?? [];
 
     const debug: CoachDebug = {
       selectedRoute: routing.route,
@@ -1106,6 +1148,15 @@ export const askCoach = createServerFn({ method: "POST" })
       quickRepliesShown: quickReplies.length > 0,
       retrievalSuppressedVolumes,
       reasonForSuppression,
+      previousCoachReplyOptions,
+      userContinuationCommandDetected: !!continuation,
+      continuationCommand,
+      routeOverrideApplied,
+      routeOverrideReason,
+      selectedRouteBeforeOverride,
+      selectedRouteAfterOverride,
+      duplicateAdviceSuppressed,
+      suppressedAdvice,
     };
 
     if (!apiKey) {
