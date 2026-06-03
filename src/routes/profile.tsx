@@ -186,6 +186,12 @@ function ProfilePanel() {
       <div className="mt-4 rounded-lg border border-dashed border-gold/40 bg-background/60 p-3">
         <p className="text-[10px] uppercase tracking-[0.3em] text-gold mb-2">SAVED PROFILE DEBUG</p>
         <p className="text-[10px] text-muted-foreground mb-1">localStorage key: <span className="text-foreground">{PROFILE_STORAGE_KEY}</span></p>
+        <div className="mb-2 space-y-0.5 text-[10px]">
+          <p><span className="text-muted-foreground">heatExposureAccess:</span> <span className="text-gold">{draft.heatExposureAccess}</span></p>
+          <p><span className="text-muted-foreground">coldExposureAccess:</span> <span className="text-gold">{draft.coldExposureAccess}</span></p>
+          <p><span className="text-muted-foreground">strengthTrainingAccess:</span> <span className="text-gold">{draft.strengthTrainingAccess}</span></p>
+          <p><span className="text-muted-foreground">pilatesMobilityAccess:</span> <span className="text-gold">{draft.pilatesMobilityAccess}</span></p>
+        </div>
         <pre className="text-[10px] leading-relaxed text-foreground whitespace-pre-wrap break-all max-h-64 overflow-auto">
 {savedJson ? (() => { try { return JSON.stringify(JSON.parse(savedJson), null, 2); } catch { return savedJson; } })() : "(nothing saved yet)"}
         </pre>
