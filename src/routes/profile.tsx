@@ -354,3 +354,13 @@ function Bool({ label, v, onChange }: { label: string; v: boolean; onChange: (v:
     </label>
   );
 }
+function Select({ label, v, options, onChange }: { label: string; v: string; options: string[]; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className="block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">{label}</label>
+      <select value={v} onChange={(e) => onChange(e.target.value)} className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-gold">
+        {options.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
+      </select>
+    </div>
+  );
+}
