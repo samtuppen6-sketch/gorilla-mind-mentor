@@ -366,10 +366,11 @@ function detectRoute(
   if (lifeStuckMessage) {
     return {
       route: "GENERAL_LIFE_STUCK",
-      reason: "User expresses general life-stuck / unmotivated / lost. Default to short body-first response, one question, no long plan.",
-      query: "stuck motivation identity body first walk protein water minimum standard one day at a time",
+      reason: "User expresses general life-stuck / unmotivated / lost. Use direct body-first, time-aware structure. No long plan.",
+      query: "gorilla mind master system prompt daily operating system identity discipline minimum standard body first reset morning routine evening shutdown standards over moods one promise",
     };
   }
+
 
   // 1d. Late-night override — protect sleep, refuse intense protocols.
   if (temporal?.dayPart === "LATE_NIGHT" && intenseLateNightIntent) {
