@@ -649,9 +649,9 @@ function WorkoutRecap({
   const actualMinutes = Math.max(1, Math.round(elapsedSec / 60));
   const close = coachCloseFor(workoutCategory, stepsCompleted, totalSteps);
   const streakLine = completion.protocolStreakUpdated
-    ? `Streak extended → day ${completion.dailyProgress.protocolStreakDays}`
+    ? "Protocol streak extended — daily minimum met today"
     : completion.dailyProgress.dailyMinimumMet
-      ? `Streak already counted today → day ${completion.dailyProgress.protocolStreakDays}`
+      ? "Daily minimum already met today — streak holds"
       : "Daily minimum not yet met — log one more action to extend the streak";
 
   return (
