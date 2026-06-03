@@ -148,6 +148,8 @@ export type CoachRoute =
   | "EVENING_REVIEW"
   | "DISCIPLINE_POINTS_STREAK"
   | "IDENTITY_MINDSET"
+  | "GENERAL_LIFE_STUCK"
+  | "GENERAL_TRANSFORMATION_REQUEST"
   | "GENERAL_COACHING";
 
 export type BreathworkSubRoute =
@@ -156,6 +158,45 @@ export type BreathworkSubRoute =
   | "ENERGISE"
   | "WIND_DOWN"
   | "NONE";
+
+export type DayPart = "MORNING" | "MIDDAY" | "EVENING" | "LATE_NIGHT";
+
+export type SessionContext =
+  | "MORNING_CHECK_IN"
+  | "DAILY_PLAN"
+  | "MIDDAY_COURSE_CORRECTION"
+  | "PRE_TRAINING"
+  | "POST_TRAINING"
+  | "EVENING_REVIEW"
+  | "WIND_DOWN"
+  | "LATE_NIGHT_SLEEP_PROTECTION"
+  | "MISSED_DAY_REPAIR"
+  | "GENERAL_LIFE_STUCK"
+  | "GENERAL_TRANSFORMATION_REQUEST"
+  | "SAFETY_OR_BOUNDARY";
+
+const TemporalSchema = z.object({
+  localDate: z.string(),
+  localTime: z.string(),
+  timezone: z.string(),
+  dayOfWeek: z.string(),
+  dayPart: z.enum(["MORNING", "MIDDAY", "EVENING", "LATE_NIGHT"]),
+  sessionContext: z.enum([
+    "MORNING_CHECK_IN",
+    "DAILY_PLAN",
+    "MIDDAY_COURSE_CORRECTION",
+    "PRE_TRAINING",
+    "POST_TRAINING",
+    "EVENING_REVIEW",
+    "WIND_DOWN",
+    "LATE_NIGHT_SLEEP_PROTECTION",
+    "MISSED_DAY_REPAIR",
+    "GENERAL_LIFE_STUCK",
+    "GENERAL_TRANSFORMATION_REQUEST",
+    "SAFETY_OR_BOUNDARY",
+  ]),
+});
+export type TemporalContext = z.infer<typeof TemporalSchema>;
 
 export type CoachDebug = {
   selectedRoute: CoachRoute;
@@ -177,6 +218,14 @@ export type CoachDebug = {
   safetyFlagsUsed: string[];
   guidedPracticeId: string | null;
   guidedPracticeReason: string | null;
+  localDate: string | null;
+  localTime: string | null;
+  timezone: string | null;
+  dayOfWeek: string | null;
+  dayPart: DayPart | null;
+  sessionContext: SessionContext | null;
+  temporalSource: "client" | "fallback";
+  timeBasedRouteReason: string | null;
 };
 
 export type CoachResponse = {
