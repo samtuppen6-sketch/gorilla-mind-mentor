@@ -197,11 +197,6 @@ function alsoMindfulness(practice: GuidedPractice): boolean {
 
 // ---------- Daily minimum / full protocol (Top 21 driven) ----------
 function recomputeFlags(p: DailyProgress): DailyProgress {
-  // Lazy-import to avoid a cycle (protocol-pillars imports types from this
-  // file). Both modules live in the same bundle so the require is cheap.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { computeProtocolDailyState } = require("@/lib/protocol-pillars") as
-    typeof import("@/lib/protocol-pillars");
   const profile = getProfile();
   const state = computeProtocolDailyState(p, profile);
   return {
