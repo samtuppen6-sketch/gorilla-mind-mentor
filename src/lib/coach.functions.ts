@@ -1597,6 +1597,28 @@ export const askCoach = createServerFn({ method: "POST" })
 
     const transformationShape = "ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST. The user explicitly asked for a full plan. A longer multi-day or multi-week plan is allowed. Anchor in the Top 21 fundamentals and the user's assigned pillars. Begin with HEADLINE and a one-paragraph WHAT'S HAPPENING, then provide the plan in clear phases (Days 1–7, 8–21, 22–60). End with TODAY'S NON-NEGOTIABLES, COACH CLOSE, and REPLY WITH (give a concrete next reply option).";
 
+    // ---------- Exercise Prescription Engine shapes ----------
+    const morningLockIn = "MORNING LOCK-IN\n1. Water before phone.\n2. Mineralised water if appropriate (water + small pinch Celtic sea salt + lemon).\n3. Morning daylight outside.\n4. 5 minutes breathwork.\n5. 5 minutes meditation or identity reset.\n6. Movement or training.\n7. Protein-first breakfast.\n8. One-line journal: 'What is the standard today?'";
+    const exerciseFormatRule = "EXERCISE RESPONSE FORMAT — use exactly these section labels in this order: HEADLINE / THE STANDARD / MORNING LOCK-IN / TODAY'S SESSION / THIS WEEK / BREATHWORK / MEDITATION SUPPORT / WHAT I NEED FROM YOU / REPLY WITH. Keep MORNING LOCK-IN compact (do not bury the training plan). TODAY'S SESSION must include exact exercises, reps, sets and timing. THIS WEEK must be a simple 7-day structure. REPLY WITH must give 2–4 concrete chips.";
+    const exerciseSafety = "EXERCISE SAFETY: if user reports sharp, sharp-pinching, neurological, shooting, numb/weakness, or worsening pain, advise medical / physiotherapy review before training. Do not diagnose. No ego lifting. Leave 2 reps in reserve for beginners. Technique before load.";
+    const askOnlyMissing = personalisationMissing.length
+      ? `Under 'WHAT I NEED FROM YOU' ask ONLY these missing details (max 3): ${personalisationMissing.map((k) => FITNESS_PERSONALISATION_QUESTIONS[k]).join(" / ")}.`
+      : "Under 'WHAT I NEED FROM YOU' ask at most 1 sharpening question; user has already given enough detail — lead with the prescription.";
+
+    const fitnessShapesByRoute: Partial<Record<CoachRoute, string>> = {
+      FITNESS_ROUTINE_BUILDER: `ACTIVE ROUTE FITNESS_ROUTINE_BUILDER. Beginner-safe starter. Prescribe the 20-minute beginner bodyweight reset: 5-minute walk/march warm-up; 3 rounds of 10 bodyweight squats, 8 incline press-ups, 10 hip hinges, 20-second plank, 30s rest; 3-minute nasal breathing cool-down. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH must include: HOME, GYM, RUNNING, or PILATES.`,
+      HOME_BODYWEIGHT_PLAN: `ACTIVE ROUTE HOME_BODYWEIGHT_PLAN. Use the BEGINNER HOME FITNESS PLAN template: 5-min walk/march warm-up; 3 rounds of 10 bodyweight squats, 8 incline press-ups, 10 glute bridges, 10 hip hinges, 20-second plank, 30–60s rest; 3-min nasal breathing + gentle stretch cool-down. Weekly: Day1 circuit, Day2 walk+mobility, Day3 circuit, Day4 walk+breathwork, Day5 circuit, Day6 longer walk, Day7 review. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / LOW ENERGY / BUILD MY PLAN.`,
+      GYM_STRENGTH_PLAN: `ACTIVE ROUTE GYM_STRENGTH_PLAN. Use the GYM STRENGTH PLAN template. Warm-up: 5–8 min incline walk/bike. Full-body: leg press or goblet squat 3x10; chest press or press-ups 3x8–10; seated/cable row 3x10; RDL or hip hinge 3x8; plank 3x20–30s. Finish: 10-min incline walk + 3-min extended exhale breathing. Weekly: 3 full-body strength + 2 walks + 2 mobility/core. Rules: 2 reps in reserve, no ego lifting, technique before load. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / LOW ENERGY / BUILD MY PLAN.`,
+      PILATES_CORE_PLAN: `ACTIVE ROUTE PILATES_CORE_PLAN. Use the PILATES / CORE template. 2-min nasal breathing reset; pelvic tilts 2x10; dead bugs 2x8/side; glute bridges 2x12; bird dogs 2x8/side; side plank from knees 2x15–20s/side; child's pose 2 min. No pain chasing, slow reps, brace lightly, stop if symptoms increase. Weekly: Day1 core control, Day2 walk, Day3 pilates/core, Day4 mobility+breathwork, Day5 core control, Day6 longer walk, Day7 recovery review. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / BUILD MY PLAN.`,
+      CORE_BACK_SUPPORT_PLAN: `ACTIVE ROUTE CORE_BACK_SUPPORT_PLAN. Safety first: if pain is sharp, neurological, numb/weak, shooting, or worsening — recommend medical/physio review before training, do not diagnose. Prescribe the safe core/back-support routine: 2-min nasal breathing; pelvic tilts 2x10; dead bugs 2x8/side; glute bridges 2x12; bird dogs 2x8/side; side plank from knees 2x15–20s/side; child's pose 2 min. No heavy lifting, no aggressive sit-ups. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: HOME / PILATES / BUILD MY PLAN.`,
+      RUNNING_STARTER_PLAN: `ACTIVE ROUTE RUNNING_STARTER_PLAN. Use the RUNNING STARTER template. 5-min brisk walk; 8 rounds of 30s light jog + 90s walk; 5-min cool-down walk; 3-min nasal breathing. Rules: run slower than you think, no sprinting, build joints before ego, walking is part of the plan. Weekly: Day1 intervals, Day2 walk+mobility, Day3 intervals, Day4 rest or easy walk, Day5 intervals, Day6 long walk, Day7 review. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / BUILD MY PLAN.`,
+      LOW_ENERGY_SESSION: `ACTIVE ROUTE LOW_ENERGY_SESSION. Use the LOW ENERGY template. 1) Water. 2) 10-minute walk. 3) 3 rounds: 10 squats, 10 glute bridges, 20-second plank. 4) Extended exhale breathing for 3 minutes. Frame: 'This is not a performance day. This is a minimum standard day.' Keep MORNING LOCK-IN to a 3-line compact version. ${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: HOME / BUILD MY PLAN.`,
+      INTERMEDIATE_FITNESS_PLAN: `ACTIVE ROUTE INTERMEDIATE_FITNESS_PLAN. Use INTERMEDIATE template. Weekly: Day1 full-body strength, Day2 Zone 2 cardio + core, Day3 upper/lower split, Day4 mobility + breathwork, Day5 full-body strength, Day6 conditioning or long walk, Day7 recovery review. Ask for equipment and goals before prescribing load percentages or advanced volume. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: GYM / HOME / BUILD MY PLAN.`,
+      FULL_REBUILD_PLAN: `ACTIVE ROUTE FULL_REBUILD_PLAN. User asked for fitness + meditation + breathwork together. Provide a unified plan: full MORNING LOCK-IN, then TODAY'S SESSION (beginner home reset if no detail), THIS WEEK structure that combines training + breathwork + meditation days, BREATHWORK / MEDITATION SUPPORT section with one specific practice per day. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: HOME / GYM / RUNNING / PILATES.`,
+      FITNESS_PLAN_REQUEST: `ACTIVE ROUTE FITNESS_PLAN_REQUEST. Same shape as FITNESS_ROUTINE_BUILDER. ${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: HOME / GYM / RUNNING / PILATES.`,
+    };
+    const fitnessShape = fitnessShapesByRoute[routing.route];
+
     const continuationShape = CONTINUATION_SHAPES[routing.route];
     const routeInstruction =
       routing.route === "SAFETY_CRISIS"
@@ -1607,9 +1629,11 @@ export const askCoach = createServerFn({ method: "POST" })
             ? lifeStuckShape
             : routing.route === "GENERAL_TRANSFORMATION_REQUEST"
               ? transformationShape
-              : continuationShape
-                ? continuationShape
-                : `ACTIVE ROUTE is ${routing.route}. RESPONSE MODE is ${responseMode}. Honour the time-of-day rules. Use the smallest useful next action. ${baseFormatRule} Do NOT produce a multi-day plan.`;
+              : fitnessShape
+                ? fitnessShape
+                : continuationShape
+                  ? continuationShape
+                  : `ACTIVE ROUTE is ${routing.route}. RESPONSE MODE is ${responseMode}. Honour the time-of-day rules. Use the smallest useful next action. ${baseFormatRule} Do NOT produce a multi-day plan.`;
 
     const suppressionInstruction = retrievalSuppressedVolumes.length
       ? `\n\nRETRIEVAL SUPPRESSION: Do NOT lean on or quote content from the following knowledge volumes for this answer: ${retrievalSuppressedVolumes.join(", ")}. Reason: ${reasonForSuppression}`
