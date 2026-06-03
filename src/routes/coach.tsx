@@ -311,14 +311,15 @@ function CoachPage() {
                       <p className="text-xs text-muted-foreground leading-relaxed">
                         <span className="text-gold-muted">Why: </span>{m.guidedWorkout.reason}
                       </p>
-                      <button
-                        type="button"
-                        disabled
-                        className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gold/70 py-3 text-sm font-semibold text-primary-foreground opacity-80 cursor-not-allowed"
+                      <Link
+                        to="/workout/$workoutId"
+                        params={{ workoutId: m.guidedWorkout.id }}
+                        search={{ source: "coach", route: m.debug.selectedRoute }}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gold py-3 text-sm font-semibold text-primary-foreground"
                       >
                         <Play className="w-4 h-4" />
                         {m.guidedWorkout.buttonLabel}
-                      </button>
+                      </Link>
                     </div>
                   )}
                 </div>
