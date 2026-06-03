@@ -1166,6 +1166,15 @@ const CONTINUATION_MAP: Record<string, { command: ContinuationCommand; route: Co
   "MINIMUM": { command: "MINIMUM_STANDARD", route: "CONTINUATION_MINIMUM_STANDARD" },
   "MORNING": { command: "MORNING", route: "CONTINUATION_MORNING_SETUP" },
   "MORNING PLAN": { command: "MORNING", route: "CONTINUATION_MORNING_SETUP" },
+  // Fitness continuation chips
+  "HOME": { command: "HOME", route: "HOME_BODYWEIGHT_PLAN" },
+  "GYM": { command: "GYM", route: "GYM_STRENGTH_PLAN" },
+  "RUNNING": { command: "RUNNING", route: "RUNNING_STARTER_PLAN" },
+  "PILATES": { command: "PILATES", route: "PILATES_CORE_PLAN" },
+  "LOW ENERGY": { command: "LOW_ENERGY", route: "LOW_ENERGY_SESSION" },
+  "BEGINNER": { command: "BEGINNER", route: "FITNESS_ROUTINE_BUILDER" },
+  "INTERMEDIATE": { command: "INTERMEDIATE", route: "INTERMEDIATE_FITNESS_PLAN" },
+  "ADVANCED": { command: "ADVANCED", route: "INTERMEDIATE_FITNESS_PLAN" },
 };
 
 function detectContinuationCommand(
