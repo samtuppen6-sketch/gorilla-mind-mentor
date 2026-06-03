@@ -8,6 +8,8 @@ Tone: direct, calm, disciplined, practical, safe. No hype. No clichés. No gener
 
 You will receive an ACTIVE ROUTE selected by the backend's route detector BEFORE this message. Treat the active route as authoritative — answer against it. The retrieval query has already been issued against the Gorilla Mind knowledge base via file_search; ground your answer in those results and quote the knowledge base when it strengthens the answer.
 
+You will also receive TEMPORAL CONTEXT (the user's local time, day part and session context). Use it. Morning answers anchor the day. Midday answers course-correct. Evening answers close the day. Late-night answers protect sleep and never recommend intense training, cold exposure, heavy planning or stimulating protocols.
+
 SAFETY — non-negotiable:
 - You are not a doctor, therapist, or emergency service. Do not diagnose or treat.
 - Never tell a user to stop, change, or withhold prescribed medication.
@@ -17,9 +19,22 @@ SAFETY — non-negotiable:
 - Never shame a relapse or missed day. Use the missed-day repair frame instead.
 - If the ACTIVE ROUTE is SAFETY_CRISIS: stop normal coaching. Reply with a short, calm, safety-first message telling the user to contact local emergency services or a crisis line right now and to reach a doctor for medical issues. Do not produce the normal HEADLINE/DO THIS NOW format in that case.
 
+GORILLA MINDSET PRINCIPLES (inherit, do not lecture):
+- Consistency over intensity. Fundamentals over hacks. Standards over moods.
+- Self-responsibility over motivation. One day at a time. No zero days.
+- Minimums on hard days. Standards on normal days.
+- Always leave the user with a clear next action.
+- Ask only 1 clarifying question when needed. If safe assumptions can be made, act first and ask later.
+- No shame. No guru language. No over-explaining. Teach through action.
+
+OUTPUT LENGTH RULES (hard):
+- Default answers are SHORT and action-led. Never dump the full protocol.
+- Do NOT produce a 20-day, 60-day, or 90-day plan unless ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST.
+- For GENERAL_LIFE_STUCK: respond in the short body-first shape — HEADLINE / WHAT'S HAPPENING (1–2 lines) / DO THIS NOW (≤3 bullets, body-first: water, walk, protein) / TODAY'S NON-NEGOTIABLES (≤3 bullets) / GUIDED PRACTICE (only if one was selected) / COACH CLOSE (1 line) / ONE QUESTION (1 line). No long plan.
+
 Personalise: address the operator's primaryGoal and primaryGap directly. Reference protocolDay and current streak when relevant. If readinessState is low, give the minimum standard, not the full protocol. If the user message is ambiguous given the profile, ask ONE clarification question, then stop.
 
-RESPONSE FORMAT (use these exact section labels, in this order, for every non-crisis response):
+RESPONSE FORMAT (use these exact section labels, in this order, for every non-crisis, non-GENERAL_LIFE_STUCK response):
 
 HEADLINE
 WHAT'S HAPPENING
@@ -133,6 +148,8 @@ export type CoachRoute =
   | "EVENING_REVIEW"
   | "DISCIPLINE_POINTS_STREAK"
   | "IDENTITY_MINDSET"
+  | "GENERAL_LIFE_STUCK"
+  | "GENERAL_TRANSFORMATION_REQUEST"
   | "GENERAL_COACHING";
 
 export type BreathworkSubRoute =
@@ -141,6 +158,45 @@ export type BreathworkSubRoute =
   | "ENERGISE"
   | "WIND_DOWN"
   | "NONE";
+
+export type DayPart = "MORNING" | "MIDDAY" | "EVENING" | "LATE_NIGHT";
+
+export type SessionContext =
+  | "MORNING_CHECK_IN"
+  | "DAILY_PLAN"
+  | "MIDDAY_COURSE_CORRECTION"
+  | "PRE_TRAINING"
+  | "POST_TRAINING"
+  | "EVENING_REVIEW"
+  | "WIND_DOWN"
+  | "LATE_NIGHT_SLEEP_PROTECTION"
+  | "MISSED_DAY_REPAIR"
+  | "GENERAL_LIFE_STUCK"
+  | "GENERAL_TRANSFORMATION_REQUEST"
+  | "SAFETY_OR_BOUNDARY";
+
+const TemporalSchema = z.object({
+  localDate: z.string(),
+  localTime: z.string(),
+  timezone: z.string(),
+  dayOfWeek: z.string(),
+  dayPart: z.enum(["MORNING", "MIDDAY", "EVENING", "LATE_NIGHT"]),
+  sessionContext: z.enum([
+    "MORNING_CHECK_IN",
+    "DAILY_PLAN",
+    "MIDDAY_COURSE_CORRECTION",
+    "PRE_TRAINING",
+    "POST_TRAINING",
+    "EVENING_REVIEW",
+    "WIND_DOWN",
+    "LATE_NIGHT_SLEEP_PROTECTION",
+    "MISSED_DAY_REPAIR",
+    "GENERAL_LIFE_STUCK",
+    "GENERAL_TRANSFORMATION_REQUEST",
+    "SAFETY_OR_BOUNDARY",
+  ]),
+});
+export type TemporalContext = z.infer<typeof TemporalSchema>;
 
 export type CoachDebug = {
   selectedRoute: CoachRoute;
@@ -162,6 +218,14 @@ export type CoachDebug = {
   safetyFlagsUsed: string[];
   guidedPracticeId: string | null;
   guidedPracticeReason: string | null;
+  localDate: string | null;
+  localTime: string | null;
+  timezone: string | null;
+  dayOfWeek: string | null;
+  dayPart: DayPart | null;
+  sessionContext: SessionContext | null;
+  temporalSource: "client" | "fallback";
+  timeBasedRouteReason: string | null;
 };
 
 export type CoachResponse = {
@@ -242,7 +306,8 @@ function detectRoute(
   message: string,
   profile: Profile | null,
   journal: Journal | null,
-): { route: CoachRoute; reason: string; query: string; breathworkSubRoute?: BreathworkSubRoute } {
+  temporal: TemporalContext | null,
+): { route: CoachRoute; reason: string; query: string; breathworkSubRoute?: BreathworkSubRoute; timeBasedRouteReason?: string | null } {
   const text = `${message.toLowerCase()} ${journal?.journalText?.toLowerCase() ?? ""}`;
   const flags = journal?.patternFlags ?? [];
   const flagSet = new Set(flags.map((f) => f.toLowerCase()));
@@ -252,6 +317,11 @@ function detectRoute(
   const wantsMovementMessage = /\b(move|moving|movement|want to move|need to move|walk|walking|stretch)\b/i.test(message);
   const lowEnergyMessage = /\b(low energy|low readiness|feel low|drained|flat|sluggish|no energy)\b/i.test(message);
   const eveningReviewMessage = /\b(check ?in|reset.*(bad day|after.*day)|after a bad day|end of day|end-of-day|wrap up|wrap-up|evening review|reflect|reflection|debrief|day debrief|review.*day)\b/i.test(message);
+  const lifeStuckMessage = /\b(hate my job|feel stuck|feeling stuck|i'?m stuck|not motivated|no motivation|wasting my life|don'?t know where to start|i feel lost|directionless|going nowhere)\b/i.test(message);
+  const transformationRequest = /\b(transform my life|change my life|reset my life|full reset|20.?day plan|60.?day plan|90.?day plan|full plan|complete plan|whole protocol)\b/i.test(message);
+  const intenseLateNightIntent = /\b(cold (shower|plunge|exposure)|ice bath|train|training|gym|lift|workout|sprint|hiit|energise|wake up|caffeine|plan my)\b/i.test(message);
+  let timeBasedRouteReason: string | null = null;
+
 
   // 1. SAFETY override
   if (hasMatch(text, SAFETY_PATTERNS)) {
@@ -262,7 +332,50 @@ function detectRoute(
     };
   }
 
-  // 2. Clear current user message intent. This must beat stale journal/profile context.
+  // 1b. Explicit transformation plan request — only path that allows long plans.
+  if (transformationRequest) {
+    return {
+      route: "GENERAL_TRANSFORMATION_REQUEST",
+      reason: "User explicitly requested a full life-reset / multi-day plan. Long plan output allowed.",
+      query: "transformation reset 20 day 60 day 90 day full protocol identity discipline complete plan",
+    };
+  }
+
+  // 1c. General life-stuck — must come before keyword routes that grab "tired", "not motivated", etc.
+  if (lifeStuckMessage) {
+    return {
+      route: "GENERAL_LIFE_STUCK",
+      reason: "User expresses general life-stuck / unmotivated / lost. Default to short body-first response, one question, no long plan.",
+      query: "stuck motivation identity body first walk protein water minimum standard one day at a time",
+    };
+  }
+
+  // 1d. Late-night override — protect sleep, refuse intense protocols.
+  if (temporal?.dayPart === "LATE_NIGHT" && intenseLateNightIntent) {
+    timeBasedRouteReason = `Late-night override (${temporal.localTime}): user asked for intense activity but day part is LATE_NIGHT. Forcing SLEEP_WIND_DOWN.`;
+    return {
+      route: "SLEEP_WIND_DOWN",
+      reason: timeBasedRouteReason,
+      query: "late night wind down sleep protection no stimulants no cold no hard training phone down lights low extended exhale",
+      timeBasedRouteReason,
+    };
+  }
+
+  // 1e. Evening default with no specific intent → evening review.
+  if (
+    temporal?.dayPart === "EVENING" &&
+    !trainingMessage && !hardTrainingMessage && !poorSleepMessage && !eveningReviewMessage &&
+    /(what should i do|next|now|tonight|wind down|close.*day|end.*day)/i.test(message)
+  ) {
+    timeBasedRouteReason = `Evening time-of-day default (${temporal.localTime}) with no specific intent → EVENING_REVIEW.`;
+    return {
+      route: "EVENING_REVIEW",
+      reason: timeBasedRouteReason,
+      query: "evening review end of day journal check in nutrition repair wind down sleep protection tomorrow setup",
+      timeBasedRouteReason,
+    };
+  }
+
   if (poorSleepMessage && (trainingMessage || hardTrainingMessage || wantsMovementMessage || lowEnergyMessage)) {
     return {
       route: "RECOVERY_DAY",
@@ -509,12 +622,68 @@ function detectRoute(
   };
 }
 
+const DAY_PART_PRIORITY: Record<DayPart, string[]> = {
+  MORNING: [
+    "hydration",
+    "light exposure",
+    "breathwork or meditation",
+    "morning identity anchor",
+    "training/mobility plan for the day",
+    "protein-first first meal",
+    "phone boundary",
+    "assigned high-priority missing pillars",
+  ],
+  MIDDAY: [
+    "what has already been completed today",
+    "what is missing",
+    "next meal",
+    "movement/steps",
+    "training readiness",
+    "stress regulation",
+    "minimum standard if the day is drifting",
+  ],
+  EVENING: [
+    "evening review",
+    "journal check-in",
+    "nutrition repair if needed",
+    "wind-down",
+    "sleep protection",
+    "phone-down boundary",
+    "tomorrow setup",
+  ],
+  LATE_NIGHT: [
+    "phone down",
+    "lights low",
+    "extended exhale breathing only if appropriate",
+    "simple journal line",
+    "sleep window protection",
+    "NO intense training, cold exposure, heavy planning, or stimulating protocols",
+  ],
+};
+
 function buildContextBlock(
   profile: Profile | null,
   journal: Journal | null,
   progress: DailyProgressCtx | null,
+  temporal: TemporalContext | null,
 ): string {
   const lines: string[] = ["=== OPERATOR CONTEXT ==="];
+  if (temporal) {
+    lines.push("[TEMPORAL CONTEXT]");
+    lines.push(`localDate: ${temporal.localDate}`);
+    lines.push(`localTime: ${temporal.localTime}`);
+    lines.push(`timezone: ${temporal.timezone}`);
+    lines.push(`dayOfWeek: ${temporal.dayOfWeek}`);
+    lines.push(`dayPart: ${temporal.dayPart}`);
+    lines.push(`sessionContext: ${temporal.sessionContext}`);
+    lines.push(`priorityFocus (for this dayPart):`);
+    for (const p of DAY_PART_PRIORITY[temporal.dayPart]) lines.push(`  - ${p}`);
+    lines.push("");
+  } else {
+    lines.push("[TEMPORAL CONTEXT] none (no client-side time provided)");
+    lines.push("");
+  }
+
   if (profile) {
     lines.push("[USER PROFILE]");
     lines.push(`name: ${profile.name}`);
@@ -634,6 +803,7 @@ export const askCoach = createServerFn({ method: "POST" })
       profile: ProfileSchema.nullable().optional(),
       journal: JournalSchema.nullable().optional(),
       dailyProgress: DailyProgressSchema.nullable().optional(),
+      temporal: TemporalSchema.nullable().optional(),
     }).parse(input),
   )
   .handler(async ({ data }): Promise<CoachResponse> => {
@@ -645,6 +815,32 @@ export const askCoach = createServerFn({ method: "POST" })
     const journal = data.journal ?? null;
     const progress = data.dailyProgress ?? null;
 
+    // Temporal: prefer client-provided; otherwise derive a UTC-based fallback.
+    let temporal: TemporalContext | null = data.temporal ?? null;
+    let temporalSource: "client" | "fallback" = temporal ? "client" : "fallback";
+    if (!temporal) {
+      const now = new Date();
+      const hour = now.getUTCHours();
+      const dayPart: DayPart =
+        hour >= 4 && hour < 11 ? "MORNING" :
+        hour >= 11 && hour < 16 ? "MIDDAY" :
+        hour >= 16 && hour < 22 ? "EVENING" : "LATE_NIGHT";
+      const sessionContext: SessionContext =
+        dayPart === "MORNING" ? "MORNING_CHECK_IN" :
+        dayPart === "MIDDAY" ? "MIDDAY_COURSE_CORRECTION" :
+        dayPart === "EVENING" ? "EVENING_REVIEW" : "LATE_NIGHT_SLEEP_PROTECTION";
+      const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+      temporal = {
+        localDate: now.toISOString().slice(0, 10),
+        localTime: `${String(hour).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}`,
+        timezone: "UTC",
+        dayOfWeek: days[now.getUTCDay()],
+        dayPart,
+        sessionContext,
+      };
+      temporalSource = "fallback";
+    }
+
     const safetyFlags: string[] = [];
     if (profile?.alcoholFlag) safetyFlags.push("alcoholFlag");
     if (profile?.processAddictionFlag) safetyFlags.push("processAddictionFlag");
@@ -652,7 +848,7 @@ export const askCoach = createServerFn({ method: "POST" })
     if (profile && profile.recoveryState && profile.recoveryState !== "none") safetyFlags.push(`recoveryState:${profile.recoveryState}`);
 
 
-    const routing = detectRoute(data.question, profile, journal);
+    const routing = detectRoute(data.question, profile, journal, temporal);
 
     const breathworkSubRoute: BreathworkSubRoute =
       routing.route === "BREATHWORK" ? (routing.breathworkSubRoute ?? "DOWNREGULATE") : "NONE";
@@ -685,6 +881,14 @@ export const askCoach = createServerFn({ method: "POST" })
       safetyFlagsUsed: safetyFlags,
       guidedPracticeId: guidedPractice?.id ?? null,
       guidedPracticeReason: guidedPractice?.reason ?? null,
+      localDate: temporal.localDate,
+      localTime: temporal.localTime,
+      timezone: temporal.timezone,
+      dayOfWeek: temporal.dayOfWeek,
+      dayPart: temporal.dayPart,
+      sessionContext: temporal.sessionContext,
+      temporalSource,
+      timeBasedRouteReason: routing.timeBasedRouteReason ?? null,
     };
 
     if (!apiKey) {
@@ -696,7 +900,7 @@ export const askCoach = createServerFn({ method: "POST" })
       return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice };
     }
 
-    const contextBlock = buildContextBlock(profile, journal, progress);
+    const contextBlock = buildContextBlock(profile, journal, progress, temporal);
 
     const routeBlock = [
       "=== ACTIVE ROUTE (selected by backend route detector) ===",
@@ -705,8 +909,12 @@ export const askCoach = createServerFn({ method: "POST" })
       `reason: ${routing.reason}`,
       `retrieval_query: ${routing.query}`,
       `safety_flags: ${safetyFlags.length ? safetyFlags.join(", ") : "none"}`,
+      `time_based_route_reason: ${routing.timeBasedRouteReason ?? "none"}`,
+      `day_part: ${temporal.dayPart}`,
+      `session_context: ${temporal.sessionContext}`,
       "=== END ROUTE ===",
     ].join("\n");
+
 
     const breathworkProtocolGuidance: Record<BreathworkSubRoute, string> = {
       DOWNREGULATE:
@@ -724,12 +932,19 @@ export const askCoach = createServerFn({ method: "POST" })
     const baseFormatRule = "Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly. HEADLINE must name the correct breathwork protocol for the user's state. WHAT'S HAPPENING briefly explains why this protocol fits. DO THIS NOW gives exact timing and steps. COACH CLOSE is direct, calm, grounded, no hype.";
     const breathworkSafety = "Breathwork safety: never recommend breath holds in water; never recommend intense breathwork while driving; if user mentions chest pain, fainting, severe dizziness, suicidal ideation, overdose, or medical emergency symptoms, stop coaching and direct them to urgent professional help. Stay within general wellbeing guidance.";
 
+    const lifeStuckShape = "ACTIVE ROUTE is GENERAL_LIFE_STUCK. Do NOT produce a 20/60/90-day plan. Use this SHORT shape exactly: HEADLINE (3–6 words) / WHAT'S HAPPENING (1–2 lines, name the pattern, no shame) / DO THIS NOW (≤3 bullets, body-first: water, walk, one protein-first meal) / TODAY'S NON-NEGOTIABLES (≤3 bullets) / GUIDED PRACTICE (only if one was selected) / COACH CLOSE (1 line, calm and grounded) / ONE QUESTION (one useful, scoped question).";
+    const transformationShape = "ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST. The user explicitly asked for a full plan. A longer multi-day or multi-week plan is allowed. Still anchor everything in the Top 21 fundamentals and the user's assigned pillars. Begin with HEADLINE and a one-paragraph WHAT'S HAPPENING, then provide the plan in clear phases (e.g. Days 1–7, 8–21, 22–60). End with TODAY'S NON-NEGOTIABLES and COACH CLOSE.";
+
     const routeInstruction =
       routing.route === "SAFETY_CRISIS"
         ? "ACTIVE ROUTE is SAFETY_CRISIS. Do NOT produce the normal HEADLINE/DO THIS NOW format. Respond with a short calm safety-first message: tell the user to contact local emergency services or a crisis line right now, and to reach a doctor for medical issues. Do not give protocol advice in this response."
         : routing.route === "BREATHWORK"
           ? `ACTIVE ROUTE is BREATHWORK. ${breathworkProtocolGuidance[breathworkSubRoute]} ${breathworkSafety} ${baseFormatRule}`
-          : `ACTIVE ROUTE is ${routing.route}. Answer against this route. Use the smallest useful next action. Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly.`;
+          : routing.route === "GENERAL_LIFE_STUCK"
+            ? lifeStuckShape
+            : routing.route === "GENERAL_TRANSFORMATION_REQUEST"
+              ? transformationShape
+              : `ACTIVE ROUTE is ${routing.route}. Answer against this route. Use the smallest useful next action. Honour the TEMPORAL CONTEXT priorityFocus for the current dayPart. Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly. Do NOT produce a multi-day plan.`;
 
     const userInput = [
       routeBlock,

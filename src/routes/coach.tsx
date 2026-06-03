@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
-import { askCoach, type CoachResponse } from "@/lib/coach.functions";
+import { askCoach, type CoachResponse, type DayPart, type SessionContext, type TemporalContext } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
 import { loadDailyProgress } from "@/lib/practice-progress";
 import { Loader2, Send, Play, Clock } from "lucide-react";
@@ -25,6 +25,43 @@ export const Route = createFileRoute("/coach")({
 
 const SEED = "According to the Gorilla Mind knowledge base, what should I do if I keep wasting my mornings?";
 
+function buildTemporalContext(message: string): TemporalContext {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const dayPart: DayPart =
+    hour >= 4 && hour < 11 ? "MORNING" :
+    hour >= 11 && hour < 16 ? "MIDDAY" :
+    (hour >= 16 && (hour < 21 || (hour === 21 && minute < 30))) ? "EVENING" :
+    "LATE_NIGHT";
+
+  const m = message.toLowerCase();
+  let sessionContext: SessionContext =
+    dayPart === "MORNING" ? "MORNING_CHECK_IN" :
+    dayPart === "MIDDAY" ? "MIDDAY_COURSE_CORRECTION" :
+    dayPart === "EVENING" ? "EVENING_REVIEW" : "LATE_NIGHT_SLEEP_PROTECTION";
+
+  if (/safety|emergency|crisis|self.?harm|boundary|relapse/.test(m)) sessionContext = "SAFETY_OR_BOUNDARY";
+  else if (/hate my job|feel stuck|not motivated|wasting my life|don'?t know where to start|lost|directionless/.test(m)) sessionContext = "GENERAL_LIFE_STUCK";
+  else if (/transform my life|change my life|reset my life|full reset|20.?day|60.?day|90.?day|full plan|complete plan/.test(m)) sessionContext = "GENERAL_TRANSFORMATION_REQUEST";
+  else if (/pre.?training|about to train|before (gym|training)|warm.?up/.test(m)) sessionContext = "PRE_TRAINING";
+  else if (/post.?training|after (gym|training)|just trained|finished (gym|training)/.test(m)) sessionContext = "POST_TRAINING";
+  else if (/missed (the )?day|broken streak|fell off|bad day/.test(m)) sessionContext = "MISSED_DAY_REPAIR";
+  else if (/plan my day|today'?s plan|daily plan/.test(m)) sessionContext = "DAILY_PLAN";
+  else if (/wind ?down|before bed|bedtime/.test(m)) sessionContext = "WIND_DOWN";
+
+  const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    localDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+    localTime: `${pad(hour)}:${pad(minute)}`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    dayOfWeek: days[now.getDay()],
+    dayPart,
+    sessionContext,
+  };
+}
+
 function CoachPage() {
   const ask = useServerFn(askCoach);
   const profile = useProfile();
@@ -38,9 +75,10 @@ function CoachPage() {
     if (!question.trim() || loading) return;
     setLoading(true);
     setResult(null);
+    const temporal = buildTemporalContext(question);
     try {
       const dailyProgress = loadDailyProgress();
-      const res = await ask({ data: { question: question.trim(), profile, journal, dailyProgress } });
+      const res = await ask({ data: { question: question.trim(), profile, journal, dailyProgress, temporal } });
 
       setResult(res);
     } catch (err) {
@@ -67,6 +105,14 @@ function CoachPage() {
           safetyFlagsUsed: [],
           guidedPracticeId: null,
           guidedPracticeReason: null,
+          localDate: temporal.localDate,
+          localTime: temporal.localTime,
+          timezone: temporal.timezone,
+          dayOfWeek: temporal.dayOfWeek,
+          dayPart: temporal.dayPart,
+          sessionContext: temporal.sessionContext,
+          temporalSource: "client",
+          timeBasedRouteReason: null,
         },
       });
     } finally {
@@ -151,6 +197,14 @@ function DebugPanel({ result, loading }: { result: CoachResponse | null; loading
           <Row k="selected route" v={d.selectedRoute} />
           <Row k="breathwork sub-route" v={d.breathworkSubRoute} />
           <Row k="route reason" v={d.routeReason} />
+          <Row k="time-based route reason" v={d.timeBasedRouteReason ?? "—"} />
+          <Row k="localDate" v={d.localDate ?? "—"} />
+          <Row k="localTime" v={d.localTime ?? "—"} />
+          <Row k="timezone" v={d.timezone ?? "—"} />
+          <Row k="dayOfWeek" v={d.dayOfWeek ?? "—"} />
+          <Row k="dayPart" v={d.dayPart ?? "—"} />
+          <Row k="sessionContext" v={d.sessionContext ?? "—"} />
+          <Row k="temporal source" v={d.temporalSource} />
           <Row k="retrieval query" v={d.retrievalQuery || "—"} />
           <Row k="model" v={d.model} />
           <Row k="profile context sent" v={String(d.profileContextSent)} />
