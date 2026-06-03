@@ -31,7 +31,24 @@ export type DailyActionKey =
   | "coldExposureCompleted"
   | "heatExposureCompleted"
   | "journalCompleted"
-  | "guidedPracticeCompleted";
+  | "guidedPracticeCompleted"
+  // Top 21 Protocol pillar keys (set by direct pillar marks or future
+  // morning/evening flows). All optional on DailyProgress.
+  | "sleepCompleted"
+  | "hydrationCompleted"
+  | "morningProtocolCompleted"
+  | "eveningProtocolCompleted"
+  | "pmaCompleted"
+  | "morningWalkCompleted"
+  | "cardiacCoherenceCompleted"
+  | "digitalDisciplineCompleted"
+  | "recoveryCompleted"
+  | "visualisationCompleted"
+  | "identityCompleted"
+  | "structureCompleted"
+  | "habitStackingCompleted"
+  | "standardMet"
+  | "proteinCompleted";
 
 export type PracticeLogEntry = {
   id: string;
