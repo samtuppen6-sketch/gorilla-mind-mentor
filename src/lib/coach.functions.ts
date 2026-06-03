@@ -420,6 +420,235 @@ function detectBreathworkSubRoute(
   };
 }
 
+// ---------- Exercise Prescription Engine helpers ----------
+
+export function classifyFitness(message: string, profile: Profile | null, journal: Journal | null): FitnessClassification {
+  const m = message.toLowerCase();
+  const goal: FitnessGoal =
+    /\b(fat loss|lose fat|cut|weight loss)\b/.test(m) ? "fat_loss" :
+    /\b(muscle|hypertrophy|build muscle|bulk|gain mass)\b/.test(m) ? "muscle_building" :
+    /\b(strength|strong|stronger|lift heavy)\b/.test(m) ? "strength" :
+    /\b(run|running|5k|10k|jog)\b/.test(m) ? "running" :
+    /\b(bad back|back pain|strengthen.*back)\b/.test(m) ? "back_support" :
+    /\b(core|abs)\b/.test(m) ? "core_strength" :
+    /\b(mobility|flexibility|stiff)\b/.test(m) ? "mobility" :
+    /\b(confidence|reset|start over|get back)\b/.test(m) ? "all_round_reset" :
+    /\b(fit|fitness|get in shape|exercise|workout)\b/.test(m) ? "general_fitness" : "unknown";
+
+  const level: FitnessLevel =
+    /\b(advanced|experienced|years of training)\b/.test(m) ? "advanced" :
+    /\b(intermediate|already train|been training)\b/.test(m) ? "intermediate" :
+    /\b(beginner|never trained|new to|just starting|out of shape)\b/.test(m) ? "beginner" :
+    (profile?.trainingLevel === "beginner" || profile?.trainingLevel === "intermediate" || profile?.trainingLevel === "advanced") ? (profile.trainingLevel as FitnessLevel) : "unknown";
+
+  const location: TrainingLocation =
+    /\b(gym|weights room)\b/.test(m) ? "gym" :
+    /\b(home|at home|from home|no gym|no equipment)\b/.test(m) ? "home" :
+    /\b(outdoor|outside|park|trail)\b/.test(m) ? "outdoors" :
+    /\b(mixed|both)\b/.test(m) ? "mixed" :
+    (profile?.gymAccess === "full" || profile?.gymAccess === "yes") ? "gym" :
+    (profile?.gymAccess === "none") ? "home" : "unknown";
+
+  const equipment: Equipment =
+    /\b(full gym|barbell|rack|machines)\b/.test(m) ? "full_gym" :
+    /\b(dumbbell)\b/.test(m) ? "dumbbells" :
+    /\b(band|resistance band)\b/.test(m) ? "resistance_bands" :
+    /\b(treadmill|bike|rower|cardio machine)\b/.test(m) ? "cardio_machine" :
+    /\b(no equipment|bodyweight|nothing)\b/.test(m) ? "none" :
+    location === "gym" ? "full_gym" : location === "home" ? "none" : "unknown";
+
+  const injury: InjuryFlag =
+    /\b(bad back|back pain|lower back|sciatic|herniat)\b/.test(m) ? "back_pain" :
+    /\b(knee|knees)\b/.test(m) ? "knee_pain" :
+    /\b(shoulder)\b/.test(m) ? "shoulder_pain" :
+    /\b(stiff|mobility limited|tight everywhere)\b/.test(m) ? "mobility_limited" :
+    /\b(no injury|no pain|nothing wrong)\b/.test(m) ? "none" : "unknown";
+
+  const time: AvailableTime =
+    /\b10\s*(min|minutes)\b/.test(m) ? "10_minutes" :
+    /\b20\s*(min|minutes)\b/.test(m) ? "20_minutes" :
+    /\b30\s*(min|minutes)\b/.test(m) ? "30_minutes" :
+    /\b45\s*(min|minutes)\b/.test(m) ? "45_minutes" :
+    /\b(60|an hour|hour)\b/.test(m) ? "60_minutes" : "unknown";
+
+  const energy: EnergyLevelTag =
+    /\b(low energy|tired|drained|flat|exhausted|wiped)\b/.test(m) ? "low" :
+    /\b(high energy|energised|fired up|fresh)\b/.test(m) ? "high" :
+    /\b(moderate|ok|fine|normal)\b/.test(m) ? "moderate" :
+    (journal && journal.energy <= 3 ? "low" : journal && journal.energy >= 7 ? "high" : "unknown");
+
+  const style: PreferredStyle =
+    /\b(weights|lift|lifting|strength training)\b/.test(m) ? "weights" :
+    /\bpilates\b/.test(m) ? "pilates" :
+    /\b(run|running|jog)\b/.test(m) ? "running" :
+    /\b(walk|walking)\b/.test(m) ? "walking" :
+    /\b(bodyweight|calisthenic)\b/.test(m) ? "bodyweight" :
+    /\b(mobility|stretch|yoga)\b/.test(m) ? "mobility" :
+    /\b(mixed|variety)\b/.test(m) ? "mixed" : "unknown";
+
+  return {
+    fitnessGoal: goal, fitnessLevel: level, trainingLocation: location, equipment,
+    injuryFlag: injury, availableTime: time, energyLevel: energy, preferredStyle: style,
+  };
+}
+
+function detectFitnessRoute(message: string, fc: FitnessClassification): { route: CoachRoute; reason: string; query: string } | null {
+  const m = message.toLowerCase();
+  const exerciseIntent = /\b(exercise|workout|train|training|fit|fitness|routine|plan|lift|run|running|pilates|gym|cardio|movement)\b/.test(m);
+  if (!exerciseIntent) return null;
+
+  // Full rebuild signal: fitness + meditation + breathwork together
+  if (/\b(fitness|exercise|workout|train).+\b(meditat|breath)|breath.+\b(fitness|exercise)|full reset.*fitness/.test(m)) {
+    return {
+      route: "FULL_REBUILD_PLAN",
+      reason: "User requested combined fitness + meditation/breathwork — full rebuild plan.",
+      query: "gorilla mind morning protocol fitness plan beginner breathwork meditation identity protein sleep weekly structure",
+    };
+  }
+  // Bad back / core
+  if (fc.injuryFlag === "back_pain" || /\b(bad back|back pain|core|strengthen.*core|strengthen.*back)\b/.test(m)) {
+    return {
+      route: "CORE_BACK_SUPPORT_PLAN",
+      reason: "Back pain / core support intent — low-impact Pilates-style core routine, no aggressive loading.",
+      query: "core back support pilates dead bug glute bridge bird dog side plank pelvic tilt safe lower back rehabilitation",
+    };
+  }
+  // Gym / weights
+  if (fc.trainingLocation === "gym" || /\b(gym|weights|lift|barbell|dumbbell)\b/.test(m)) {
+    return {
+      route: "GYM_STRENGTH_PLAN",
+      reason: "Gym access / weights intent — full-body strength prescription.",
+      query: "full body gym strength beginner intermediate squat hinge press row plank rep ranges technique RPE",
+    };
+  }
+  // Running
+  if (fc.preferredStyle === "running" || /\b(run|running|5k|10k|jog|cardio)\b/.test(m)) {
+    return {
+      route: "RUNNING_STARTER_PLAN",
+      reason: "Running intent — run/walk interval starter prescription.",
+      query: "beginner running run walk intervals couch to 5k joint readiness nasal breathing cadence",
+    };
+  }
+  // Pilates / mobility
+  if (fc.preferredStyle === "pilates" || /\bpilates\b/.test(m)) {
+    return {
+      route: "PILATES_CORE_PLAN",
+      reason: "Pilates / core / mobility intent.",
+      query: "pilates core mobility beginner control breathing pelvic tilt bird dog dead bug",
+    };
+  }
+  // Low energy / short time
+  if (fc.energyLevel === "low" || fc.availableTime === "10_minutes" || fc.availableTime === "20_minutes" && /\blow\b/.test(m)) {
+    return {
+      route: "LOW_ENERGY_SESSION",
+      reason: "Low energy / short time — minimum standard session.",
+      query: "low energy minimum standard short session walk squats glute bridge plank breathing recovery day",
+    };
+  }
+  // Home / bodyweight
+  if (fc.trainingLocation === "home" || /\b(home|bodyweight|no equipment)\b/.test(m)) {
+    return {
+      route: "HOME_BODYWEIGHT_PLAN",
+      reason: "Home / bodyweight intent.",
+      query: "home bodyweight beginner circuit squat press up glute bridge plank hip hinge weekly structure",
+    };
+  }
+  // Intermediate explicit
+  if (fc.fitnessLevel === "intermediate" || fc.fitnessLevel === "advanced") {
+    return {
+      route: "INTERMEDIATE_FITNESS_PLAN",
+      reason: "Intermediate/advanced level — progression-oriented weekly structure.",
+      query: "intermediate fitness weekly structure full body strength zone 2 mobility conditioning progression",
+    };
+  }
+  // Default: routine builder
+  return {
+    route: "FITNESS_ROUTINE_BUILDER",
+    reason: "Generic fitness request — lead with a safe starter session, then ask HOME / GYM / RUNNING / PILATES.",
+    query: "beginner fitness routine bodyweight starter session safe minimum standard weekly structure",
+  };
+}
+
+function buildWorkoutForRoute(route: CoachRoute, fc: FitnessClassification): GuidedWorkoutRecommendation | null {
+  switch (route) {
+    case "HOME_BODYWEIGHT_PLAN":
+    case "FITNESS_ROUTINE_BUILDER":
+    case "FULL_REBUILD_PLAN":
+      return {
+        id: "beginner_home_reset_20", title: "Beginner Home Reset",
+        category: "home_bodyweight", durationMinutes: 20, level: "beginner",
+        reason: "Best for a low-friction first session without equipment.",
+        buttonLabel: "Start Home Reset",
+      };
+    case "CORE_BACK_SUPPORT_PLAN":
+    case "PILATES_CORE_PLAN":
+      return {
+        id: "core_back_support_15", title: "Core & Back Support",
+        category: "pilates_core", durationMinutes: 15, level: "beginner",
+        reason: "Best for building core control without aggressive loading.",
+        buttonLabel: "Start Core Support",
+      };
+    case "GYM_STRENGTH_PLAN":
+      return {
+        id: "full_body_gym_45", title: "Full-Body Gym Standard",
+        category: "gym_strength", durationMinutes: 45,
+        level: fc.fitnessLevel === "intermediate" || fc.fitnessLevel === "advanced" ? "intermediate" : "beginner",
+        reason: "Best for building strength, confidence and fitness with controlled loading.",
+        buttonLabel: "Start Gym Standard",
+      };
+    case "RUNNING_STARTER_PLAN":
+      return {
+        id: "run_walk_foundation_25", title: "Run-Walk Foundation",
+        category: "running", durationMinutes: 25, level: "beginner",
+        reason: "Best for building running capacity without overloading joints.",
+        buttonLabel: "Start Run-Walk",
+      };
+    case "LOW_ENERGY_SESSION":
+      return {
+        id: "low_energy_minimum_15", title: "Minimum Standard Session",
+        category: "low_energy", durationMinutes: 15, level: "beginner",
+        reason: "Best for keeping the standard on a low-energy day without overreaching.",
+        buttonLabel: "Start Minimum Standard",
+      };
+    case "INTERMEDIATE_FITNESS_PLAN":
+      return {
+        id: "full_body_intermediate_45", title: "Intermediate Full-Body",
+        category: "gym_strength", durationMinutes: 45, level: "intermediate",
+        reason: "Best for progressing strength and conditioning with controlled volume.",
+        buttonLabel: "Start Intermediate Session",
+      };
+    default:
+      return null;
+  }
+}
+
+const FITNESS_PERSONALISATION_QUESTIONS: Record<string, string> = {
+  trainingLocation: "Where are you training: home, gym, or outdoors?",
+  availableTime: "How much time today: 10, 20, 30, or 45 minutes?",
+  energyLevel: "Current energy: low, moderate, or high?",
+  injuryFlag: "Any pain or injuries I should work around?",
+  fitnessGoal: "Goal: fat loss, muscle, fitness, confidence, or all-round reset?",
+  preferredStyle: "Do you want weights, running, Pilates/core, or bodyweight?",
+};
+
+function exercisePersonalisationMissing(fc: FitnessClassification): string[] {
+  const missing: string[] = [];
+  if (fc.trainingLocation === "unknown") missing.push("trainingLocation");
+  if (fc.availableTime === "unknown") missing.push("availableTime");
+  if (fc.energyLevel === "unknown") missing.push("energyLevel");
+  if (fc.injuryFlag === "unknown") missing.push("injuryFlag");
+  if (fc.fitnessGoal === "unknown") missing.push("fitnessGoal");
+  if (fc.preferredStyle === "unknown") missing.push("preferredStyle");
+  return missing.slice(0, 3);
+}
+
+const FITNESS_ROUTES: Set<CoachRoute> = new Set([
+  "FITNESS_PLAN_REQUEST", "FITNESS_ROUTINE_BUILDER", "FULL_REBUILD_PLAN",
+  "CORE_BACK_SUPPORT_PLAN", "GYM_STRENGTH_PLAN", "RUNNING_STARTER_PLAN",
+  "HOME_BODYWEIGHT_PLAN", "PILATES_CORE_PLAN", "LOW_ENERGY_SESSION",
+  "INTERMEDIATE_FITNESS_PLAN",
+]);
+
 function detectRoute(
   message: string,
   profile: Profile | null,
