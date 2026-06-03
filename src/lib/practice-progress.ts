@@ -194,25 +194,29 @@ function alsoMindfulness(practice: GuidedPractice): boolean {
   return practice.category === "Meditation";
 }
 
-// ---------- Daily minimum / full protocol ----------
+// ---------- Daily minimum / full protocol (Top 21 driven) ----------
 function recomputeFlags(p: DailyProgress): DailyProgress {
-  const meaningful = [
-    p.breathworkCompleted,
-    p.meditationCompleted || p.mindfulnessCompleted,
-    p.trainingCompleted || p.mobilityCompleted || p.pilatesCompleted,
-    p.nutritionCompleted,
-    p.journalCompleted,
-    p.coldExposureCompleted,
-    p.heatExposureCompleted,
-  ].filter(Boolean).length;
-  const dailyMinimumMet = meaningful >= 3;
-  const fullProtocolCompleted =
-    p.breathworkCompleted &&
-    (p.meditationCompleted || p.mindfulnessCompleted) &&
-    (p.trainingCompleted || p.mobilityCompleted || p.pilatesCompleted) &&
-    p.nutritionCompleted &&
-    p.journalCompleted;
-  return { ...p, dailyMinimumMet, fullProtocolCompleted };
+  // Lazy-import to avoid a cycle (protocol-pillars imports types from this
+  // file). Both modules live in the same bundle so the require is cheap.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { computeProtocolDailyState } = require("@/lib/protocol-pillars") as
+    typeof import("@/lib/protocol-pillars");
+  const profile = getProfile();
+  const state = computeProtocolDailyState(p, profile);
+  return {
+    ...p,
+    dailyMinimumMet: state.dailyMinimumMet,
+    fullProtocolCompleted: state.fullProtocolCompleted,
+    completedPillarsToday: state.completedPillarIdsToday.length,
+    completedPillarIdsToday: state.completedPillarIdsToday,
+    completedDailyActionKeysToday: state.completedDailyActionKeysToday,
+    highPriorityPillarsCompletedToday: state.highPriorityPillarsCompletedToday,
+    unavailablePillars: state.unavailablePillarIds,
+    assignedPillars: state.assignedPillarIds,
+    dailyMinimumCount: state.dailyMinimumCount,
+    highPriorityMinimumCount: state.highPriorityMinimumCount,
+    protocolStreakEligible: state.protocolStreakEligible,
+  };
 }
 
 // ---------- Streak update ----------
