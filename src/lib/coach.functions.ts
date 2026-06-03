@@ -115,6 +115,7 @@ export type CoachRoute =
   | "PROCESS_ADDICTION"
   | "COLD_EXPOSURE"
   | "HEAT_EXPOSURE"
+  | "EVENING_REVIEW"
   | "DISCIPLINE_POINTS_STREAK"
   | "IDENTITY_MINDSET"
   | "GENERAL_COACHING";
@@ -233,6 +234,9 @@ function detectRoute(
   const poorSleepMessage = /\b(slept badly|slept poorly|bad sleep|poor sleep|little sleep|no sleep|sleep deprived|rough sleep|terrible sleep|exhausted|wiped|tired)\b/i.test(message);
   const trainingMessage = /\b(train|training|trained|gym|lift|lifting|workout|session|squat|bench|deadlift|press|run|cardio)\b/i.test(message);
   const hardTrainingMessage = /\b(train hard|training hard|go hard|push hard|lift heavy|heavy session|max out|pr attempt|personal record|all out|smash.*workout)\b/i.test(message);
+  const wantsMovementMessage = /\b(move|moving|movement|want to move|need to move|walk|walking|stretch)\b/i.test(message);
+  const lowEnergyMessage = /\b(low energy|low readiness|feel low|drained|flat|sluggish|no energy)\b/i.test(message);
+  const eveningReviewMessage = /\b(check ?in|reset.*(bad day|after.*day)|after a bad day|end of day|end-of-day|wrap up|wrap-up|evening review|reflect|reflection|debrief|day debrief|review.*day)\b/i.test(message);
 
   // 1. SAFETY override
   if (hasMatch(text, SAFETY_PATTERNS)) {
@@ -244,11 +248,19 @@ function detectRoute(
   }
 
   // 2. Clear current user message intent. This must beat stale journal/profile context.
-  if (poorSleepMessage && (trainingMessage || hardTrainingMessage)) {
+  if (poorSleepMessage && (trainingMessage || hardTrainingMessage || wantsMovementMessage || lowEnergyMessage)) {
     return {
       route: "RECOVERY_DAY",
-      reason: "Current message explicitly combines poor sleep / low readiness with intent to train hard, so recovery caution overrides missed-day journal context.",
+      reason: "Current message combines poor sleep / low readiness with intent to train or move, so recovery caution overrides missed-day or sleep-wind-down context.",
       query: "poor sleep training hard readiness recovery day reduced intensity mobility walk Pilates no overtraining soreness pain flag",
+    };
+  }
+
+  if (eveningReviewMessage) {
+    return {
+      route: "EVENING_REVIEW",
+      reason: "Current message asks for an honest check-in / end-of-day reset / debrief after a bad day — one-standard journal check-in fits.",
+      query: "evening review end of day honest check in one standard journal operator log missed day repair reset",
     };
   }
 
