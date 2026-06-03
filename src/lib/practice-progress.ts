@@ -81,10 +81,37 @@ export type DailyProgress = {
   heatExposureCompleted: boolean;
   journalCompleted: boolean;
   guidedPracticeCompleted: boolean;
+  // Top 21 Protocol pillar action keys (optional — flipped by future
+  // pillar-specific check-ins). Default false on a fresh day.
+  sleepCompleted?: boolean;
+  hydrationCompleted?: boolean;
+  morningProtocolCompleted?: boolean;
+  eveningProtocolCompleted?: boolean;
+  pmaCompleted?: boolean;
+  morningWalkCompleted?: boolean;
+  cardiacCoherenceCompleted?: boolean;
+  digitalDisciplineCompleted?: boolean;
+  recoveryCompleted?: boolean;
+  visualisationCompleted?: boolean;
+  identityCompleted?: boolean;
+  structureCompleted?: boolean;
+  habitStackingCompleted?: boolean;
+  standardMet?: boolean;
+  proteinCompleted?: boolean;
   completedPracticeIdsToday: string[];
   disciplinePointsToday: number;
   dailyMinimumMet: boolean;
   fullProtocolCompleted: boolean;
+  // Derived/cached Top 21 state (recomputed on every completion).
+  completedPillarsToday?: number;
+  completedPillarIdsToday?: string[];
+  completedDailyActionKeysToday?: string[];
+  highPriorityPillarsCompletedToday?: string[];
+  unavailablePillars?: string[];
+  assignedPillars?: string[];
+  dailyMinimumCount?: number;
+  highPriorityMinimumCount?: number;
+  protocolStreakEligible?: boolean;
 };
 
 export type CompletionResult = {
