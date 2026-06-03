@@ -14,6 +14,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as CoachRouteImport } from './routes/coach'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WorkoutWorkoutIdRouteImport } from './routes/workout.$workoutId'
 import { Route as PracticePracticeIdRouteImport } from './routes/practice.$practiceId'
 
 const ProtocolRoute = ProtocolRouteImport.update({
@@ -41,6 +42,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkoutWorkoutIdRoute = WorkoutWorkoutIdRouteImport.update({
+  id: '/workout/$workoutId',
+  path: '/workout/$workoutId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PracticePracticeIdRoute = PracticePracticeIdRouteImport.update({
   id: '/practice/$practiceId',
   path: '/practice/$practiceId',
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/protocol': typeof ProtocolRoute
   '/practice/$practiceId': typeof PracticePracticeIdRoute
+  '/workout/$workoutId': typeof WorkoutWorkoutIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/protocol': typeof ProtocolRoute
   '/practice/$practiceId': typeof PracticePracticeIdRoute
+  '/workout/$workoutId': typeof WorkoutWorkoutIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/protocol': typeof ProtocolRoute
   '/practice/$practiceId': typeof PracticePracticeIdRoute
+  '/workout/$workoutId': typeof WorkoutWorkoutIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/protocol'
     | '/practice/$practiceId'
+    | '/workout/$workoutId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/protocol'
     | '/practice/$practiceId'
+    | '/workout/$workoutId'
   id:
     | '__root__'
     | '/'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/protocol'
     | '/practice/$practiceId'
+    | '/workout/$workoutId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,6 +118,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ProtocolRoute: typeof ProtocolRoute
   PracticePracticeIdRoute: typeof PracticePracticeIdRoute
+  WorkoutWorkoutIdRoute: typeof WorkoutWorkoutIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -145,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/workout/$workoutId': {
+      id: '/workout/$workoutId'
+      path: '/workout/$workoutId'
+      fullPath: '/workout/$workoutId'
+      preLoaderRoute: typeof WorkoutWorkoutIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/practice/$practiceId': {
       id: '/practice/$practiceId'
       path: '/practice/$practiceId'
@@ -162,7 +182,18 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ProtocolRoute: ProtocolRoute,
   PracticePracticeIdRoute: PracticePracticeIdRoute,
+  WorkoutWorkoutIdRoute: WorkoutWorkoutIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
