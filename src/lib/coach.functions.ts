@@ -158,7 +158,18 @@ export type CoachRoute =
   | "CONTINUATION_BUILD_MY_PLAN"
   | "CONTINUATION_RESET_NOW"
   | "CONTINUATION_MINIMUM_STANDARD"
-  | "CONTINUATION_MORNING_SETUP";
+  | "CONTINUATION_MORNING_SETUP"
+  // Exercise Prescription Engine
+  | "FITNESS_PLAN_REQUEST"
+  | "FITNESS_ROUTINE_BUILDER"
+  | "FULL_REBUILD_PLAN"
+  | "CORE_BACK_SUPPORT_PLAN"
+  | "GYM_STRENGTH_PLAN"
+  | "RUNNING_STARTER_PLAN"
+  | "HOME_BODYWEIGHT_PLAN"
+  | "PILATES_CORE_PLAN"
+  | "LOW_ENERGY_SESSION"
+  | "INTERMEDIATE_FITNESS_PLAN";
 
 export type ContinuationCommand =
   | "FITNESS"
@@ -168,7 +179,49 @@ export type ContinuationCommand =
   | "RESET"
   | "MINIMUM_STANDARD"
   | "MORNING"
+  | "HOME"
+  | "GYM"
+  | "RUNNING"
+  | "PILATES"
+  | "LOW_ENERGY"
+  | "BEGINNER"
+  | "INTERMEDIATE"
+  | "ADVANCED"
   | "NONE";
+
+// ---------- Exercise Prescription Engine — classification types ----------
+export type FitnessGoal =
+  | "fat_loss" | "muscle_building" | "general_fitness" | "strength"
+  | "running" | "mobility" | "core_strength" | "back_support"
+  | "confidence" | "all_round_reset" | "unknown";
+export type FitnessLevel = "beginner" | "intermediate" | "advanced" | "unknown";
+export type TrainingLocation = "home" | "gym" | "outdoors" | "mixed" | "unknown";
+export type Equipment = "none" | "dumbbells" | "resistance_bands" | "full_gym" | "cardio_machine" | "unknown";
+export type InjuryFlag = "none" | "back_pain" | "knee_pain" | "shoulder_pain" | "mobility_limited" | "unknown";
+export type AvailableTime = "10_minutes" | "20_minutes" | "30_minutes" | "45_minutes" | "60_minutes" | "unknown";
+export type EnergyLevelTag = "low" | "moderate" | "high" | "unknown";
+export type PreferredStyle = "weights" | "pilates" | "running" | "walking" | "bodyweight" | "mobility" | "mixed" | "unknown";
+
+export type FitnessClassification = {
+  fitnessGoal: FitnessGoal;
+  fitnessLevel: FitnessLevel;
+  trainingLocation: TrainingLocation;
+  equipment: Equipment;
+  injuryFlag: InjuryFlag;
+  availableTime: AvailableTime;
+  energyLevel: EnergyLevelTag;
+  preferredStyle: PreferredStyle;
+};
+
+export type GuidedWorkoutRecommendation = {
+  id: string;
+  title: string;
+  category: "home_bodyweight" | "gym_strength" | "pilates_core" | "running" | "mobility" | "low_energy";
+  durationMinutes: number;
+  level: "beginner" | "intermediate" | "advanced";
+  reason: string;
+  buttonLabel: string;
+};
 
 export type BreathworkSubRoute =
   | "DOWNREGULATE"
