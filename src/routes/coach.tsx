@@ -197,6 +197,14 @@ function DebugPanel({ result, loading }: { result: CoachResponse | null; loading
           <Row k="selected route" v={d.selectedRoute} />
           <Row k="breathwork sub-route" v={d.breathworkSubRoute} />
           <Row k="route reason" v={d.routeReason} />
+          <Row k="time-based route reason" v={d.timeBasedRouteReason ?? "—"} />
+          <Row k="localDate" v={d.localDate ?? "—"} />
+          <Row k="localTime" v={d.localTime ?? "—"} />
+          <Row k="timezone" v={d.timezone ?? "—"} />
+          <Row k="dayOfWeek" v={d.dayOfWeek ?? "—"} />
+          <Row k="dayPart" v={d.dayPart ?? "—"} />
+          <Row k="sessionContext" v={d.sessionContext ?? "—"} />
+          <Row k="temporal source" v={d.temporalSource} />
           <Row k="retrieval query" v={d.retrievalQuery || "—"} />
           <Row k="model" v={d.model} />
           <Row k="profile context sent" v={String(d.profileContextSent)} />
