@@ -54,7 +54,13 @@ const ProfileSchema = z.object({
   readinessState: z.string(),
   currentStreak: z.number(),
   disciplinePoints: z.number(),
-});
+  // Top 21 access fields — optional for backwards compatibility with
+  // older saved profiles.
+  heatExposureAccess: z.string().optional(),
+  coldExposureAccess: z.string().optional(),
+  strengthTrainingAccess: z.string().optional(),
+  pilatesMobilityAccess: z.string().optional(),
+}).passthrough();
 
 const JournalSchema = z.object({
   date: z.string(),
@@ -92,7 +98,16 @@ const DailyProgressSchema = z.object({
   protocolStreak: z.number().optional(),
   lastCompletedPracticeId: z.string().nullable().optional(),
   lastCompletedPracticeCategory: z.string().nullable().optional(),
-});
+  // Top 21 derived state (optional — older saves may not have it).
+  completedPillarIdsToday: z.array(z.string()).optional(),
+  completedDailyActionKeysToday: z.array(z.string()).optional(),
+  highPriorityPillarsCompletedToday: z.array(z.string()).optional(),
+  unavailablePillars: z.array(z.string()).optional(),
+  assignedPillars: z.array(z.string()).optional(),
+  dailyMinimumCount: z.number().optional(),
+  highPriorityMinimumCount: z.number().optional(),
+  protocolStreakEligible: z.boolean().optional(),
+}).passthrough();
 
 type Profile = z.infer<typeof ProfileSchema>;
 type Journal = z.infer<typeof JournalSchema>;
