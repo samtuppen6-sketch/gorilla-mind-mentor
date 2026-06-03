@@ -326,7 +326,7 @@ export function completePracticeSession(args: {
 // Human-readable label for the updated daily action.
 export function dailyActionLabel(k: DailyActionKey | null): string {
   if (!k) return "—";
-  const map: Record<DailyActionKey, string> = {
+  const map: Partial<Record<DailyActionKey, string>> = {
     breathworkCompleted: "Breathwork completed",
     meditationCompleted: "Meditation completed",
     mindfulnessCompleted: "Mindfulness completed",
@@ -339,5 +339,5 @@ export function dailyActionLabel(k: DailyActionKey | null): string {
     journalCompleted: "Journal completed",
     guidedPracticeCompleted: "Guided practice completed",
   };
-  return map[k];
+  return map[k] ?? k;
 }
