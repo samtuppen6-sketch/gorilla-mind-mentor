@@ -336,9 +336,16 @@ function WorkoutPlayerPage() {
               <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">
                 {currentStep.section} · step {stepIdx + 1} / {steps.length}
               </p>
-              <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-                {progressPct}%
-              </p>
+              <div className="flex items-center gap-2">
+                {hydrated && !running && (
+                  <span className="text-[9px] uppercase tracking-[0.25em] text-gold bg-gold/15 border border-gold/40 rounded px-1.5 py-0.5">
+                    Resumed
+                  </span>
+                )}
+                <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+                  {progressPct}%
+                </p>
+              </div>
             </div>
             <div className="h-1 w-full bg-background/60 rounded-full overflow-hidden">
               <div
