@@ -1345,6 +1345,14 @@ export const askCoach = createServerFn({ method: "POST" })
         return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice, quickReplies };
       }
 
+      // Derive quick-reply chips from THIS answer's REPLY WITH section so they
+      // always align with what the coach asked for. Fall back to route defaults.
+      const parsedReplies = extractReplyOptions(answer);
+      if (parsedReplies.length > 0) {
+        quickReplies = parsedReplies;
+      }
+      debug.quickRepliesShown = quickReplies.length > 0;
+
       return { answer: answer || "(empty response)", debug, guidedPractice, quickReplies };
     } catch (err) {
       debug.apiError = err instanceof Error ? err.message : String(err);
