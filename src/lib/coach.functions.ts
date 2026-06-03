@@ -151,7 +151,24 @@ export type CoachRoute =
   | "IDENTITY_MINDSET"
   | "GENERAL_LIFE_STUCK"
   | "GENERAL_TRANSFORMATION_REQUEST"
-  | "GENERAL_COACHING";
+  | "GENERAL_COACHING"
+  | "CONTINUATION_FITNESS_PLAN"
+  | "CONTINUATION_JOB_PLAN"
+  | "CONTINUATION_BOTH_PLAN"
+  | "CONTINUATION_BUILD_MY_PLAN"
+  | "CONTINUATION_RESET_NOW"
+  | "CONTINUATION_MINIMUM_STANDARD"
+  | "CONTINUATION_MORNING_SETUP";
+
+export type ContinuationCommand =
+  | "FITNESS"
+  | "JOB"
+  | "BOTH"
+  | "BUILD_MY_PLAN"
+  | "RESET"
+  | "MINIMUM_STANDARD"
+  | "MORNING"
+  | "NONE";
 
 export type BreathworkSubRoute =
   | "DOWNREGULATE"
@@ -203,7 +220,8 @@ export type ResponseMode =
   | "MORNING_ACTIVATION"
   | "AFTERNOON_RESCUE"
   | "EVENING_RESET"
-  | "LATE_NIGHT_SHUTDOWN";
+  | "LATE_NIGHT_SHUTDOWN"
+  | "PLAN_BUILDING";
 
 export type CoachDebug = {
   selectedRoute: CoachRoute;
@@ -239,6 +257,15 @@ export type CoachDebug = {
   quickRepliesShown: boolean;
   retrievalSuppressedVolumes: string[];
   reasonForSuppression: string | null;
+  previousCoachReplyOptions: string[];
+  userContinuationCommandDetected: boolean;
+  continuationCommand: ContinuationCommand;
+  routeOverrideApplied: boolean;
+  routeOverrideReason: string | null;
+  selectedRouteBeforeOverride: CoachRoute | null;
+  selectedRouteAfterOverride: CoachRoute | null;
+  duplicateAdviceSuppressed: boolean;
+  suppressedAdvice: string[];
 };
 
 export type CoachResponse = {
@@ -818,6 +845,133 @@ function buildContextBlock(
   return lines.join("\n");
 }
 
+// ---------- Continuation router helpers ----------
+
+const CONTINUATION_MAP: Record<string, { command: ContinuationCommand; route: CoachRoute }> = {
+  "FITNESS": { command: "FITNESS", route: "CONTINUATION_FITNESS_PLAN" },
+  "JOB": { command: "JOB", route: "CONTINUATION_JOB_PLAN" },
+  "BOTH": { command: "BOTH", route: "CONTINUATION_BOTH_PLAN" },
+  "BUILD MY PLAN": { command: "BUILD_MY_PLAN", route: "CONTINUATION_BUILD_MY_PLAN" },
+  "BUILD PLAN": { command: "BUILD_MY_PLAN", route: "CONTINUATION_BUILD_MY_PLAN" },
+  "RESET": { command: "RESET", route: "CONTINUATION_RESET_NOW" },
+  "RESET NOW": { command: "RESET", route: "CONTINUATION_RESET_NOW" },
+  "MINIMUM STANDARD": { command: "MINIMUM_STANDARD", route: "CONTINUATION_MINIMUM_STANDARD" },
+  "MINIMUM": { command: "MINIMUM_STANDARD", route: "CONTINUATION_MINIMUM_STANDARD" },
+  "MORNING": { command: "MORNING", route: "CONTINUATION_MORNING_SETUP" },
+  "MORNING PLAN": { command: "MORNING", route: "CONTINUATION_MORNING_SETUP" },
+};
+
+function detectContinuationCommand(
+  message: string,
+  history: CoachHistoryTurn[],
+): { command: ContinuationCommand; route: CoachRoute } | null {
+  if (!history.length) return null;
+  const norm = message.trim().toUpperCase().replace(/[.!?,]+$/g, "").replace(/\s+/g, " ");
+  if (norm.length > 30) return null;
+  return CONTINUATION_MAP[norm] ?? null;
+}
+
+function extractReplyOptions(assistantText: string): string[] {
+  if (!assistantText) return [];
+  // Find a "REPLY WITH" section, otherwise scan for "Reply X, Y, or Z" sentences.
+  let segment = "";
+  const sectionMatch = assistantText.match(/REPLY WITH[:\s]*([\s\S]+)$/i);
+  if (sectionMatch) {
+    segment = sectionMatch[1];
+  } else {
+    const inline = assistantText.match(/\breply\s+(?:with\s+)?([A-Z][A-Z0-9 ,\/\-]+(?:\s+or\s+[A-Z][A-Z0-9 \-]+)?)/);
+    if (inline) segment = inline[1];
+  }
+  if (!segment) return [];
+  // Take only first 3 lines of REPLY WITH section.
+  segment = segment.split(/\n\n/)[0];
+  // Capture ALL-CAPS tokens (allowing spaces, hyphens, digits, apostrophes).
+  const tokens: string[] = [];
+  const tokenRe = /\b([A-Z][A-Z0-9'\-]+(?:\s+[A-Z0-9'\-]+){0,3})\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = tokenRe.exec(segment)) !== null) {
+    const t = m[1].trim();
+    if (t.length < 2 || t.length > 40) continue;
+    if (/^(REPLY|WITH|OR|AND|THE|A|AN|TO|FOR|IF|ME|MY|I'M|IS)$/.test(t)) continue;
+    if (!tokens.includes(t)) tokens.push(t);
+  }
+  return tokens.slice(0, 6);
+}
+
+// Keywords that indicate "reset" advice the model already produced — used to
+// instruct the next response NOT to repeat them.
+const DUPLICATE_ADVICE_PATTERNS: Array<{ key: string; re: RegExp }> = [
+  { key: "phone away", re: /phone\s+(?:away|down|out of)/i },
+  { key: "drink water", re: /\b(drink\s+water|water\s+before)/i },
+  { key: "clothes laid out", re: /clothes\s+(?:laid|out|ready)/i },
+  { key: "5 min breathing", re: /\b5\s*(?:min|minutes)?\s*breath/i },
+  { key: "20 min movement", re: /\b(20|30)\s*(?:min|minutes)?\s*(?:walk|movement|move)/i },
+  { key: "protein breakfast", re: /protein.*(breakfast|first meal)|first meal.*protein/i },
+  { key: "tomorrow morning routine", re: /tomorrow\s+morning/i },
+];
+
+function detectPreviousAdvice(history: CoachHistoryTurn[]): string[] {
+  const last = [...history].reverse().find((h) => h.role === "assistant");
+  if (!last) return [];
+  return DUPLICATE_ADVICE_PATTERNS.filter((p) => p.re.test(last.content)).map((p) => p.key);
+}
+
+const CONTINUATION_SHAPES: Partial<Record<CoachRoute, string>> = {
+  CONTINUATION_BOTH_PLAN: [
+    "ACTIVE ROUTE is CONTINUATION_BOTH_PLAN. The user just replied 'BOTH' to the previous coach turn. This is a CONTINUATION. Do NOT repeat the previous reset advice (phone away, water, breathing, movement, protein) — advance the conversation. Use this exact structure:",
+    "",
+    "HEADLINE — one direct line, e.g. 'Good. We handle both — but in the right order.'",
+    "WHAT THIS MEANS — 3–4 short lines showing how the job and fitness problems feed each other. Body first, work clarity second.",
+    "THE NEXT 24 HOURS",
+    "TONIGHT — numbered 4 items: phone away from bed, clothes laid out, decide tomorrow's movement, write one line about one work thing they can control tomorrow.",
+    "TOMORROW MORNING — numbered 5 items: water before phone, 5 min breathing, 20 min movement, protein breakfast, no job decisions before the body is online.",
+    "WORK RESET — 3 numbered questions to answer tomorrow about role/people/pressure/money/purpose and one move this week for more control.",
+    "FITNESS RESET — 7-day minimum standard list: 20 min movement daily, protein with first meal, water before caffeine, phone away for first 30 minutes.",
+    "COACH CLOSE — 2 short lines: 'You are not building a new life tomorrow. You are taking back command of the first hour.'",
+    "REPLY WITH — exactly: 'Reply BUILD MY PLAN and I will turn this into a 7-day structure.'",
+  ].join("\n"),
+
+  CONTINUATION_BUILD_MY_PLAN: [
+    "ACTIVE ROUTE is CONTINUATION_BUILD_MY_PLAN. The user asked for the structured plan. Do NOT repeat the previous reset advice. Build the actual 7-day plan. Use this exact structure:",
+    "",
+    "HEADLINE — 'Here is the plan. Simple. Repeatable. No drama.'",
+    "PLAN LENGTH — '7 days.'",
+    "MISSION — one short line about rebuilding control over mornings, body, and work direction.",
+    "DAILY NON-NEGOTIABLES — numbered 5: water before phone, 5 min breathing, 20 min movement, protein-first breakfast, one work-control action.",
+    "DAY 1 — RE-ENTRY — Body / Mind / Work / Rule lines.",
+    "DAY 2 — BODY LEADS — Body / Mind / Work lines.",
+    "DAY 3 — REMOVE FRICTION — Body / Nutrition / Work lines.",
+    "DAY 4 — STANDARD — Body / Mind / Work lines.",
+    "DAY 5 — CLARITY — Body / Work lines.",
+    "DAY 6 — DISCIPLINE — Body / Nutrition / Work lines.",
+    "DAY 7 — REVIEW — 4 numbered review questions.",
+    "COACH CLOSE — 'This is not about motivation. This is about proving you can lead yourself for seven days.'",
+    "REPLY WITH — exactly: 'Reply FITNESS for the training plan, JOB for the work plan, or BOTH for the full 30-day rebuild.'",
+  ].join("\n"),
+
+  CONTINUATION_FITNESS_PLAN: [
+    "ACTIVE ROUTE is CONTINUATION_FITNESS_PLAN. The user wants the fitness-specific next step. Do NOT repeat previous reset advice. Use this structure:",
+    "HEADLINE / MISSION (7-day training baseline) / DAILY NON-NEGOTIABLES (movement, protein, water) / WEEK STRUCTURE (Day 1–7 short body-led prescriptions, respect gymAccess from profile) / COACH CLOSE / REPLY WITH — 'Reply BUILD MY PLAN or JOB.'",
+  ].join("\n"),
+
+  CONTINUATION_JOB_PLAN: [
+    "ACTIVE ROUTE is CONTINUATION_JOB_PLAN. The user wants the work-specific next step. Do NOT repeat previous reset advice. Use this structure:",
+    "HEADLINE / MISSION (7-day work clarity) / DAILY NON-NEGOTIABLES (one control action, one drain removed, one boundary held) / 7-DAY WORK STRUCTURE (Day 1–7: name the hate, list 3 realistic options stay/improve/exit, one task you've avoided, decide environment/income/purpose lever, one practical next move) / COACH CLOSE / REPLY WITH — 'Reply BUILD MY PLAN or FITNESS.'",
+  ].join("\n"),
+
+  CONTINUATION_RESET_NOW: [
+    "ACTIVE ROUTE is CONTINUATION_RESET_NOW. The user wants an immediate reset. Do NOT repeat previous reset advice verbatim. Advance: give a 30-minute reset sequence appropriate to the current dayPart. End with REPLY WITH — 'Reply BUILD MY PLAN or MINIMUM STANDARD.'",
+  ].join("\n"),
+
+  CONTINUATION_MINIMUM_STANDARD: [
+    "ACTIVE ROUTE is CONTINUATION_MINIMUM_STANDARD. Give the minimum-required action for today only. One action. One line of why. End with REPLY WITH — 'Reply BUILD MY PLAN.'",
+  ].join("\n"),
+
+  CONTINUATION_MORNING_SETUP: [
+    "ACTIVE ROUTE is CONTINUATION_MORNING_SETUP. Provide a concrete morning sequence: pre-phone routine, water, breathing, movement, protein, one written line of intent. End with REPLY WITH — 'Reply BUILD MY PLAN or FITNESS.'",
+  ].join("\n"),
+};
+
 export const askCoach = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
@@ -882,10 +1036,41 @@ export const askCoach = createServerFn({ method: "POST" })
     if (profile?.foodBoundaryActive) safetyFlags.push("foodBoundaryActive");
     if (profile && profile.recoveryState && profile.recoveryState !== "none") safetyFlags.push(`recoveryState:${profile.recoveryState}`);
 
-    const routing = detectRoute(data.question, profile, journal, temporal);
+    let routing = detectRoute(data.question, profile, journal, temporal);
+
+    // ---------- Continuation override (after safety, before everything else) ----------
+    const previousCoachReplyOptions = (() => {
+      const last = [...history].reverse().find((h) => h.role === "assistant");
+      return last ? extractReplyOptions(last.content) : [];
+    })();
+    const continuation = detectContinuationCommand(data.question, history);
+    const isSafetyCrisis = routing.route === "SAFETY_CRISIS";
+    let routeOverrideApplied = false;
+    let routeOverrideReason: string | null = null;
+    let selectedRouteBeforeOverride: CoachRoute | null = null;
+    let selectedRouteAfterOverride: CoachRoute | null = null;
+    let continuationCommand: ContinuationCommand = "NONE";
+
+    if (continuation && !isSafetyCrisis) {
+      selectedRouteBeforeOverride = routing.route;
+      continuationCommand = continuation.command;
+      routing = {
+        route: continuation.route,
+        reason: `Continuation override: user replied "${data.question.trim().toUpperCase()}" to previous coach turn. Explicit continuation command takes priority over journal/profile routing.`,
+        query: `gorilla mind continuation ${continuation.command.toLowerCase().replace(/_/g, " ")} 7 day plan body first work clarity discipline standards`,
+      };
+      selectedRouteAfterOverride = routing.route;
+      routeOverrideApplied = true;
+      routeOverrideReason = "User selected explicit continuation command.";
+    }
 
     const breathworkSubRoute: BreathworkSubRoute =
       routing.route === "BREATHWORK" ? (routing.breathworkSubRoute ?? "DOWNREGULATE") : "NONE";
+
+    // Continuation routes force PLAN_BUILDING response mode.
+    if (continuation && !isSafetyCrisis) {
+      responseMode = "PLAN_BUILDING";
+    }
 
     const guidedPractice = routing.route === "SAFETY_CRISIS"
       ? null
@@ -905,18 +1090,29 @@ export const askCoach = createServerFn({ method: "POST" })
       reasonForSuppression = "Process addiction content not used because user did not mention addiction/compulsion/relapse.";
     }
 
-    // Quick replies surfaced in the UI for this route.
-    const quickRepliesByRoute: Partial<Record<CoachRoute, string[]>> = {
-      GENERAL_LIFE_STUCK: ["FITNESS", "JOB", "BOTH", "BUILD MY PLAN", "I'M STRUGGLING TONIGHT"],
+    // Duplicate-advice suppression: detect what the last coach response already prescribed.
+    const suppressedAdvice = continuation ? detectPreviousAdvice(history) : [];
+    const duplicateAdviceSuppressed = suppressedAdvice.length > 0;
+
+    const conversationContinuation = history.length > 0;
+
+    // Initial quickReplies guess (route-based); may be overridden after answer parsing.
+    const fallbackQuickRepliesByRoute: Partial<Record<CoachRoute, string[]>> = {
+      GENERAL_LIFE_STUCK: ["FITNESS", "JOB", "BOTH"],
       GENERAL_TRANSFORMATION_REQUEST: ["20-DAY", "60-DAY", "90-DAY", "START TONIGHT"],
       EVENING_REVIEW: ["BUILD TOMORROW", "WIND DOWN NOW", "MORNING PLAN"],
       SLEEP_WIND_DOWN: ["BREATHWORK", "PHONE DOWN", "MORNING PLAN"],
       MISSED_DAY_REPAIR: ["RESET", "MINIMUM STANDARD", "BUILD MY PLAN"],
       MISSED_MORNING: ["MORNING", "BUILD MY PLAN"],
+      CONTINUATION_BOTH_PLAN: ["BUILD MY PLAN"],
+      CONTINUATION_BUILD_MY_PLAN: ["FITNESS", "JOB", "BOTH"],
+      CONTINUATION_FITNESS_PLAN: ["BUILD MY PLAN", "JOB"],
+      CONTINUATION_JOB_PLAN: ["BUILD MY PLAN", "FITNESS"],
+      CONTINUATION_RESET_NOW: ["BUILD MY PLAN", "MINIMUM STANDARD"],
+      CONTINUATION_MINIMUM_STANDARD: ["BUILD MY PLAN"],
+      CONTINUATION_MORNING_SETUP: ["BUILD MY PLAN", "FITNESS"],
     };
-    const quickReplies = quickRepliesByRoute[routing.route] ?? [];
-
-    const conversationContinuation = history.length > 0;
+    let quickReplies: string[] = fallbackQuickRepliesByRoute[routing.route] ?? [];
 
     const debug: CoachDebug = {
       selectedRoute: routing.route,
@@ -952,6 +1148,15 @@ export const askCoach = createServerFn({ method: "POST" })
       quickRepliesShown: quickReplies.length > 0,
       retrievalSuppressedVolumes,
       reasonForSuppression,
+      previousCoachReplyOptions,
+      userContinuationCommandDetected: !!continuation,
+      continuationCommand,
+      routeOverrideApplied,
+      routeOverrideReason,
+      selectedRouteBeforeOverride,
+      selectedRouteAfterOverride,
+      duplicateAdviceSuppressed,
+      suppressedAdvice,
     };
 
     if (!apiKey) {
@@ -1032,6 +1237,7 @@ export const askCoach = createServerFn({ method: "POST" })
 
     const transformationShape = "ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST. The user explicitly asked for a full plan. A longer multi-day or multi-week plan is allowed. Anchor in the Top 21 fundamentals and the user's assigned pillars. Begin with HEADLINE and a one-paragraph WHAT'S HAPPENING, then provide the plan in clear phases (Days 1–7, 8–21, 22–60). End with TODAY'S NON-NEGOTIABLES, COACH CLOSE, and REPLY WITH (give a concrete next reply option).";
 
+    const continuationShape = CONTINUATION_SHAPES[routing.route];
     const routeInstruction =
       routing.route === "SAFETY_CRISIS"
         ? "ACTIVE ROUTE is SAFETY_CRISIS. Do NOT produce the normal HEADLINE/DO THIS NOW format. Respond with a short calm safety-first message directing the user to local emergency services / crisis line / doctor."
@@ -1041,10 +1247,16 @@ export const askCoach = createServerFn({ method: "POST" })
             ? lifeStuckShape
             : routing.route === "GENERAL_TRANSFORMATION_REQUEST"
               ? transformationShape
-              : `ACTIVE ROUTE is ${routing.route}. RESPONSE MODE is ${responseMode}. Honour the time-of-day rules. Use the smallest useful next action. ${baseFormatRule} Do NOT produce a multi-day plan.`;
+              : continuationShape
+                ? continuationShape
+                : `ACTIVE ROUTE is ${routing.route}. RESPONSE MODE is ${responseMode}. Honour the time-of-day rules. Use the smallest useful next action. ${baseFormatRule} Do NOT produce a multi-day plan.`;
 
     const suppressionInstruction = retrievalSuppressedVolumes.length
       ? `\n\nRETRIEVAL SUPPRESSION: Do NOT lean on or quote content from the following knowledge volumes for this answer: ${retrievalSuppressedVolumes.join(", ")}. Reason: ${reasonForSuppression}`
+      : "";
+
+    const duplicateAdviceInstruction = duplicateAdviceSuppressed
+      ? `\n\nDUPLICATE ADVICE SUPPRESSION: The previous coach turn already prescribed these actions: ${suppressedAdvice.join(", ")}. You MUST NOT repeat that same action list. Open with a short acknowledgement such as "Good. We are moving into the plan now." and advance to the next layer of the plan. If you need to reference a previous action, do so in a single short clause, not as a re-prescription.`
       : "";
 
     // Prior conversation block — render as text so the model treats this as a continuation.
@@ -1073,7 +1285,7 @@ export const askCoach = createServerFn({ method: "POST" })
       ? `\n\nGUIDED PRACTICE SECTION: After TODAY'S NON-NEGOTIABLES (or ${ordersHeading} for life-stuck) and before COACH CLOSE, add a section labelled exactly "GUIDED PRACTICE" with two short lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
       : "";
 
-    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${suppressionInstruction}${guidedPracticeInstruction}`;
+    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${suppressionInstruction}${duplicateAdviceInstruction}${guidedPracticeInstruction}`;
 
     try {
       const res = await fetch("https://api.openai.com/v1/responses", {
@@ -1132,6 +1344,14 @@ export const askCoach = createServerFn({ method: "POST" })
         debug.apiError = "Knowledge-base retrieval returned zero chunks for the selected route.";
         return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice, quickReplies };
       }
+
+      // Derive quick-reply chips from THIS answer's REPLY WITH section so they
+      // always align with what the coach asked for. Fall back to route defaults.
+      const parsedReplies = extractReplyOptions(answer);
+      if (parsedReplies.length > 0) {
+        quickReplies = parsedReplies;
+      }
+      debug.quickRepliesShown = quickReplies.length > 0;
 
       return { answer: answer || "(empty response)", debug, guidedPractice, quickReplies };
     } catch (err) {
