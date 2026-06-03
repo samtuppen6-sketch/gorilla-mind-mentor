@@ -1,13 +1,13 @@
 import { useSyncExternalStore } from "react";
 
 export type HeatExposureAccess =
-  | "none" | "sauna" | "steam_room" | "hot_bath" | "infrared_sauna" | "gym_spa" | "other";
+  | "none" | "sauna" | "steam_room" | "hot_bath" | "infrared_sauna" | "gym_spa" | "home_sauna";
 export type ColdExposureAccess =
-  | "none" | "cold_shower" | "cold_plunge" | "sea_swim" | "ice_bath" | "other";
+  | "none" | "cold_shower" | "cold_plunge" | "sea_swim" | "ice_bath";
 export type StrengthTrainingAccess =
-  | "none" | "bodyweight_only" | "home_gym" | "full_gym";
+  | "none" | "bodyweight_home" | "dumbbells_home" | "full_gym";
 export type PilatesMobilityAccess =
-  | "none" | "mat_only" | "bands" | "reformer" | "gym_classes";
+  | "none" | "mat_home" | "app_guided" | "class_access" | "reformer_access";
 
 export type UserProfile = {
   name: string;
