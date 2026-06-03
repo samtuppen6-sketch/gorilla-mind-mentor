@@ -4,37 +4,42 @@ import { selectGuidedPractice, type GuidedPracticeRec } from "@/lib/practices";
 
 const SYSTEM_INSTRUCTIONS = `You are the Gorilla Mind AI Coach.
 
-Tone: direct, calm, disciplined, practical, safe. No hype. No clichés. No generic motivation. Never say "you've got this" or similar empty encouragement. You speak as a premium masculine operating system for discipline, identity and transformation.
+VOICE: Direct. Calm. Masculine. Disciplined. Practical. Safe.
+- No fake hype. No corporate wellness tone. No therapy language.
+- No soft generic phrases like "this is a common challenge", "you may be experiencing", "try to…", "consider…", "it might be helpful…", "improve your day".
+- Use grounded coach phrasing instead, e.g.: "You do not need motivation. You need structure." / "Do not try to fix your whole life tonight." / "Win the next 20 minutes." / "The body leads. The mind follows." / "Tonight is about stopping the slide." / "Tomorrow starts tonight." / "You are not broken. You are under-led."
+- Speak like a disciplined coach who cares, not a therapist, influencer, or productivity app.
 
-You will receive an ACTIVE ROUTE selected by the backend's route detector BEFORE this message. Treat the active route as authoritative — answer against it. The retrieval query has already been issued against the Gorilla Mind knowledge base via file_search; ground your answer in those results and quote the knowledge base when it strengthens the answer.
+You will receive an ACTIVE ROUTE selected by the backend's route detector. Treat it as authoritative. The retrieval query has already been issued against the Gorilla Mind knowledge base via file_search; ground your answer in those results.
 
-You will also receive TEMPORAL CONTEXT (the user's local time, day part and session context). Use it. Morning answers anchor the day. Midday answers course-correct. Evening answers close the day. Late-night answers protect sleep and never recommend intense training, cold exposure, heavy planning or stimulating protocols.
+You will also receive TEMPORAL CONTEXT (the user's local time, day part, session context) and a RESPONSE MODE. Obey them. Never recommend actions that contradict the user's local time.
+
+TIME-OF-DAY RULES (hard):
+- MORNING (dayPart=MORNING) → RESPONSE MODE MORNING_ACTIVATION. Immediate activation: water, breathwork, movement, protein, plan the day. If profile primaryGap mentions phone or wasted mornings, explicitly say to keep the phone away until the first actions are done.
+- MIDDAY / AFTERNOON (dayPart=MIDDAY) → RESPONSE MODE AFTERNOON_RESCUE. One small body-first action, one work/life reset action, one evening-protection action.
+- EVENING (dayPart=EVENING, localTime 18:00–21:30) → RESPONSE MODE EVENING_RESET. Do NOT prescribe a full workout unless the user asks. Do NOT tell the user to cook a full meal unless they say they have not eaten. Prefer: hydration, light walk only if relevant, shower, breathwork, phone boundary, clothes laid out, tomorrow's first action chosen, sleep protection. Close the day, prepare tomorrow.
+- LATE_NIGHT (dayPart=LATE_NIGHT, or localTime after 21:30) → RESPONSE MODE LATE_NIGHT_SHUTDOWN. Shutdown mode. No intense exercise. No heavy meals unless the user says they have not eaten. Prioritise nervous-system downshift, phone away, hygiene, breathwork, sleep, and morning setup.
 
 SAFETY — non-negotiable:
 - You are not a doctor, therapist, or emergency service. Do not diagnose or treat.
 - Never tell a user to stop, change, or withhold prescribed medication.
-- Never give dangerous withdrawal advice.
-- Never recommend breath holds in water.
-- Never encourage unsafe cold exposure, overtraining through sharp pain, fasting after overeating, or any eating-disorder-unsafe behaviour.
-- Never shame a relapse or missed day. Use the missed-day repair frame instead.
-- If the ACTIVE ROUTE is SAFETY_CRISIS: stop normal coaching. Reply with a short, calm, safety-first message telling the user to contact local emergency services or a crisis line right now and to reach a doctor for medical issues. Do not produce the normal HEADLINE/DO THIS NOW format in that case.
+- Never give dangerous withdrawal advice. Never recommend breath holds in water.
+- Never encourage unsafe cold exposure, overtraining through pain, or eating-disorder-unsafe behaviour.
+- Never shame a relapse or missed day.
+- If ACTIVE ROUTE is SAFETY_CRISIS: stop normal coaching. Reply calmly directing the user to local emergency services / crisis line / doctor.
 
 GORILLA MINDSET PRINCIPLES (inherit, do not lecture):
 - Consistency over intensity. Fundamentals over hacks. Standards over moods.
 - Self-responsibility over motivation. One day at a time. No zero days.
 - Minimums on hard days. Standards on normal days.
-- Always leave the user with a clear next action.
-- Ask only 1 clarifying question when needed. If safe assumptions can be made, act first and ask later.
-- No shame. No guru language. No over-explaining. Teach through action.
+- Always end with a clear next action AND a concrete next reply option so the conversation can continue.
 
-OUTPUT LENGTH RULES (hard):
-- Default answers are SHORT and action-led. Never dump the full protocol.
-- Do NOT produce a 20-day, 60-day, or 90-day plan unless ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST.
-- For GENERAL_LIFE_STUCK: respond in the short body-first shape — HEADLINE / WHAT'S HAPPENING (1–2 lines) / DO THIS NOW (≤3 bullets, body-first: water, walk, protein) / TODAY'S NON-NEGOTIABLES (≤3 bullets) / GUIDED PRACTICE (only if one was selected) / COACH CLOSE (1 line) / ONE QUESTION (1 line). No long plan.
+CONVERSATION RULES:
+- Treat this as an ongoing thread. If a PRIOR CONVERSATION block is provided, continue from it — do not re-introduce, do not restart the diagnosis, build on the previous turn.
+- Do NOT produce a 20/60/90-day plan unless ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST.
+- Default answers are SHORT and action-led.
 
-Personalise: address the operator's primaryGoal and primaryGap directly. Reference protocolDay and current streak when relevant. If readinessState is low, give the minimum standard, not the full protocol. If the user message is ambiguous given the profile, ask ONE clarification question, then stop.
-
-RESPONSE FORMAT (use these exact section labels, in this order, for every non-crisis, non-GENERAL_LIFE_STUCK response):
+DEFAULT RESPONSE FORMAT (every non-crisis, non-GENERAL_LIFE_STUCK, non-GENERAL_TRANSFORMATION_REQUEST response):
 
 HEADLINE
 WHAT'S HAPPENING
@@ -42,13 +47,9 @@ DO THIS NOW
 TODAY'S NON-NEGOTIABLES
 IF TIME IS LOW
 COACH CLOSE
+REPLY WITH
 
-Rules:
-- Keep answers short. Do not dump the full protocol.
-- Use the smallest useful next action.
-- Do not overclaim science.
-- Do not shame.
-- Do not use generic motivation.`;
+REPLY WITH must give the user a concrete next reply option (e.g. "Reply BUILD MY PLAN and I will give you tomorrow's first hour.").`;
 
 const ProfileSchema = z.object({
   name: z.string(),
@@ -198,6 +199,12 @@ const TemporalSchema = z.object({
 });
 export type TemporalContext = z.infer<typeof TemporalSchema>;
 
+export type ResponseMode =
+  | "MORNING_ACTIVATION"
+  | "AFTERNOON_RESCUE"
+  | "EVENING_RESET"
+  | "LATE_NIGHT_SHUTDOWN";
+
 export type CoachDebug = {
   selectedRoute: CoachRoute;
   breathworkSubRoute: BreathworkSubRoute;
@@ -226,13 +233,27 @@ export type CoachDebug = {
   sessionContext: SessionContext | null;
   temporalSource: "client" | "fallback";
   timeBasedRouteReason: string | null;
+  responseMode: ResponseMode;
+  conversationContinuation: boolean;
+  userCanReply: boolean;
+  quickRepliesShown: boolean;
+  retrievalSuppressedVolumes: string[];
+  reasonForSuppression: string | null;
 };
 
 export type CoachResponse = {
   answer: string;
   debug: CoachDebug;
   guidedPractice: GuidedPracticeRec | null;
+  quickReplies: string[];
 };
+
+const HistoryTurnSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().max(8000),
+});
+export type CoachHistoryTurn = z.infer<typeof HistoryTurnSchema>;
+
 
 const SAFETY_PATTERNS = [
   /\bsuicid/i, /\bkill myself\b/i, /\bend (my|it all) life\b/i, /\bself.?harm\b/i,
@@ -345,10 +366,11 @@ function detectRoute(
   if (lifeStuckMessage) {
     return {
       route: "GENERAL_LIFE_STUCK",
-      reason: "User expresses general life-stuck / unmotivated / lost. Default to short body-first response, one question, no long plan.",
-      query: "stuck motivation identity body first walk protein water minimum standard one day at a time",
+      reason: "User expresses general life-stuck / unmotivated / lost. Use direct body-first, time-aware structure. No long plan.",
+      query: "gorilla mind master system prompt daily operating system identity discipline minimum standard body first reset morning routine evening shutdown standards over moods one promise",
     };
   }
+
 
   // 1d. Late-night override — protect sleep, refuse intense protocols.
   if (temporal?.dayPart === "LATE_NIGHT" && intenseLateNightIntent) {
@@ -804,6 +826,7 @@ export const askCoach = createServerFn({ method: "POST" })
       journal: JournalSchema.nullable().optional(),
       dailyProgress: DailyProgressSchema.nullable().optional(),
       temporal: TemporalSchema.nullable().optional(),
+      history: z.array(HistoryTurnSchema).max(40).optional(),
     }).parse(input),
   )
   .handler(async ({ data }): Promise<CoachResponse> => {
@@ -814,6 +837,7 @@ export const askCoach = createServerFn({ method: "POST" })
     const profile = data.profile ?? null;
     const journal = data.journal ?? null;
     const progress = data.dailyProgress ?? null;
+    const history = data.history ?? [];
 
     // Temporal: prefer client-provided; otherwise derive a UTC-based fallback.
     let temporal: TemporalContext | null = data.temporal ?? null;
@@ -841,12 +865,22 @@ export const askCoach = createServerFn({ method: "POST" })
       temporalSource = "fallback";
     }
 
+    // Derive response mode. EVENING >21:30 promotes to LATE_NIGHT_SHUTDOWN.
+    const [hStr, mStr] = (temporal.localTime || "00:00").split(":");
+    const tHour = Number(hStr) || 0;
+    const tMin = Number(mStr) || 0;
+    const afterShutdown = tHour > 21 || (tHour === 21 && tMin >= 30);
+    let responseMode: ResponseMode =
+      temporal.dayPart === "MORNING" ? "MORNING_ACTIVATION" :
+      temporal.dayPart === "MIDDAY" ? "AFTERNOON_RESCUE" :
+      temporal.dayPart === "EVENING" ? (afterShutdown ? "LATE_NIGHT_SHUTDOWN" : "EVENING_RESET") :
+      "LATE_NIGHT_SHUTDOWN";
+
     const safetyFlags: string[] = [];
     if (profile?.alcoholFlag) safetyFlags.push("alcoholFlag");
     if (profile?.processAddictionFlag) safetyFlags.push("processAddictionFlag");
     if (profile?.foodBoundaryActive) safetyFlags.push("foodBoundaryActive");
     if (profile && profile.recoveryState && profile.recoveryState !== "none") safetyFlags.push(`recoveryState:${profile.recoveryState}`);
-
 
     const routing = detectRoute(data.question, profile, journal, temporal);
 
@@ -860,6 +894,29 @@ export const askCoach = createServerFn({ method: "POST" })
           breathworkSubRoute,
           message: data.question,
         });
+
+    // Retrieval suppression — for GENERAL_LIFE_STUCK, do not lean on process-addiction
+    // material unless the user explicitly mentioned addiction/compulsion/relapse.
+    const addictionTrigger = /\b(addict(ion|ed)?|relapse|binge|bingeing|compulsi(ve|on)|substance|alcohol|porn|gambl(e|ing)|food binge|uncontrollable scrol|self.?destruct|drinking|drugs?)\b/i.test(data.question);
+    const retrievalSuppressedVolumes: string[] = [];
+    let reasonForSuppression: string | null = null;
+    if (routing.route === "GENERAL_LIFE_STUCK" && !addictionTrigger) {
+      retrievalSuppressedVolumes.push("process_addiction");
+      reasonForSuppression = "Process addiction content not used because user did not mention addiction/compulsion/relapse.";
+    }
+
+    // Quick replies surfaced in the UI for this route.
+    const quickRepliesByRoute: Partial<Record<CoachRoute, string[]>> = {
+      GENERAL_LIFE_STUCK: ["FITNESS", "JOB", "BOTH", "BUILD MY PLAN", "I'M STRUGGLING TONIGHT"],
+      GENERAL_TRANSFORMATION_REQUEST: ["20-DAY", "60-DAY", "90-DAY", "START TONIGHT"],
+      EVENING_REVIEW: ["BUILD TOMORROW", "WIND DOWN NOW", "MORNING PLAN"],
+      SLEEP_WIND_DOWN: ["BREATHWORK", "PHONE DOWN", "MORNING PLAN"],
+      MISSED_DAY_REPAIR: ["RESET", "MINIMUM STANDARD", "BUILD MY PLAN"],
+      MISSED_MORNING: ["MORNING", "BUILD MY PLAN"],
+    };
+    const quickReplies = quickRepliesByRoute[routing.route] ?? [];
+
+    const conversationContinuation = history.length > 0;
 
     const debug: CoachDebug = {
       selectedRoute: routing.route,
@@ -889,15 +946,21 @@ export const askCoach = createServerFn({ method: "POST" })
       sessionContext: temporal.sessionContext,
       temporalSource,
       timeBasedRouteReason: routing.timeBasedRouteReason ?? null,
+      responseMode,
+      conversationContinuation,
+      userCanReply: true,
+      quickRepliesShown: quickReplies.length > 0,
+      retrievalSuppressedVolumes,
+      reasonForSuppression,
     };
 
     if (!apiKey) {
       debug.apiError = "OPENAI_API_KEY missing on server";
-      return { answer: "Coach is offline. Backend secret missing.", debug, guidedPractice };
+      return { answer: "Coach is offline. Backend secret missing.", debug, guidedPractice, quickReplies };
     }
     if (!vectorStoreId) {
       debug.apiError = "GORILLA_MIND_VECTOR_STORE_ID missing on server";
-      return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice };
+      return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice, quickReplies };
     }
 
     const contextBlock = buildContextBlock(profile, journal, progress, temporal);
@@ -912,39 +975,86 @@ export const askCoach = createServerFn({ method: "POST" })
       `time_based_route_reason: ${routing.timeBasedRouteReason ?? "none"}`,
       `day_part: ${temporal.dayPart}`,
       `session_context: ${temporal.sessionContext}`,
+      `response_mode: ${responseMode}`,
+      `retrieval_suppressed_volumes: ${retrievalSuppressedVolumes.join(", ") || "none"}`,
+      `retrieval_suppression_reason: ${reasonForSuppression ?? "none"}`,
       "=== END ROUTE ===",
     ].join("\n");
 
-
     const breathworkProtocolGuidance: Record<BreathworkSubRoute, string> = {
       DOWNREGULATE:
-        "BREATHWORK sub-route DOWNREGULATE. User is stressed / wired / anxious / overwhelmed / racing thoughts. Recommend a DOWN-REGULATING protocol: coherent breathing or extended-exhale breathing. DO NOT default to box breathing. DO NOT make breath holds the main protocol. Example: sit down; inhale through the nose for 4s; exhale slowly for 6–8s; repeat for 3–5 minutes; keep the breath quiet, controlled, nasal where possible.",
+        "BREATHWORK sub-route DOWNREGULATE. User is stressed / wired / anxious / overwhelmed / racing thoughts. Recommend a DOWN-REGULATING protocol: coherent breathing or extended-exhale breathing. DO NOT default to box breathing. DO NOT make breath holds the main protocol.",
       FOCUS:
-        "BREATHWORK sub-route FOCUS. User is unfocused / scattered / mentally noisy but not panicked. Recommend box breathing or coherent breathing. Box: 4s inhale, 4s hold, 4s exhale, 4s hold, minimum 4 rounds.",
+        "BREATHWORK sub-route FOCUS. User is unfocused / scattered / mentally noisy but not panicked. Recommend box breathing or coherent breathing.",
       ENERGISE:
-        "BREATHWORK sub-route ENERGISE. User is tired / flat / low energy / foggy. Recommend a safer energising protocol from the knowledge base. Keep safety constraints. DO NOT recommend intense breathwork if there are any poor-sleep, panic, chest pain, dizziness, pregnancy, heart, or medical risk flags.",
+        "BREATHWORK sub-route ENERGISE. User is tired / flat / low energy / foggy. Recommend a safer energising protocol. Honour safety constraints.",
       WIND_DOWN:
-        "BREATHWORK sub-route WIND_DOWN. User mentions sleep / evening / night / wind-down / scrolling at night. Recommend wind-down breathwork: nasal, slow, extended-exhale, calming. NO intense breath holds.",
+        "BREATHWORK sub-route WIND_DOWN. User mentions sleep / evening / night / wind-down. Recommend wind-down breathwork: nasal, slow, extended-exhale.",
       NONE: "",
     };
 
-    // Route-specific instruction nudges
-    const baseFormatRule = "Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly. HEADLINE must name the correct breathwork protocol for the user's state. WHAT'S HAPPENING briefly explains why this protocol fits. DO THIS NOW gives exact timing and steps. COACH CLOSE is direct, calm, grounded, no hype.";
-    const breathworkSafety = "Breathwork safety: never recommend breath holds in water; never recommend intense breathwork while driving; if user mentions chest pain, fainting, severe dizziness, suicidal ideation, overdose, or medical emergency symptoms, stop coaching and direct them to urgent professional help. Stay within general wellbeing guidance.";
+    const baseFormatRule = "Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE / REPLY WITH format exactly.";
+    const breathworkSafety = "Breathwork safety: never recommend breath holds in water; never recommend intense breathwork while driving; if the user mentions chest pain, fainting, dizziness, suicidal ideation, overdose, or medical emergency symptoms, stop coaching and direct them to urgent professional help.";
 
-    const lifeStuckShape = "ACTIVE ROUTE is GENERAL_LIFE_STUCK. Do NOT produce a 20/60/90-day plan. Use this SHORT shape exactly: HEADLINE (3–6 words) / WHAT'S HAPPENING (1–2 lines, name the pattern, no shame) / DO THIS NOW (≤3 bullets, body-first: water, walk, one protein-first meal) / TODAY'S NON-NEGOTIABLES (≤3 bullets) / GUIDED PRACTICE (only if one was selected) / COACH CLOSE (1 line, calm and grounded) / ONE QUESTION (one useful, scoped question).";
-    const transformationShape = "ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST. The user explicitly asked for a full plan. A longer multi-day or multi-week plan is allowed. Still anchor everything in the Top 21 fundamentals and the user's assigned pillars. Begin with HEADLINE and a one-paragraph WHAT'S HAPPENING, then provide the plan in clear phases (e.g. Days 1–7, 8–21, 22–60). End with TODAY'S NON-NEGOTIABLES and COACH CLOSE.";
+    // Dynamic ORDERS heading for life-stuck.
+    const ordersHeading =
+      responseMode === "EVENING_RESET" || responseMode === "LATE_NIGHT_SHUTDOWN"
+        ? "TONIGHT'S ORDERS"
+        : responseMode === "MORNING_ACTIVATION"
+          ? "TODAY'S ORDERS"
+          : "TODAY'S ORDERS";
+    const includeTomorrowMorning = responseMode === "EVENING_RESET" || responseMode === "LATE_NIGHT_SHUTDOWN";
+
+    const lifeStuckShape = [
+      "ACTIVE ROUTE is GENERAL_LIFE_STUCK. Do NOT produce a 20/60/90-day plan. Use this exact short structure and section labels:",
+      "",
+      "HEADLINE",
+      "Short, direct diagnosis. No more than one sentence.",
+      "",
+      "WHAT'S ACTUALLY HAPPENING",
+      "Name the pattern clearly in 2–4 short lines. No therapy language. No vague reassurance. No 'this is a common challenge'.",
+      "",
+      ordersHeading,
+      `Numbered list, 4–5 items max. Every item must be appropriate for RESPONSE MODE ${responseMode}. EVENING_RESET and LATE_NIGHT_SHUTDOWN: no full workouts, no big meals (unless user has not eaten), prefer phone-away-from-bed, water, clothes laid out, tomorrow's first action chosen, sensible bedtime. MORNING_ACTIVATION: water, breathwork, movement, protein, plan. AFTERNOON_RESCUE: one body-first action, one work/life reset, one evening protection.`,
+      "End the section with the 'No life overhaul / No job panic / No massive fitness plan' framing where it fits the time of day.",
+      includeTomorrowMorning ? "" : null,
+      includeTomorrowMorning ? "TOMORROW MORNING" : null,
+      includeTomorrowMorning ? "Numbered list, 4–5 items. Pre-phone routine: water, 5 min breathing, 20 min movement, protein-based breakfast, one written line of intent." : null,
+      "",
+      "COACH CLOSE",
+      "Strong, grounded close, 2–3 short lines. Use phrasing like 'You are not broken. You are under-led.' or 'Your job is not to fix your whole life tonight. Your job is to keep one promise to yourself.' No motivational fluff. No vague questions.",
+      "",
+      "REPLY WITH",
+      'Give the user a concrete next reply option. For this route, always end with: "FITNESS, JOB, or BOTH."',
+      "",
+      "Hard rules: do NOT ask a soft question like 'what is the first thing you will do tomorrow morning to improve your day?'. Give the first step yourself, then ask them to choose a direction.",
+    ].filter((l) => l !== null).join("\n");
+
+    const transformationShape = "ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST. The user explicitly asked for a full plan. A longer multi-day or multi-week plan is allowed. Anchor in the Top 21 fundamentals and the user's assigned pillars. Begin with HEADLINE and a one-paragraph WHAT'S HAPPENING, then provide the plan in clear phases (Days 1–7, 8–21, 22–60). End with TODAY'S NON-NEGOTIABLES, COACH CLOSE, and REPLY WITH (give a concrete next reply option).";
 
     const routeInstruction =
       routing.route === "SAFETY_CRISIS"
-        ? "ACTIVE ROUTE is SAFETY_CRISIS. Do NOT produce the normal HEADLINE/DO THIS NOW format. Respond with a short calm safety-first message: tell the user to contact local emergency services or a crisis line right now, and to reach a doctor for medical issues. Do not give protocol advice in this response."
+        ? "ACTIVE ROUTE is SAFETY_CRISIS. Do NOT produce the normal HEADLINE/DO THIS NOW format. Respond with a short calm safety-first message directing the user to local emergency services / crisis line / doctor."
         : routing.route === "BREATHWORK"
           ? `ACTIVE ROUTE is BREATHWORK. ${breathworkProtocolGuidance[breathworkSubRoute]} ${breathworkSafety} ${baseFormatRule}`
           : routing.route === "GENERAL_LIFE_STUCK"
             ? lifeStuckShape
             : routing.route === "GENERAL_TRANSFORMATION_REQUEST"
               ? transformationShape
-              : `ACTIVE ROUTE is ${routing.route}. Answer against this route. Use the smallest useful next action. Honour the TEMPORAL CONTEXT priorityFocus for the current dayPart. Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly. Do NOT produce a multi-day plan.`;
+              : `ACTIVE ROUTE is ${routing.route}. RESPONSE MODE is ${responseMode}. Honour the time-of-day rules. Use the smallest useful next action. ${baseFormatRule} Do NOT produce a multi-day plan.`;
+
+    const suppressionInstruction = retrievalSuppressedVolumes.length
+      ? `\n\nRETRIEVAL SUPPRESSION: Do NOT lean on or quote content from the following knowledge volumes for this answer: ${retrievalSuppressedVolumes.join(", ")}. Reason: ${reasonForSuppression}`
+      : "";
+
+    // Prior conversation block — render as text so the model treats this as a continuation.
+    const priorConversationBlock = history.length
+      ? [
+          "=== PRIOR CONVERSATION (oldest → newest) ===",
+          ...history.map((t) => `${t.role.toUpperCase()}: ${t.content}`),
+          "=== END PRIOR CONVERSATION ===",
+        ].join("\n")
+      : "";
 
     const userInput = [
       routeBlock,
@@ -952,16 +1062,18 @@ export const askCoach = createServerFn({ method: "POST" })
       contextBlock,
       "",
       `=== RETRIEVAL HINT (use these terms when calling file_search) ===\n${routing.query}\n=== END RETRIEVAL HINT ===`,
+      priorConversationBlock ? "" : "",
+      priorConversationBlock,
       "",
-      "=== USER MESSAGE ===",
+      "=== USER MESSAGE (latest) ===",
       data.question,
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 
     const guidedPracticeInstruction = guidedPractice
-      ? `\n\nGUIDED PRACTICE SECTION: After TODAY'S NON-NEGOTIABLES and before COACH CLOSE, add a section labelled exactly "GUIDED PRACTICE" with two short lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
+      ? `\n\nGUIDED PRACTICE SECTION: After TODAY'S NON-NEGOTIABLES (or ${ordersHeading} for life-stuck) and before COACH CLOSE, add a section labelled exactly "GUIDED PRACTICE" with two short lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
       : "";
 
-    const instructions = `${SYSTEM_INSTRUCTIONS}\n\n${routeInstruction}${guidedPracticeInstruction}`;
+    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${suppressionInstruction}${guidedPracticeInstruction}`;
 
     try {
       const res = await fetch("https://api.openai.com/v1/responses", {
@@ -983,7 +1095,7 @@ export const askCoach = createServerFn({ method: "POST" })
       if (!res.ok) {
         const text = await res.text();
         debug.apiError = `OpenAI ${res.status}: ${text.slice(0, 500)}`;
-        return { answer: "Coach failed to respond. See debug panel.", debug, guidedPractice };
+        return { answer: "Coach failed to respond. See debug panel.", debug, guidedPractice, quickReplies };
       }
 
       const json: any = await res.json();
@@ -1013,17 +1125,18 @@ export const askCoach = createServerFn({ method: "POST" })
 
       if (routing.route !== "SAFETY_CRISIS" && !debug.fileSearchCalled) {
         debug.apiError = "Knowledge-base retrieval was required, but OpenAI did not call file_search.";
-        return { answer: "Coach could not access the knowledge base. See debug panel.", debug, guidedPractice };
+        return { answer: "Coach could not access the knowledge base. See debug panel.", debug, guidedPractice, quickReplies };
       }
 
       if (routing.route !== "SAFETY_CRISIS" && debug.fileSearchCalled && debug.retrievedChunksCount === 0) {
         debug.apiError = "Knowledge-base retrieval returned zero chunks for the selected route.";
-        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice };
+        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice, quickReplies };
       }
 
-      return { answer: answer || "(empty response)", debug, guidedPractice };
+      return { answer: answer || "(empty response)", debug, guidedPractice, quickReplies };
     } catch (err) {
       debug.apiError = err instanceof Error ? err.message : String(err);
-      return { answer: "Coach request failed. See debug panel.", debug, guidedPractice };
+      return { answer: "Coach request failed. See debug panel.", debug, guidedPractice, quickReplies };
     }
   });
+
