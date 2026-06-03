@@ -12,6 +12,7 @@ import {
   type UserProfile,
 } from "@/lib/profile-store";
 import type { GuidedPractice } from "@/lib/practices";
+import { computeProtocolDailyState } from "@/lib/protocol-pillars";
 
 // ---------- Storage keys ----------
 export const PRACTICE_LOG_KEY = "gm.practiceLog.v1";
