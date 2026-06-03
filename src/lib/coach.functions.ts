@@ -319,12 +319,29 @@ export type CoachDebug = {
   selectedRouteAfterOverride: CoachRoute | null;
   duplicateAdviceSuppressed: boolean;
   suppressedAdvice: string[];
+  // Exercise Prescription Engine
+  fitnessGoal: FitnessGoal;
+  fitnessLevel: FitnessLevel;
+  trainingLocation: TrainingLocation;
+  equipment: Equipment;
+  injuryFlag: InjuryFlag;
+  availableTime: AvailableTime;
+  energyLevel: EnergyLevelTag;
+  preferredStyle: PreferredStyle;
+  exerciseRoute: CoachRoute | null;
+  guidedWorkoutRecommendation: GuidedWorkoutRecommendation | null;
+  exercisePersonalisationMissing: string[];
+  exerciseContinuationDetected: boolean;
+  exercisePlanSource: string | null;
+  exerciseKnowledgeUsed: boolean;
+  safetyModificationApplied: boolean;
 };
 
 export type CoachResponse = {
   answer: string;
   debug: CoachDebug;
   guidedPractice: GuidedPracticeRec | null;
+  guidedWorkout: GuidedWorkoutRecommendation | null;
   quickReplies: string[];
 };
 
