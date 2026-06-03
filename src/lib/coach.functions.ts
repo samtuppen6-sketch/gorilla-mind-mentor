@@ -803,6 +803,7 @@ export const askCoach = createServerFn({ method: "POST" })
       profile: ProfileSchema.nullable().optional(),
       journal: JournalSchema.nullable().optional(),
       dailyProgress: DailyProgressSchema.nullable().optional(),
+      temporal: TemporalSchema.nullable().optional(),
     }).parse(input),
   )
   .handler(async ({ data }): Promise<CoachResponse> => {
@@ -814,6 +815,32 @@ export const askCoach = createServerFn({ method: "POST" })
     const journal = data.journal ?? null;
     const progress = data.dailyProgress ?? null;
 
+    // Temporal: prefer client-provided; otherwise derive a UTC-based fallback.
+    let temporal: TemporalContext | null = data.temporal ?? null;
+    let temporalSource: "client" | "fallback" = temporal ? "client" : "fallback";
+    if (!temporal) {
+      const now = new Date();
+      const hour = now.getUTCHours();
+      const dayPart: DayPart =
+        hour >= 4 && hour < 11 ? "MORNING" :
+        hour >= 11 && hour < 16 ? "MIDDAY" :
+        hour >= 16 && hour < 22 ? "EVENING" : "LATE_NIGHT";
+      const sessionContext: SessionContext =
+        dayPart === "MORNING" ? "MORNING_CHECK_IN" :
+        dayPart === "MIDDAY" ? "MIDDAY_COURSE_CORRECTION" :
+        dayPart === "EVENING" ? "EVENING_REVIEW" : "LATE_NIGHT_SLEEP_PROTECTION";
+      const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+      temporal = {
+        localDate: now.toISOString().slice(0, 10),
+        localTime: `${String(hour).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}`,
+        timezone: "UTC",
+        dayOfWeek: days[now.getUTCDay()],
+        dayPart,
+        sessionContext,
+      };
+      temporalSource = "fallback";
+    }
+
     const safetyFlags: string[] = [];
     if (profile?.alcoholFlag) safetyFlags.push("alcoholFlag");
     if (profile?.processAddictionFlag) safetyFlags.push("processAddictionFlag");
@@ -821,7 +848,7 @@ export const askCoach = createServerFn({ method: "POST" })
     if (profile && profile.recoveryState && profile.recoveryState !== "none") safetyFlags.push(`recoveryState:${profile.recoveryState}`);
 
 
-    const routing = detectRoute(data.question, profile, journal);
+    const routing = detectRoute(data.question, profile, journal, temporal);
 
     const breathworkSubRoute: BreathworkSubRoute =
       routing.route === "BREATHWORK" ? (routing.breathworkSubRoute ?? "DOWNREGULATE") : "NONE";
@@ -854,6 +881,14 @@ export const askCoach = createServerFn({ method: "POST" })
       safetyFlagsUsed: safetyFlags,
       guidedPracticeId: guidedPractice?.id ?? null,
       guidedPracticeReason: guidedPractice?.reason ?? null,
+      localDate: temporal.localDate,
+      localTime: temporal.localTime,
+      timezone: temporal.timezone,
+      dayOfWeek: temporal.dayOfWeek,
+      dayPart: temporal.dayPart,
+      sessionContext: temporal.sessionContext,
+      temporalSource,
+      timeBasedRouteReason: routing.timeBasedRouteReason ?? null,
     };
 
     if (!apiKey) {
@@ -865,7 +900,7 @@ export const askCoach = createServerFn({ method: "POST" })
       return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice };
     }
 
-    const contextBlock = buildContextBlock(profile, journal, progress);
+    const contextBlock = buildContextBlock(profile, journal, progress, temporal);
 
     const routeBlock = [
       "=== ACTIVE ROUTE (selected by backend route detector) ===",
@@ -874,8 +909,12 @@ export const askCoach = createServerFn({ method: "POST" })
       `reason: ${routing.reason}`,
       `retrieval_query: ${routing.query}`,
       `safety_flags: ${safetyFlags.length ? safetyFlags.join(", ") : "none"}`,
+      `time_based_route_reason: ${routing.timeBasedRouteReason ?? "none"}`,
+      `day_part: ${temporal.dayPart}`,
+      `session_context: ${temporal.sessionContext}`,
       "=== END ROUTE ===",
     ].join("\n");
+
 
     const breathworkProtocolGuidance: Record<BreathworkSubRoute, string> = {
       DOWNREGULATE:
