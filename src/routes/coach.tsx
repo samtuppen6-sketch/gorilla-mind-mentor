@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
 import { loadDailyProgress } from "@/lib/practice-progress";
-import { Loader2, Send, Play, Clock } from "lucide-react";
+import { Loader2, Send, Play, Clock, ChevronDown } from "lucide-react";
 import type { GuidedPracticeRec } from "@/lib/practices";
 
 
@@ -119,6 +119,15 @@ function buildFailureDebug(temporal: TemporalContext, err: unknown): CoachDebug 
     quickRepliesShown: false,
     retrievalSuppressedVolumes: [],
     reasonForSuppression: null,
+    previousCoachReplyOptions: [],
+    userContinuationCommandDetected: false,
+    continuationCommand: "NONE",
+    routeOverrideApplied: false,
+    routeOverrideReason: null,
+    selectedRouteBeforeOverride: null,
+    selectedRouteAfterOverride: null,
+    duplicateAdviceSuppressed: false,
+    suppressedAdvice: [],
   };
 }
 
@@ -128,25 +137,40 @@ function CoachPage() {
   const journal = useJournal();
   const [seed, setSeed] = useState(SEED);
   const [reply, setReply] = useState("");
+  const [composerOpen, setComposerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [thread, setThread] = useState<ThreadMessage[]>([]);
   const threadEndRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [thread.length, loading]);
 
-  async function send(rawMessage: string) {
+  // Tap-outside-to-collapse.
+  useEffect(() => {
+    if (!composerOpen) return;
+    const onDown = (e: PointerEvent) => {
+      const el = composerRef.current;
+      if (el && !el.contains(e.target as Node)) setComposerOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [composerOpen]);
+
+  const send = useCallback(async (rawMessage: string) => {
     const message = rawMessage.trim();
     if (!message || loading) return;
 
-    // Build history from existing thread (before this new user turn).
     const history: CoachHistoryTurn[] = thread.map((m) => ({
       role: m.role,
       content: m.content,
     }));
 
     setThread((t) => [...t, { role: "user", content: message }]);
+    setReply("");
+    setComposerOpen(false);
     setLoading(true);
     const temporal = buildTemporalContext(message);
     try {
@@ -178,19 +202,7 @@ function CoachPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function handleInitialSubmit(e?: React.FormEvent) {
-    e?.preventDefault();
-    await send(seed);
-  }
-
-  async function handleReplySubmit(e?: React.FormEvent) {
-    e?.preventDefault();
-    const text = reply;
-    setReply("");
-    await send(text);
-  }
+  }, [ask, journal, loading, profile, thread]);
 
   const hasThread = thread.length > 0;
   const lastAssistant = [...thread].reverse().find((m) => m.role === "assistant") as
@@ -200,13 +212,16 @@ function CoachPage() {
   return (
     <>
       <SectionHeader eyebrow="AI" title="Coach." sub="Direct. Calm. Grounded in profile, journal and the Gorilla Mind knowledge base." />
-      <div className="px-5 space-y-4 pb-8">
+      <div className="px-5 space-y-4 pb-40">
         <div className="rounded-xl border border-border bg-card/60 p-3 text-[11px] text-muted-foreground">
           <span className="text-gold-muted">Context loaded:</span> profile · {profile.name} · day {profile.protocolDay} · gap "{profile.primaryGap}" {journal ? `· journal ${journal.date}` : "· no journal yet"}
         </div>
 
         {!hasThread && (
-          <form onSubmit={handleInitialSubmit} className="rounded-xl border border-border bg-card p-3">
+          <form
+            onSubmit={(e) => { e.preventDefault(); send(seed); }}
+            className="rounded-xl border border-border bg-card p-3"
+          >
             <textarea
               value={seed}
               onChange={(e) => setSeed(e.target.value)}
@@ -225,7 +240,6 @@ function CoachPage() {
           </form>
         )}
 
-        {/* Conversation thread */}
         {hasThread && (
           <div className="space-y-3">
             {thread.map((m, i) =>
@@ -267,56 +281,100 @@ function CoachPage() {
                 </div>
               )
             )}
-            <div ref={threadEndRef} />
-          </div>
-        )}
-
-        {/* Reply input + quick replies */}
-        {hasThread && (
-          <div className="rounded-xl border border-border bg-card p-3 space-y-3 sticky bottom-2">
-            {lastAssistant && lastAssistant.quickReplies.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {lastAssistant.quickReplies.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => send(q)}
-                    className="text-[11px] uppercase tracking-[0.15em] rounded-full border border-gold/50 px-3 py-1.5 text-gold hover:bg-gold/10 disabled:opacity-50 transition-colors"
-                  >
-                    {q}
-                  </button>
-                ))}
+            {loading && (
+              <div className="mr-6 rounded-xl border border-border bg-card p-4 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="w-3 h-3 animate-spin" /> Coach is thinking…
               </div>
             )}
-            <form onSubmit={handleReplySubmit} className="space-y-2">
-              <textarea
-                value={reply}
-                onChange={(e) => setReply(e.target.value)}
-                placeholder="Reply to the coach..."
-                rows={3}
-                className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                    e.preventDefault();
-                    handleReplySubmit();
-                  }
-                }}
-              />
-              <button
-                type="submit"
-                disabled={loading || !reply.trim()}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gold py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50 transition-opacity"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {loading ? "Coach is thinking…" : "Send reply"}
-              </button>
-            </form>
+            <div ref={threadEndRef} />
           </div>
         )}
 
         <DebugPanel debug={lastAssistant?.debug ?? null} loading={loading} />
       </div>
+
+      {/* Collapsible bottom composer */}
+      {hasThread && (
+        <div
+          ref={composerRef}
+          className="fixed left-0 right-0 bottom-16 z-40 px-3"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="mx-auto max-w-screen-sm rounded-xl border border-border bg-card shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/95">
+            {!composerOpen ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setComposerOpen(true);
+                  setTimeout(() => textareaRef.current?.focus(), 50);
+                }}
+                className="w-full h-12 px-4 flex items-center justify-between text-left text-sm text-muted-foreground"
+              >
+                <span className="truncate">
+                  {reply.trim() ? reply : "Reply to the coach..."}
+                </span>
+                <Send className="w-4 h-4 text-gold shrink-0" />
+              </button>
+            ) : (
+              <div className="p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Reply</span>
+                  <button
+                    type="button"
+                    onClick={() => setComposerOpen(false)}
+                    aria-label="Collapse composer"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </div>
+                {lastAssistant && lastAssistant.quickReplies.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {lastAssistant.quickReplies.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => send(q)}
+                        className="text-[11px] uppercase tracking-[0.15em] rounded-full border border-gold/50 px-3 py-1.5 text-gold hover:bg-gold/10 disabled:opacity-50 transition-colors"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <form
+                  onSubmit={(e) => { e.preventDefault(); send(reply); }}
+                  className="space-y-2"
+                >
+                  <textarea
+                    ref={textareaRef}
+                    value={reply}
+                    onChange={(e) => setReply(e.target.value)}
+                    placeholder="Reply to the coach..."
+                    rows={3}
+                    className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        send(reply);
+                      }
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading || !reply.trim()}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gold py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50 transition-opacity"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {loading ? "Coach is thinking…" : "Send reply"}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -331,10 +389,19 @@ function DebugPanel({ debug: d, loading }: { debug: CoachDebug | null; loading: 
         <dl className="space-y-2 text-muted-foreground">
           <Row k="selected route" v={d.selectedRoute} />
           <Row k="response mode" v={d.responseMode} />
+          <Row k="conversation continuation" v={String(d.conversationContinuation)} />
+          <Row k="previous coach reply options" v={d.previousCoachReplyOptions.length ? d.previousCoachReplyOptions.join(", ") : "—"} />
+          <Row k="user continuation command detected" v={String(d.userContinuationCommandDetected)} />
+          <Row k="continuation command" v={d.continuationCommand} />
+          <Row k="route override applied" v={String(d.routeOverrideApplied)} />
+          <Row k="route override reason" v={d.routeOverrideReason ?? "—"} />
+          <Row k="selected route before override" v={d.selectedRouteBeforeOverride ?? "—"} />
+          <Row k="selected route after override" v={d.selectedRouteAfterOverride ?? "—"} />
+          <Row k="duplicate advice suppressed" v={String(d.duplicateAdviceSuppressed)} />
+          <Row k="suppressed advice" v={d.suppressedAdvice.length ? d.suppressedAdvice.join(", ") : "—"} />
           <Row k="breathwork sub-route" v={d.breathworkSubRoute} />
           <Row k="route reason" v={d.routeReason} />
           <Row k="time-based route reason" v={d.timeBasedRouteReason ?? "—"} />
-          <Row k="conversation continuation" v={String(d.conversationContinuation)} />
           <Row k="user can reply" v={String(d.userCanReply)} />
           <Row k="quick replies shown" v={String(d.quickRepliesShown)} />
           <Row k="retrieval suppressed volumes" v={d.retrievalSuppressedVolumes.length ? d.retrievalSuppressedVolumes.join(", ") : "none"} />
