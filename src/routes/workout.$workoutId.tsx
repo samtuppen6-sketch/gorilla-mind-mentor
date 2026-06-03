@@ -505,60 +505,28 @@ function WorkoutPlayerPage() {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={handleComplete}
-          disabled={!!completion}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gold/40 bg-card py-3 text-sm font-semibold text-foreground disabled:opacity-50"
-        >
-          <Check className="w-4 h-4" />
-          Mark workout complete
-        </button>
+        {!completion && (
+          <button
+            type="button"
+            onClick={handleComplete}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gold/40 bg-card py-3 text-sm font-semibold text-foreground"
+          >
+            <Check className="w-4 h-4" />
+            Mark workout complete
+          </button>
+        )}
 
-        {completion && (
-          <div className="rounded-xl border border-gold/60 bg-gold/10 p-5 space-y-3">
-            <p className="text-sm font-bold text-gold inline-flex items-center gap-2">
-              <Check className="w-4 h-4" />
-              Workout complete
-            </p>
-            <div className="text-xs text-foreground space-y-1">
-              <p>
-                <span className="text-gold-muted">Discipline points awarded: </span>
-                <span className="font-semibold text-gold">
-                  +{completion.pointsAwarded}
-                  {completion.duplicate && " (duplicate today — no DP)"}
-                </span>
-              </p>
-              <p>
-                <span className="text-gold-muted">Daily action: </span>
-                <span className="font-semibold">{dailyActionLabel(completion.dailyActionUpdated)}</span>
-              </p>
-              <p>
-                <span className="text-gold-muted">Protocol streak: </span>
-                {completion.protocolStreakUpdated
-                  ? "daily minimum met — incremented"
-                  : completion.dailyProgress.dailyMinimumMet
-                    ? "already counted today"
-                    : "daily minimum not yet met"}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <Link
-                to="/coach"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-gold py-3 text-xs font-semibold text-primary-foreground"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Coach
-              </Link>
-              <Link
-                to="/"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-gold/50 bg-card py-3 text-xs font-semibold text-foreground"
-              >
-                <CalendarCheck className="w-4 h-4" />
-                View Today
-              </Link>
-            </div>
-          </div>
+        {completion && finalStats && (
+          <WorkoutRecap
+            workoutTitle={workout.title}
+            workoutCategory={workout.category}
+            plannedMinutes={workout.durationMinutes}
+            totalSteps={steps.length}
+            stepsCompleted={finalStats.stepsCompleted}
+            elapsedSec={finalStats.elapsedSec}
+            completion={completion}
+            onRepeat={handleRepeat}
+          />
         )}
 
         {!completion && (
@@ -570,6 +538,7 @@ function WorkoutPlayerPage() {
             Back to Coach
           </Link>
         )}
+
 
         <div className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-[11px] font-mono space-y-1">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Workout debug</p>
