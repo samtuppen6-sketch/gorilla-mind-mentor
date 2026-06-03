@@ -190,6 +190,19 @@ function buildFailureDebug(temporal: TemporalContext, err: unknown): CoachDebug 
     exercisePlanSource: null,
     exerciseKnowledgeUsed: false,
     safetyModificationApplied: false,
+    selectedPillars: [],
+    pillarReasoning: "",
+    activePlanType: null,
+    activePlanLength: null,
+    guidedPracticeRecommendation: null,
+    calorieTargetUsed: null,
+    calorieSource: "not_available",
+    calorieMissingFields: [],
+    macroTargetUsed: null,
+    programmePersonalisationMissing: [],
+    knowledgeBaseVolumesUsed: [],
+    genericFallbackUsed: false,
+    genericFallbackReason: null,
   };
 }
 

@@ -1,97 +1,71 @@
 
-# Plan — Coach Temporal Context + Hybrid Mindset Brain
+# Gorilla Mind Coach — Daily OS Upgrade
 
-Scope: Add user-local time-of-day awareness and Gorilla Mindset hybrid principles to the AI Coach. Plan only — no edits until you confirm.
+Goal: stop generic wellness output. Force pillar-driven, guided, interactive plans with strict nutrition guardrails and matching guided-practice cards.
 
-## What stays untouched
-PRACTICE_REGISTRY, `completePracticeSession`, Top 21 pillar logic, daily minimum, guided practice cards, DP, streaks, vector store retrieval, profile + journal saving, all existing routes and sub-routes.
+## Scope (in order)
 
-## Files to change
+### 1. New routes + detector
+In `src/lib/coach.functions.ts`:
+- Add routes: `PROGRAM_REQUEST`, `FITNESS_PLAN_REQUEST` (exists), `BREATHWORK_MEDITATION_REQUEST`, `MORNING_PROTOCOL_REQUEST`, `NUTRITION_CALORIE_REQUEST`, `FULL_REBUILD_PLAN` (exists).
+- Add a `detectProgramRoute()` step that runs BEFORE existing detectors. Phrases like "fitness plan and meditation", "build me a plan", "give me a routine", "morning routine", "what should I do every day", "7-day plan", "discipline system" → `FULL_REBUILD_PLAN`.
+- Override guard: do not fall into `GENERAL_LIFE_STUCK` / `MISSED_DAY_REPAIR` / `EVENING_REVIEW` / `CONTINUATION_RESET_NOW` unless safety triggers.
+- Continuation commands extended: `CALORIES`, `GYM_PLAN`, `HOME_PLAN`, `MORNING_PROTOCOL`, `FAT_LOSS`, `MUSCLE`, `FITNESS`, `ALL_ROUND_RESET`.
 
-1. `src/lib/coach.functions.ts` — add temporal types, schema, routing, context block, mindset rules.
-2. `src/routes/coach.tsx` — capture local browser time, send it, render new debug rows.
-3. (No changes to `practice-progress.ts`, `protocol-pillars.ts`, `profile-store.ts`.)
+### 2. Pillar Recommendation Engine
+New helper `selectPillarsForRoute(route, message, profile)` returning ordered pillar IDs from the existing 21 in `protocol-pillars.ts`. Outputs go into the system-prompt context AND into `debug.selectedPillars` + `debug.pillarReasoning`. Safety override: morning daylight phrasing only, never "stare at sun".
 
-## 1. Temporal context payload
+### 3. New SYSTEM_INSTRUCTIONS section — Plan Spec
+Add a `PLAN_BUILDING_SPEC` block that forces the exact section headers:
+HEADLINE / THE STANDARD / YOUR FIRST 24 HOURS / MORNING PROTOCOL / TRAINING PLAN / BREATHWORK / MEDITATION / NUTRITION / WHAT I NEED FROM YOU / REPLY WITH.
+Banned phrase list ("light exercise", "guided imagery", "improve mental clarity", "consider…", etc). Required Gorilla phrases vocabulary. Forced when `responseMode === "PLAN_BUILDING"`.
 
-Frontend builds and sends a `temporal` object alongside the existing `profile/journal/dailyProgress`:
+### 4. Guided practice card linkage
+- New `selectGuidedPracticeForPlan(route, pillars, dayPart)` → returns `guidedPracticeRecommendation` matching the breathwork/meditation/morning-protocol prescription word-for-word (e.g. Box Breathing → `box_breathing_5min`, Extended Exhale → `extended_exhale_3min`, Morning Identity Reset → `morning_identity_reset_5min`, Morning Protocol Lock-In → `morning_protocol_lock_in`).
+- Ensure these practice IDs exist in `src/lib/practices.ts`; add any missing ones with the prescribed title/category/duration.
+- `CoachResponse.guidedPractice` returns this card on every plan response.
 
-```text
-temporal: {
-  localDate, localTime, timezone, dayOfWeek,
-  dayPart,                // MORNING | MIDDAY | EVENING | LATE_NIGHT
-  sessionContext,         // see list below
-}
-```
+### 5. Fitness plan quality
+- `buildDefaultFitnessPlan({ level, location })` returns the explicit 7-day structure from the spec (home bodyweight + walks default; gym variant on `GYM_PLAN`).
+- Refuse heavy prescriptions until injuries/ability/equipment/experience are known.
 
-Derivation (client-side in `coach.tsx` at submit time):
-- `localDate` = `YYYY-MM-DD` from `new Date()`
-- `localTime` = `HH:mm`
-- `timezone` = `Intl.DateTimeFormat().resolvedOptions().timeZone`
-- `dayOfWeek` = `MON..SUN`
-- `dayPart`: 04:00–10:59 MORNING · 11:00–15:59 MIDDAY · 16:00–21:29 EVENING · else LATE_NIGHT
-- `sessionContext`: default mapped from `dayPart` (MORNING→MORNING_CHECK_IN, MIDDAY→MIDDAY_COURSE_CORRECTION, EVENING→EVENING_REVIEW, LATE_NIGHT→LATE_NIGHT_SLEEP_PROTECTION); upgraded by message keywords (pre/post training, missed day, "stuck/hate my job/wasting my life" → GENERAL_LIFE_STUCK, "transform/reset my life" → GENERAL_TRANSFORMATION_REQUEST, crisis/boundary phrases → SAFETY_OR_BOUNDARY, "plan my day" → DAILY_PLAN, "wind down" → WIND_DOWN).
+### 6. Nutrition + calorie guardrails
+- New `resolveCalorieTarget(profile)` returning `{ calorieTargetUsed, calorieSource: "profile"|"calculated"|"not_available", calorieMissingFields[], macroTargetUsed }`.
+- If `not_available`: ask for the 6 fields, give the temporary non-calorie standard (protein-first, water before caffeine, one whole-food meal, no chaotic evening eating). Never invent calories.
+- Debug panel surfaces those fields.
 
-Backend: add `TemporalSchema` + plumb through `askCoach.inputValidator`. If absent, fall back to a server-derived UTC-based dayPart and flag `temporalSource: "fallback"` in debug.
+### 7. Program memory
+- Extend `CoachResponse` with `programState` and accept `priorProgramState` in `askCoach` input.
+- Persist in `src/routes/coach.tsx` thread state: `activePlanType, activePlanLength, selectedFitnessLevel, selectedBreathwork, selectedMeditation, selectedMorningProtocol, missingPersonalisationFields, lastRecommendedGuidedPractice, lastProgrammeRoute`.
+- Continuation routing reads program state so "calories" / "gym plan" / "morning protocol" extend the active plan instead of restarting.
 
-## 2. Route detector changes (`detectRoute`)
+### 8. Debug panel
+Add to `CoachDebug`:
+`selectedPillars, pillarReasoning, activePlanType, activePlanLength, guidedPracticeRecommendation, calorieTargetUsed, calorieSource, calorieMissingFields, macroTargetUsed, programmePersonalisationMissing, knowledgeBaseVolumesUsed, genericFallbackUsed, genericFallbackReason`.
+Render new section in `src/routes/coach.tsx` debug drawer.
 
-- Accept `temporal` as a 4th argument.
-- New early branches **after SAFETY but before keyword routes**:
-  - `LATE_NIGHT` + any intense intent (cold, hard training, "energise", planning) → force `SLEEP_WIND_DOWN` with reason "Late-night override: protect sleep."
-  - `EVENING` + no specific intent → `EVENING_REVIEW`.
-  - `MORNING` + no specific intent → existing `MISSED_MORNING` only if journal flags it, else new `GENERAL_COACHING` with morning-priority hint (handled via context block, not a new route).
-- New route added to `CoachRoute` union: `GENERAL_LIFE_STUCK` and `GENERAL_TRANSFORMATION_REQUEST`.
-- Detection patterns:
-  - `GENERAL_LIFE_STUCK`: `/hate my job|feel stuck|not motivated|wasting my life|don'?t know where to start|lost|directionless/i`
-  - `GENERAL_TRANSFORMATION_REQUEST`: `/transform my life|change my life|reset my life|full reset|20.?day|60.?day|90.?day plan/i` — only routes here if the user **explicitly** asks for a long plan.
+### 9. Interactive chips
+`quickReplies` must mirror the `REPLY WITH` line. For FULL_REBUILD_PLAN: `["CALORIES","GYM PLAN","HOME PLAN","MORNING PROTOCOL"]`. For fitness level prompts: `["BEGINNER","INTERMEDIATE","ADVANCED"]`. For goal prompts: `["FAT LOSS","MUSCLE","FITNESS","ALL-ROUND RESET"]`.
 
-## 3. Context block (`buildContextBlock`)
+## Out of scope (this turn)
+- Real macro calculator beyond Mifflin-St Jeor (we'll wire the formula but no fancy adjustments).
+- New practice timer screens — we reuse existing `practice.$practiceId.tsx` and only add missing practice entries.
+- Knowledge base file_search query strings stay as today; only the `knowledgeBaseVolumesUsed` debug field is new.
 
-Add a new section above OPERATOR CONTEXT:
+## Acceptance tests (manual via preview)
+1. "Recommend a fitness plan and meditation with breathwork." → `selectedRoute=FULL_REBUILD_PLAN`, plan has all required sections, guided card = Box Breathing, chips = CALORIES/GYM PLAN/HOME PLAN/MORNING PROTOCOL, no calories invented.
+2. "calories" follow-up → either asks for missing fields or returns calculated target with `calorieSource` visible.
+3. "gym plan" follow-up → gym 7-day variant, not re-prints the original.
+4. "morning protocol" follow-up → ordered sequence with guided card = Morning Protocol Lock-In.
 
-```text
-[TEMPORAL CONTEXT]
-localDate / localTime / timezone / dayOfWeek
-dayPart
-sessionContext
-priorityFocus: <derived list per dayPart>
-```
-
-`priorityFocus` text is the exact MORNING / MIDDAY / EVENING / LATE_NIGHT priority bullet lists from your spec, so the model sees them inline.
-
-Also add a `yesterdaySummary` block derived from `journal` (already present) — re-label for clarity. `missingAssignedPillarsToday` already computed; keep.
-
-## 4. Hybrid Mindset brain
-
-Append to `SYSTEM_INSTRUCTIONS` a new block "GORILLA MINDSET PRINCIPLES" listing your 14 principles (consistency over intensity, …no shame, …teach through action) and two hard rules:
-
-- **No long plans by default.** Do not produce a 20/60/90-day plan unless `selectedRoute === GENERAL_TRANSFORMATION_REQUEST`.
-- For `GENERAL_LIFE_STUCK`: respond in this exact short shape — HEADLINE / WHAT'S HAPPENING (1–2 lines) / DO THIS NOW (≤3 bullets, body-first) / TODAY'S NON-NEGOTIABLES (≤3 bullets) / GUIDED PRACTICE (only if `guidedPractice` selected) / COACH CLOSE (1 line) / ONE QUESTION (1 line).
-- Ask only one clarifying question, and only when needed; otherwise act first.
-
-`routeInstruction` gains branches for `GENERAL_LIFE_STUCK` and `GENERAL_TRANSFORMATION_REQUEST` enforcing the short format.
-
-## 5. Debug panel (`coach.tsx`)
-
-Extend `CoachDebug` and `DebugPanel` rows with:
-- `localDate`, `localTime`, `timezone`, `dayOfWeek`
-- `dayPart`
-- `sessionContext`
-- `temporalSource` (`client` | `fallback`)
-- `timeBasedRouteReason` (string explaining if a time rule overrode keyword routing, e.g. "LATE_NIGHT override forced SLEEP_WIND_DOWN")
-
-All existing rows remain.
-
-## 6. Verification checklist (after build mode)
-
-- 06:30 + "what should I do?" → MORNING_CHECK_IN, no late-night override, priorityFocus = morning list.
-- 14:00 + "I'm drifting" → MIDDAY_COURSE_CORRECTION.
-- 18:30 + "check in" → EVENING_REVIEW + `journal_checkin_3min`.
-- 23:30 + "let's do cold plunge" → LATE_NIGHT override → SLEEP_WIND_DOWN, no cold recommendation.
-- "I hate my job, feel stuck, want to get fit" → GENERAL_LIFE_STUCK, short body-first response, one question, no 20-day plan.
-- "Give me the full 60-day reset" → GENERAL_TRANSFORMATION_REQUEST, long plan allowed.
-- All existing breathwork / nutrition / recovery / sobriety routes still trigger as before.
-- Debug panel shows all new temporal fields.
-
-Confirm and I'll implement.
+## Order of operations
+1. Routes + detector + continuation commands.
+2. Pillar engine.
+3. SYSTEM_INSTRUCTIONS plan spec + banned phrases.
+4. Guided practice linkage + practice entries.
+5. Fitness plan builder.
+6. Calorie resolver.
+7. Program memory wiring (server + client).
+8. Debug fields + UI.
+9. Quick chips alignment.
+10. Verify via `invoke-server-function` for the 4 acceptance prompts.

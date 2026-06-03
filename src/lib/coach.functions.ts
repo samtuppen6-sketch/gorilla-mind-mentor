@@ -169,7 +169,12 @@ export type CoachRoute =
   | "HOME_BODYWEIGHT_PLAN"
   | "PILATES_CORE_PLAN"
   | "LOW_ENERGY_SESSION"
-  | "INTERMEDIATE_FITNESS_PLAN";
+  | "INTERMEDIATE_FITNESS_PLAN"
+  // Daily OS routes
+  | "PROGRAM_REQUEST"
+  | "BREATHWORK_MEDITATION_REQUEST"
+  | "MORNING_PROTOCOL_REQUEST"
+  | "NUTRITION_CALORIE_REQUEST";
 
 export type ContinuationCommand =
   | "FITNESS"
@@ -187,6 +192,13 @@ export type ContinuationCommand =
   | "BEGINNER"
   | "INTERMEDIATE"
   | "ADVANCED"
+  | "CALORIES"
+  | "GYM_PLAN"
+  | "HOME_PLAN"
+  | "MORNING_PROTOCOL"
+  | "FAT_LOSS"
+  | "MUSCLE"
+  | "ALL_ROUND_RESET"
   | "NONE";
 
 // ---------- Exercise Prescription Engine — classification types ----------
@@ -335,6 +347,41 @@ export type CoachDebug = {
   exercisePlanSource: string | null;
   exerciseKnowledgeUsed: boolean;
   safetyModificationApplied: boolean;
+  // Gorilla Mind Daily OS
+  selectedPillars: string[];
+  pillarReasoning: string;
+  activePlanType: string | null;
+  activePlanLength: string | null;
+  guidedPracticeRecommendation: GuidedPracticeRecommendation | null;
+  calorieTargetUsed: number | null;
+  calorieSource: "profile" | "calculated" | "not_available";
+  calorieMissingFields: string[];
+  macroTargetUsed: { proteinG: number; carbsG: number; fatG: number } | null;
+  programmePersonalisationMissing: string[];
+  knowledgeBaseVolumesUsed: string[];
+  genericFallbackUsed: boolean;
+  genericFallbackReason: string | null;
+};
+
+export type GuidedPracticeRecommendation = {
+  id: string;
+  title: string;
+  category: "breathwork" | "meditation" | "morning_protocol" | "sleep" | "cold_water" | "mobility";
+  durationMinutes: number;
+  reason: string;
+  buttonLabel: string;
+};
+
+export type ProgramState = {
+  activePlanType: string | null;
+  activePlanLength: string | null;
+  selectedFitnessLevel: string | null;
+  selectedBreathwork: string | null;
+  selectedMeditation: string | null;
+  selectedMorningProtocol: string | null;
+  missingPersonalisationFields: string[];
+  lastRecommendedGuidedPractice: string | null;
+  lastProgrammeRoute: CoachRoute | null;
 };
 
 export type CoachResponse = {
@@ -343,6 +390,7 @@ export type CoachResponse = {
   guidedPractice: GuidedPracticeRec | null;
   guidedWorkout: GuidedWorkoutRecommendation | null;
   quickReplies: string[];
+  programState: ProgramState;
 };
 
 const HistoryTurnSchema = z.object({
@@ -490,6 +538,51 @@ export function classifyFitness(message: string, profile: Profile | null, journa
     fitnessGoal: goal, fitnessLevel: level, trainingLocation: location, equipment,
     injuryFlag: injury, availableTime: time, energyLevel: energy, preferredStyle: style,
   };
+}
+
+// Daily-OS program-level detector — runs BEFORE narrower detectors. Catches
+// broad plan/routine/morning-protocol/nutrition-calorie/breathwork+meditation
+// asks and routes them at the program level so the coach builds a real plan
+// instead of falling into a generic chat route.
+function detectProgramRoute(message: string): { route: CoachRoute; reason: string; query: string } | null {
+  const m = message.toLowerCase();
+  const fullRebuild =
+    /\b(fitness|exercise|workout|train).+(meditat|breath)|breath.+\b(fitness|exercise)|full reset.*fitness/.test(m)
+    || /\brecommend (a|me)?\s*(fitness|training|workout|exercise)?\s*plan\b.*\b(meditat|breath)/.test(m)
+    || /\b(build me a|build my|give me my|create my|make me a)\s+(full|complete|7.?day|seven.?day|daily|whole)?\s*(plan|routine|programme|program|system|protocol|reset|rebuild)\b/.test(m)
+    || /\bwhat should i do every day\b/.test(m)
+    || /\bdiscipline system\b/.test(m)
+    || /\bfull(\s| )?(reset|rebuild|plan)\b/.test(m)
+    || /\b(i want|need)\s+(a\s+)?(fitness|mindset|morning|daily)\s+plan\b/.test(m);
+  if (fullRebuild) {
+    return {
+      route: "FULL_REBUILD_PLAN",
+      reason: "Program-level rebuild signal — body-first 7-day rebuild with morning lock-in, fitness, breathwork, meditation, nutrition.",
+      query: "gorilla mind top 21 pillars morning protocol fitness plan beginner breathwork meditation identity protein sleep weekly structure daily operating system",
+    };
+  }
+  if (/\bmorning (protocol|routine|lock.?in)\b/.test(m) || /\b(fix|reset).*morning\b/.test(m) || /\bhow (do|to) (i\s+)?start (the|my)\s*day\b/.test(m) || /\bfirst hour\b/.test(m) || /\bstop wasting mornings\b/.test(m)) {
+    return {
+      route: "MORNING_PROTOCOL_REQUEST",
+      reason: "Explicit morning-protocol / first-hour request — ordered MORNING LOCK-IN sequence with guided card.",
+      query: "morning protocol lock in water phone away daylight box breathing identity reset walk protein journal",
+    };
+  }
+  if (/\bbreath ?work.*\b(meditat|mindful)\b|\bmeditat.*\bbreath ?work\b|nervous system.*(calm|regulate)/.test(m) || /\b(stress|anxiety|focus|stillness).*plan\b/.test(m)) {
+    return {
+      route: "BREATHWORK_MEDITATION_REQUEST",
+      reason: "Combined breathwork + meditation / nervous-system regulation request.",
+      query: "breathwork box breathing extended exhale meditation morning identity reset nervous system regulation sleep",
+    };
+  }
+  if (/\b(calorie|calories|macro|macros|meal plan|food plan|fat loss nutrition|protein target|diet)\b/.test(m)) {
+    return {
+      route: "NUTRITION_CALORIE_REQUEST",
+      reason: "Nutrition / calorie / macro / diet request — strict guardrails, never invent calories.",
+      query: "nutrition calorie target protein macro Mifflin TDEE fat loss muscle gain meal structure",
+    };
+  }
+  return null;
 }
 
 function detectFitnessRoute(message: string, fc: FitnessClassification): { route: CoachRoute; reason: string; query: string } | null {
@@ -696,6 +789,14 @@ function detectRoute(
       query: "gorilla mind master system prompt daily operating system identity discipline minimum standard body first reset morning routine evening shutdown standards over moods one promise",
     };
   }
+
+  // 1c-bis. Daily-OS program-level detector — runs before fitness/keyword routes
+  // so plan/routine/morning-protocol/nutrition asks build real plans.
+  {
+    const program = detectProgramRoute(message);
+    if (program) return program;
+  }
+
 
 
   // 1d. Late-night override — protect sleep, refuse intense protocols.
@@ -1288,6 +1389,209 @@ const CONTINUATION_SHAPES: Partial<Record<CoachRoute, string>> = {
   ].join("\n"),
 };
 
+// ---------- Gorilla Mind Daily OS — Pillar Engine, Calorie Resolver, Plan Card ----------
+
+const PILLAR_LIBRARY: Record<string, string> = {
+  hydration: "Hydration",
+  mineralised_water: "Celtic sea salt / mineralised water (when appropriate)",
+  lemon_water: "Lemon water",
+  breathwork: "Breathwork",
+  meditation: "Meditation",
+  circadian_rhythm: "Circadian rhythm",
+  morning_daylight: "Morning daylight exposure",
+  walking: "Walking",
+  strength_training: "Strength training",
+  pilates_mobility: "Core / Pilates / mobility",
+  cold_exposure: "Cold water exposure",
+  heat_exposure: "Heat exposure / sauna",
+  grounding: "Grounding",
+  nutrition: "Nutrition",
+  protein: "Protein target",
+  sleep: "Sleep regulation",
+  journaling: "Journaling",
+  affirmations: "Positive affirmations",
+  identity: "Identity work",
+  reading: "Reading / learning",
+  digital_discipline: "Digital discipline / phone control",
+};
+
+function selectPillarsForRoute(
+  route: CoachRoute,
+  message: string,
+  profile: Profile | null,
+): { ids: string[]; reasoning: string } {
+  const m = (message || "").toLowerCase();
+  // Hard-coded pillar sets per spec for the highest-value Daily OS routes.
+  switch (route) {
+    case "FULL_REBUILD_PLAN":
+    case "PROGRAM_REQUEST":
+      return {
+        ids: ["hydration","breathwork","meditation","circadian_rhythm","morning_daylight","walking","strength_training","nutrition","protein","sleep","journaling","identity","digital_discipline"],
+        reasoning: "FULL_REBUILD_PLAN — body-first rebuild: hydration, breath, meditation, daylight, walking, strength, nutrition (protein), sleep, journaling, identity, digital discipline.",
+      };
+    case "MORNING_PROTOCOL_REQUEST":
+      return {
+        ids: ["digital_discipline","hydration","mineralised_water","morning_daylight","breathwork","meditation","walking","strength_training","protein","journaling","identity","affirmations"],
+        reasoning: "MORNING_PROTOCOL_REQUEST — ordered first-hour command: phone discipline, hydration, daylight, breath, identity, movement, protein, journal.",
+      };
+    case "BREATHWORK_MEDITATION_REQUEST":
+      return {
+        ids: ["breathwork","meditation","circadian_rhythm","digital_discipline","sleep","identity","journaling"],
+        reasoning: "BREATHWORK_MEDITATION_REQUEST — nervous-system regulation pillars only.",
+      };
+    case "NUTRITION_CALORIE_REQUEST":
+      return {
+        ids: ["nutrition","protein","hydration","sleep"],
+        reasoning: "NUTRITION_CALORIE_REQUEST — nutrition + protein anchored by hydration and sleep.",
+      };
+    case "GYM_STRENGTH_PLAN":
+    case "INTERMEDIATE_FITNESS_PLAN":
+      return { ids: ["strength_training","walking","nutrition","protein","sleep","breathwork","hydration"], reasoning: "Strength-led plan pillars." };
+    case "HOME_BODYWEIGHT_PLAN":
+    case "FITNESS_ROUTINE_BUILDER":
+    case "FITNESS_PLAN_REQUEST":
+      return { ids: ["strength_training","walking","pilates_mobility","nutrition","protein","sleep","breathwork","hydration"], reasoning: "Home / starter fitness pillars." };
+    case "RUNNING_STARTER_PLAN":
+      return { ids: ["walking","strength_training","breathwork","nutrition","protein","sleep","hydration"], reasoning: "Running starter pillars." };
+    case "PILATES_CORE_PLAN":
+    case "CORE_BACK_SUPPORT_PLAN":
+      return { ids: ["pilates_mobility","walking","breathwork","sleep","hydration","protein"], reasoning: "Core / mobility-led pillars." };
+    case "GENERAL_LIFE_STUCK": {
+      const ids = ["digital_discipline","hydration","breathwork","morning_daylight","walking","strength_training","protein","journaling","identity","sleep"];
+      return { ids, reasoning: "GENERAL_LIFE_STUCK — body-first stack: digital discipline, hydration, breath, daylight, walking, strength, protein, journal, identity, sleep." };
+    }
+    case "SLEEP_WIND_DOWN":
+      return { ids: ["sleep","breathwork","digital_discipline","circadian_rhythm","journaling"], reasoning: "Sleep wind-down pillars." };
+    case "BREATHWORK":
+      return { ids: ["breathwork","sleep","identity"], reasoning: "Breathwork-focused pillars." };
+    case "MEDITATION_MINDFULNESS":
+      return { ids: ["meditation","identity","breathwork","journaling"], reasoning: "Meditation/mindfulness pillars." };
+    case "MISSED_DAY_REPAIR":
+    case "MISSED_MORNING":
+      return { ids: ["identity","morning_daylight","hydration","breathwork","walking","protein","journaling"], reasoning: "Repair pillars — no shame, body-first re-entry." };
+    case "SAFETY_CRISIS":
+      return { ids: [], reasoning: "Safety crisis — no pillar prescription, route to professional help." };
+    default: {
+      // Profile-led fallback.
+      const ids = ["hydration","breathwork","walking","protein","sleep","identity"];
+      if (profile?.processAddictionFlag || /phone|scrolling|porn|binge/.test(m)) ids.unshift("digital_discipline");
+      return { ids, reasoning: "Default pillar selection: body-first fundamentals." };
+    }
+  }
+}
+
+function resolveCalorieTarget(profile: Profile | null): {
+  calorieTargetUsed: number | null;
+  calorieSource: "profile" | "calculated" | "not_available";
+  calorieMissingFields: string[];
+  macroTargetUsed: { proteinG: number; carbsG: number; fatG: number } | null;
+} {
+  const required = ["age","sex","heightCm","weightKg","activityLevel","primaryGoal"];
+  const p = (profile ?? {}) as Record<string, unknown>;
+  const missing = required.filter((k) => {
+    if (k === "primaryGoal") return !p.primaryGoal || p.primaryGoal === "";
+    return p[k] === undefined || p[k] === null || p[k] === "";
+  });
+  if (missing.length > 0) {
+    return { calorieTargetUsed: null, calorieSource: "not_available", calorieMissingFields: missing, macroTargetUsed: null };
+  }
+  // Mifflin-St Jeor
+  const age = Number(p.age);
+  const heightCm = Number(p.heightCm);
+  const weightKg = Number(p.weightKg);
+  const sex = String(p.sex).toLowerCase();
+  const activity = String(p.activityLevel).toLowerCase();
+  const goal = String(p.primaryGoal).toLowerCase();
+  const bmr = sex.startsWith("m")
+    ? 10 * weightKg + 6.25 * heightCm - 5 * age + 5
+    : 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+  const factor =
+    activity.includes("sedent") ? 1.2 :
+    activity.includes("light") ? 1.375 :
+    activity.includes("mod") ? 1.55 :
+    activity.includes("very") || activity.includes("active") ? 1.725 : 1.4;
+  let tdee = Math.round(bmr * factor);
+  if (goal.includes("fat") || goal.includes("loss") || goal.includes("cut")) tdee -= 350;
+  else if (goal.includes("muscle") || goal.includes("bulk")) tdee += 250;
+  const proteinG = Math.round(weightKg * 2.0);
+  const fatG = Math.round((tdee * 0.25) / 9);
+  const carbsG = Math.max(0, Math.round((tdee - proteinG * 4 - fatG * 9) / 4));
+  return {
+    calorieTargetUsed: tdee,
+    calorieSource: "calculated",
+    calorieMissingFields: [],
+    macroTargetUsed: { proteinG, carbsG, fatG },
+  };
+}
+
+const PLAN_GUIDED_CARDS: Record<string, GuidedPracticeRecommendation> = {
+  box_breathing_5min: {
+    id: "box_breathing_5min",
+    title: "Box Breathing",
+    category: "breathwork",
+    durationMinutes: 5,
+    reason: "Best for morning control and state regulation before phone use.",
+    buttonLabel: "Start Box Breathing",
+  },
+  extended_exhale_3min: {
+    id: "extended_exhale_3min",
+    title: "Extended Exhale Breathing",
+    category: "breathwork",
+    durationMinutes: 3,
+    reason: "Best for downshifting the nervous system before sleep.",
+    buttonLabel: "Start Extended Exhale",
+  },
+  morning_identity_reset_5min: {
+    id: "morning_identity_reset_5min",
+    title: "Morning Identity Reset",
+    category: "meditation",
+    durationMinutes: 5,
+    reason: "Best for re-anchoring the user after missed days or low discipline.",
+    buttonLabel: "Start Morning Identity Reset",
+  },
+  morning_protocol_lock_in: {
+    id: "morning_protocol_lock_in",
+    title: "Morning Protocol Lock-In",
+    category: "morning_protocol",
+    durationMinutes: 30,
+    reason: "Best when the user needs structure, body activation and digital discipline.",
+    buttonLabel: "Start Morning Protocol",
+  },
+};
+
+function selectGuidedPracticeForPlan(route: CoachRoute, dayPart: DayPart): GuidedPracticeRecommendation | null {
+  switch (route) {
+    case "MORNING_PROTOCOL_REQUEST":
+      return PLAN_GUIDED_CARDS.morning_protocol_lock_in;
+    case "FULL_REBUILD_PLAN":
+    case "PROGRAM_REQUEST":
+      return dayPart === "EVENING" || dayPart === "LATE_NIGHT"
+        ? PLAN_GUIDED_CARDS.extended_exhale_3min
+        : PLAN_GUIDED_CARDS.box_breathing_5min;
+    case "BREATHWORK_MEDITATION_REQUEST":
+      return dayPart === "EVENING" || dayPart === "LATE_NIGHT"
+        ? PLAN_GUIDED_CARDS.extended_exhale_3min
+        : PLAN_GUIDED_CARDS.box_breathing_5min;
+    case "MISSED_DAY_REPAIR":
+    case "MISSED_MORNING":
+      return PLAN_GUIDED_CARDS.morning_identity_reset_5min;
+    default:
+      return null;
+  }
+}
+
+const EMPTY_PROGRAM_STATE: ProgramState = {
+  activePlanType: null,
+  activePlanLength: null,
+  selectedFitnessLevel: null,
+  selectedBreathwork: null,
+  selectedMeditation: null,
+  selectedMorningProtocol: null,
+  missingPersonalisationFields: [],
+  lastRecommendedGuidedPractice: null,
+  lastProgrammeRoute: null,
+};
+
 export const askCoach = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
@@ -1459,6 +1763,55 @@ export const askCoach = createServerFn({ method: "POST" })
       : null;
 
 
+    // ---------- Daily OS pillar + calorie + plan-card resolution ----------
+    const PLAN_ROUTES_SET = new Set<CoachRoute>([
+      "FULL_REBUILD_PLAN", "PROGRAM_REQUEST", "MORNING_PROTOCOL_REQUEST",
+      "BREATHWORK_MEDITATION_REQUEST", "NUTRITION_CALORIE_REQUEST",
+    ]);
+    const isPlanRoute = PLAN_ROUTES_SET.has(routing.route);
+    const pillarPick = selectPillarsForRoute(routing.route, data.question, profile);
+    const calorie = resolveCalorieTarget(profile);
+    const planCard = isPlanRoute || routing.route === "MISSED_DAY_REPAIR" || routing.route === "MISSED_MORNING"
+      ? selectGuidedPracticeForPlan(routing.route, temporal.dayPart)
+      : null;
+
+    // If a plan card exists, override the generic guidedPractice so the
+    // recommended button matches the prescription word-for-word.
+    const effectiveGuidedPractice: GuidedPracticeRec | null = planCard
+      ? {
+          id: planCard.id,
+          title: planCard.title,
+          category: planCard.category === "breathwork" ? "Breathwork"
+            : planCard.category === "meditation" ? "Meditation"
+            : planCard.category === "morning_protocol" ? "Meditation"
+            : planCard.category === "sleep" ? "Breathwork"
+            : planCard.category === "cold_water" ? "Cold Exposure"
+            : "Mobility",
+          durationMinutes: planCard.durationMinutes,
+          reason: planCard.reason,
+          buttonLabel: planCard.buttonLabel,
+        }
+      : guidedPractice;
+
+    const activePlanType =
+      routing.route === "FULL_REBUILD_PLAN" ? "FULL_REBUILD" :
+      routing.route === "MORNING_PROTOCOL_REQUEST" ? "MORNING_PROTOCOL" :
+      routing.route === "BREATHWORK_MEDITATION_REQUEST" ? "BREATH_AND_MEDITATION" :
+      routing.route === "NUTRITION_CALORIE_REQUEST" ? "NUTRITION" :
+      isFitnessRoute ? "FITNESS" : null;
+    const activePlanLength =
+      routing.route === "FULL_REBUILD_PLAN" || isFitnessRoute ? "7_DAYS" :
+      routing.route === "MORNING_PROTOCOL_REQUEST" ? "1_DAY" : null;
+    const programmePersonalisationMissing = isPlanRoute || isFitnessRoute
+      ? [...personalisationMissing, ...calorie.calorieMissingFields].filter((v, i, a) => a.indexOf(v) === i)
+      : [];
+    const knowledgeBaseVolumesUsed: string[] = [];
+    if (isPlanRoute) knowledgeBaseVolumesUsed.push("gorilla_mind_top_21_pillars", "gorilla_mind_master_system_prompt");
+    const genericFallbackUsed = routing.route === "GENERAL_COACHING";
+    const genericFallbackReason = genericFallbackUsed
+      ? "No specific message, journal, profile or program route triggered — falling back to GENERAL_COACHING."
+      : null;
+
     const debug: CoachDebug = {
       selectedRoute: routing.route,
       breathworkSubRoute,
@@ -1477,8 +1830,8 @@ export const askCoach = createServerFn({ method: "POST" })
       primaryGapUsed: profile?.primaryGap ?? null,
       protocolDayUsed: profile?.protocolDay ?? null,
       safetyFlagsUsed: safetyFlags,
-      guidedPracticeId: guidedPractice?.id ?? null,
-      guidedPracticeReason: guidedPractice?.reason ?? null,
+      guidedPracticeId: effectiveGuidedPractice?.id ?? null,
+      guidedPracticeReason: effectiveGuidedPractice?.reason ?? null,
       localDate: temporal.localDate,
       localTime: temporal.localTime,
       timezone: temporal.timezone,
@@ -1513,19 +1866,45 @@ export const askCoach = createServerFn({ method: "POST" })
       exerciseRoute: isFitnessRoute ? routing.route : null,
       guidedWorkoutRecommendation: guidedWorkout,
       exercisePersonalisationMissing: personalisationMissing,
-      exerciseContinuationDetected: !!continuation && ["HOME","GYM","RUNNING","PILATES","LOW_ENERGY","BEGINNER","INTERMEDIATE","ADVANCED"].includes(continuation.command),
+      exerciseContinuationDetected: !!continuation && ["HOME","GYM","RUNNING","PILATES","LOW_ENERGY","BEGINNER","INTERMEDIATE","ADVANCED","GYM_PLAN","HOME_PLAN"].includes(continuation.command),
       exercisePlanSource,
       exerciseKnowledgeUsed: isFitnessRoute,
       safetyModificationApplied,
+      selectedPillars: pillarPick.ids,
+      pillarReasoning: pillarPick.reasoning,
+      activePlanType,
+      activePlanLength,
+      guidedPracticeRecommendation: planCard,
+      calorieTargetUsed: calorie.calorieTargetUsed,
+      calorieSource: calorie.calorieSource,
+      calorieMissingFields: calorie.calorieMissingFields,
+      macroTargetUsed: calorie.macroTargetUsed,
+      programmePersonalisationMissing,
+      knowledgeBaseVolumesUsed,
+      genericFallbackUsed,
+      genericFallbackReason,
     };
+
+    const programState: ProgramState = {
+      activePlanType,
+      activePlanLength,
+      selectedFitnessLevel: fc.fitnessLevel !== "unknown" ? fc.fitnessLevel : null,
+      selectedBreathwork: planCard?.category === "breathwork" ? planCard.id : null,
+      selectedMeditation: planCard?.category === "meditation" ? planCard.id : null,
+      selectedMorningProtocol: planCard?.category === "morning_protocol" ? planCard.id : null,
+      missingPersonalisationFields: programmePersonalisationMissing,
+      lastRecommendedGuidedPractice: planCard?.id ?? effectiveGuidedPractice?.id ?? null,
+      lastProgrammeRoute: isPlanRoute || isFitnessRoute ? routing.route : null,
+    };
+
 
     if (!apiKey) {
       debug.apiError = "OPENAI_API_KEY missing on server";
-      return { answer: "Coach is offline. Backend secret missing.", debug, guidedPractice, guidedWorkout, quickReplies };
+      return { answer: "Coach is offline. Backend secret missing.", debug, guidedPractice: effectiveGuidedPractice, guidedWorkout, quickReplies, programState };
     }
     if (!vectorStoreId) {
       debug.apiError = "GORILLA_MIND_VECTOR_STORE_ID missing on server";
-      return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice, guidedWorkout, quickReplies };
+      return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice: effectiveGuidedPractice, guidedWorkout, quickReplies, programState };
     }
 
     const contextBlock = buildContextBlock(profile, journal, progress, temporal);
@@ -1695,7 +2074,7 @@ export const askCoach = createServerFn({ method: "POST" })
       if (!res.ok) {
         const text = await res.text();
         debug.apiError = `OpenAI ${res.status}: ${text.slice(0, 500)}`;
-        return { answer: "Coach failed to respond. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
+        return { answer: "Coach failed to respond. See debug panel.", debug, guidedPractice: effectiveGuidedPractice, guidedWorkout, quickReplies, programState };
       }
 
       const json: any = await res.json();
@@ -1725,12 +2104,12 @@ export const askCoach = createServerFn({ method: "POST" })
 
       if (routing.route !== "SAFETY_CRISIS" && !debug.fileSearchCalled) {
         debug.apiError = "Knowledge-base retrieval was required, but OpenAI did not call file_search.";
-        return { answer: "Coach could not access the knowledge base. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
+        return { answer: "Coach could not access the knowledge base. See debug panel.", debug, guidedPractice: effectiveGuidedPractice, guidedWorkout, quickReplies, programState };
       }
 
       if (routing.route !== "SAFETY_CRISIS" && debug.fileSearchCalled && debug.retrievedChunksCount === 0) {
         debug.apiError = "Knowledge-base retrieval returned zero chunks for the selected route.";
-        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
+        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice: effectiveGuidedPractice, guidedWorkout, quickReplies, programState };
       }
 
       // Derive quick-reply chips from THIS answer's REPLY WITH section so they
@@ -1741,10 +2120,10 @@ export const askCoach = createServerFn({ method: "POST" })
       }
       debug.quickRepliesShown = quickReplies.length > 0;
 
-      return { answer: answer || "(empty response)", debug, guidedPractice, guidedWorkout, quickReplies };
+      return { answer: answer || "(empty response)", debug, guidedPractice: effectiveGuidedPractice, guidedWorkout, quickReplies, programState };
     } catch (err) {
       debug.apiError = err instanceof Error ? err.message : String(err);
-      return { answer: "Coach request failed. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
+      return { answer: "Coach request failed. See debug panel.", debug, guidedPractice: effectiveGuidedPractice, guidedWorkout, quickReplies, programState };
     }
   });
 
