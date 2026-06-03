@@ -271,6 +271,7 @@ function WorkoutPlayerPage() {
     setResting(false);
     setStepIdx(0);
     setRound(1);
+    try { window.localStorage.removeItem(storageKey); } catch { /* ignore */ }
   }
 
   function handleComplete() {
@@ -284,7 +285,9 @@ function WorkoutPlayerPage() {
     });
     setCompletion(result);
     setRunning(false);
+    try { window.localStorage.removeItem(storageKey); } catch { /* ignore */ }
   }
+
 
   if (!workout) {
     return (
