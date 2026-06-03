@@ -1502,6 +1502,21 @@ export const askCoach = createServerFn({ method: "POST" })
       selectedRouteAfterOverride,
       duplicateAdviceSuppressed,
       suppressedAdvice,
+      fitnessGoal: fc.fitnessGoal,
+      fitnessLevel: fc.fitnessLevel,
+      trainingLocation: fc.trainingLocation,
+      equipment: fc.equipment,
+      injuryFlag: fc.injuryFlag,
+      availableTime: fc.availableTime,
+      energyLevel: fc.energyLevel,
+      preferredStyle: fc.preferredStyle,
+      exerciseRoute: isFitnessRoute ? routing.route : null,
+      guidedWorkoutRecommendation: guidedWorkout,
+      exercisePersonalisationMissing: personalisationMissing,
+      exerciseContinuationDetected: !!continuation && ["HOME","GYM","RUNNING","PILATES","LOW_ENERGY","BEGINNER","INTERMEDIATE","ADVANCED"].includes(continuation.command),
+      exercisePlanSource,
+      exerciseKnowledgeUsed: isFitnessRoute,
+      safetyModificationApplied,
     };
 
     if (!apiKey) {
