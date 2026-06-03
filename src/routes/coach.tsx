@@ -25,6 +25,43 @@ export const Route = createFileRoute("/coach")({
 
 const SEED = "According to the Gorilla Mind knowledge base, what should I do if I keep wasting my mornings?";
 
+function buildTemporalContext(message: string): TemporalContext {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const dayPart: DayPart =
+    hour >= 4 && hour < 11 ? "MORNING" :
+    hour >= 11 && hour < 16 ? "MIDDAY" :
+    (hour >= 16 && (hour < 21 || (hour === 21 && minute < 30))) ? "EVENING" :
+    "LATE_NIGHT";
+
+  const m = message.toLowerCase();
+  let sessionContext: SessionContext =
+    dayPart === "MORNING" ? "MORNING_CHECK_IN" :
+    dayPart === "MIDDAY" ? "MIDDAY_COURSE_CORRECTION" :
+    dayPart === "EVENING" ? "EVENING_REVIEW" : "LATE_NIGHT_SLEEP_PROTECTION";
+
+  if (/safety|emergency|crisis|self.?harm|boundary|relapse/.test(m)) sessionContext = "SAFETY_OR_BOUNDARY";
+  else if (/hate my job|feel stuck|not motivated|wasting my life|don'?t know where to start|lost|directionless/.test(m)) sessionContext = "GENERAL_LIFE_STUCK";
+  else if (/transform my life|change my life|reset my life|full reset|20.?day|60.?day|90.?day|full plan|complete plan/.test(m)) sessionContext = "GENERAL_TRANSFORMATION_REQUEST";
+  else if (/pre.?training|about to train|before (gym|training)|warm.?up/.test(m)) sessionContext = "PRE_TRAINING";
+  else if (/post.?training|after (gym|training)|just trained|finished (gym|training)/.test(m)) sessionContext = "POST_TRAINING";
+  else if (/missed (the )?day|broken streak|fell off|bad day/.test(m)) sessionContext = "MISSED_DAY_REPAIR";
+  else if (/plan my day|today'?s plan|daily plan/.test(m)) sessionContext = "DAILY_PLAN";
+  else if (/wind ?down|before bed|bedtime/.test(m)) sessionContext = "WIND_DOWN";
+
+  const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    localDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+    localTime: `${pad(hour)}:${pad(minute)}`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    dayOfWeek: days[now.getDay()],
+    dayPart,
+    sessionContext,
+  };
+}
+
 function CoachPage() {
   const ask = useServerFn(askCoach);
   const profile = useProfile();
