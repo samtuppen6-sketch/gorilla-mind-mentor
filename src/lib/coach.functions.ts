@@ -932,12 +932,19 @@ export const askCoach = createServerFn({ method: "POST" })
     const baseFormatRule = "Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly. HEADLINE must name the correct breathwork protocol for the user's state. WHAT'S HAPPENING briefly explains why this protocol fits. DO THIS NOW gives exact timing and steps. COACH CLOSE is direct, calm, grounded, no hype.";
     const breathworkSafety = "Breathwork safety: never recommend breath holds in water; never recommend intense breathwork while driving; if user mentions chest pain, fainting, severe dizziness, suicidal ideation, overdose, or medical emergency symptoms, stop coaching and direct them to urgent professional help. Stay within general wellbeing guidance.";
 
+    const lifeStuckShape = "ACTIVE ROUTE is GENERAL_LIFE_STUCK. Do NOT produce a 20/60/90-day plan. Use this SHORT shape exactly: HEADLINE (3–6 words) / WHAT'S HAPPENING (1–2 lines, name the pattern, no shame) / DO THIS NOW (≤3 bullets, body-first: water, walk, one protein-first meal) / TODAY'S NON-NEGOTIABLES (≤3 bullets) / GUIDED PRACTICE (only if one was selected) / COACH CLOSE (1 line, calm and grounded) / ONE QUESTION (one useful, scoped question).";
+    const transformationShape = "ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST. The user explicitly asked for a full plan. A longer multi-day or multi-week plan is allowed. Still anchor everything in the Top 21 fundamentals and the user's assigned pillars. Begin with HEADLINE and a one-paragraph WHAT'S HAPPENING, then provide the plan in clear phases (e.g. Days 1–7, 8–21, 22–60). End with TODAY'S NON-NEGOTIABLES and COACH CLOSE.";
+
     const routeInstruction =
       routing.route === "SAFETY_CRISIS"
         ? "ACTIVE ROUTE is SAFETY_CRISIS. Do NOT produce the normal HEADLINE/DO THIS NOW format. Respond with a short calm safety-first message: tell the user to contact local emergency services or a crisis line right now, and to reach a doctor for medical issues. Do not give protocol advice in this response."
         : routing.route === "BREATHWORK"
           ? `ACTIVE ROUTE is BREATHWORK. ${breathworkProtocolGuidance[breathworkSubRoute]} ${breathworkSafety} ${baseFormatRule}`
-          : `ACTIVE ROUTE is ${routing.route}. Answer against this route. Use the smallest useful next action. Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly.`;
+          : routing.route === "GENERAL_LIFE_STUCK"
+            ? lifeStuckShape
+            : routing.route === "GENERAL_TRANSFORMATION_REQUEST"
+              ? transformationShape
+              : `ACTIVE ROUTE is ${routing.route}. Answer against this route. Use the smallest useful next action. Honour the TEMPORAL CONTEXT priorityFocus for the current dayPart. Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE format exactly. Do NOT produce a multi-day plan.`;
 
     const userInput = [
       routeBlock,
