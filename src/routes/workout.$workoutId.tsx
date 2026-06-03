@@ -13,7 +13,7 @@ import {
 import { getPracticeById } from "@/lib/practices";
 import {
   ArrowLeft, Play, Pause, Check, Clock, Dumbbell, ShieldAlert,
-  CalendarCheck, SkipForward, SkipBack, RotateCcw,
+  SkipForward, SkipBack, RotateCcw, Flame, Trophy, MessageCircle, Home, Repeat,
 } from "lucide-react";
 
 const searchSchema = z.object({
