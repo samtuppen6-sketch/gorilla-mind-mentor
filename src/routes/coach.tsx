@@ -41,6 +41,7 @@ type ThreadMessage =
       role: "assistant";
       content: string;
       guidedPractice: GuidedPracticeRec | null;
+      guidedWorkout: GuidedWorkoutRecommendation | null;
       quickReplies: string[];
       debug: CoachDebug;
     };
