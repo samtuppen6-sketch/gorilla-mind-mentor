@@ -540,6 +540,51 @@ export function classifyFitness(message: string, profile: Profile | null, journa
   };
 }
 
+// Daily-OS program-level detector — runs BEFORE narrower detectors. Catches
+// broad plan/routine/morning-protocol/nutrition-calorie/breathwork+meditation
+// asks and routes them at the program level so the coach builds a real plan
+// instead of falling into a generic chat route.
+function detectProgramRoute(message: string): { route: CoachRoute; reason: string; query: string } | null {
+  const m = message.toLowerCase();
+  const fullRebuild =
+    /\b(fitness|exercise|workout|train).+(meditat|breath)|breath.+\b(fitness|exercise)|full reset.*fitness/.test(m)
+    || /\brecommend (a|me)?\s*(fitness|training|workout|exercise)?\s*plan\b.*\b(meditat|breath)/.test(m)
+    || /\b(build me a|build my|give me my|create my|make me a)\s+(full|complete|7.?day|seven.?day|daily|whole)?\s*(plan|routine|programme|program|system|protocol|reset|rebuild)\b/.test(m)
+    || /\bwhat should i do every day\b/.test(m)
+    || /\bdiscipline system\b/.test(m)
+    || /\bfull(\s| )?(reset|rebuild|plan)\b/.test(m)
+    || /\b(i want|need)\s+(a\s+)?(fitness|mindset|morning|daily)\s+plan\b/.test(m);
+  if (fullRebuild) {
+    return {
+      route: "FULL_REBUILD_PLAN",
+      reason: "Program-level rebuild signal — body-first 7-day rebuild with morning lock-in, fitness, breathwork, meditation, nutrition.",
+      query: "gorilla mind top 21 pillars morning protocol fitness plan beginner breathwork meditation identity protein sleep weekly structure daily operating system",
+    };
+  }
+  if (/\bmorning (protocol|routine|lock.?in)\b/.test(m) || /\b(fix|reset).*morning\b/.test(m) || /\bhow (do|to) (i\s+)?start (the|my)\s*day\b/.test(m) || /\bfirst hour\b/.test(m) || /\bstop wasting mornings\b/.test(m)) {
+    return {
+      route: "MORNING_PROTOCOL_REQUEST",
+      reason: "Explicit morning-protocol / first-hour request — ordered MORNING LOCK-IN sequence with guided card.",
+      query: "morning protocol lock in water phone away daylight box breathing identity reset walk protein journal",
+    };
+  }
+  if (/\bbreath ?work.*\b(meditat|mindful)\b|\bmeditat.*\bbreath ?work\b|nervous system.*(calm|regulate)/.test(m) || /\b(stress|anxiety|focus|stillness).*plan\b/.test(m)) {
+    return {
+      route: "BREATHWORK_MEDITATION_REQUEST",
+      reason: "Combined breathwork + meditation / nervous-system regulation request.",
+      query: "breathwork box breathing extended exhale meditation morning identity reset nervous system regulation sleep",
+    };
+  }
+  if (/\b(calorie|calories|macro|macros|meal plan|food plan|fat loss nutrition|protein target|diet)\b/.test(m)) {
+    return {
+      route: "NUTRITION_CALORIE_REQUEST",
+      reason: "Nutrition / calorie / macro / diet request — strict guardrails, never invent calories.",
+      query: "nutrition calorie target protein macro Mifflin TDEE fat loss muscle gain meal structure",
+    };
+  }
+  return null;
+}
+
 function detectFitnessRoute(message: string, fc: FitnessClassification): { route: CoachRoute; reason: string; query: string } | null {
   const m = message.toLowerCase();
   const exerciseIntent = /\b(exercise|workout|train|training|fit|fitness|routine|plan|lift|run|running|pilates|gym|cardio|movement)\b/.test(m);
