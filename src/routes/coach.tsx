@@ -41,6 +41,7 @@ type ThreadMessage =
       role: "assistant";
       content: string;
       guidedPractice: GuidedPracticeRec | null;
+      guidedWorkout: GuidedWorkoutRecommendation | null;
       quickReplies: string[];
       debug: CoachDebug;
     };
@@ -200,6 +201,7 @@ function CoachPage() {
           role: "assistant",
           content: res.answer,
           guidedPractice: res.guidedPractice,
+          guidedWorkout: res.guidedWorkout,
           quickReplies: res.quickReplies ?? [],
           debug: res.debug,
         },
@@ -211,6 +213,7 @@ function CoachPage() {
           role: "assistant",
           content: "Request failed.",
           guidedPractice: null,
+          guidedWorkout: null,
           quickReplies: [],
           debug: buildFailureDebug(temporal, err),
         },
@@ -292,6 +295,30 @@ function CoachPage() {
                         <Play className="w-4 h-4" />
                         {m.guidedPractice.buttonLabel}
                       </Link>
+                    </div>
+                  )}
+                  {m.guidedWorkout && (
+                    <div className="rounded-xl border border-gold/40 bg-card p-5 space-y-3">
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Guided workout</p>
+                      <div>
+                        <h3 className="text-base font-semibold text-foreground">{m.guidedWorkout.title}</h3>
+                        <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1 flex-wrap">
+                          <span className="capitalize">{m.guidedWorkout.category.replace(/_/g, " ")}</span>
+                          <span className="capitalize">{m.guidedWorkout.level}</span>
+                          <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{m.guidedWorkout.durationMinutes} min</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        <span className="text-gold-muted">Why: </span>{m.guidedWorkout.reason}
+                      </p>
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gold/70 py-3 text-sm font-semibold text-primary-foreground opacity-80 cursor-not-allowed"
+                      >
+                        <Play className="w-4 h-4" />
+                        {m.guidedWorkout.buttonLabel}
+                      </button>
                     </div>
                   )}
                 </div>
