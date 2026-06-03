@@ -72,7 +72,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   heatExposureAccess: "none",
   coldExposureAccess: "none",
   strengthTrainingAccess: "full_gym",
-  pilatesMobilityAccess: "mat_only",
+  pilatesMobilityAccess: "mat_home",
 };
 
 export const DEFAULT_JOURNAL: JournalEntry = {
