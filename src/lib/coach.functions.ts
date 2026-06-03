@@ -169,7 +169,12 @@ export type CoachRoute =
   | "HOME_BODYWEIGHT_PLAN"
   | "PILATES_CORE_PLAN"
   | "LOW_ENERGY_SESSION"
-  | "INTERMEDIATE_FITNESS_PLAN";
+  | "INTERMEDIATE_FITNESS_PLAN"
+  // Daily OS routes
+  | "PROGRAM_REQUEST"
+  | "BREATHWORK_MEDITATION_REQUEST"
+  | "MORNING_PROTOCOL_REQUEST"
+  | "NUTRITION_CALORIE_REQUEST";
 
 export type ContinuationCommand =
   | "FITNESS"
@@ -187,6 +192,13 @@ export type ContinuationCommand =
   | "BEGINNER"
   | "INTERMEDIATE"
   | "ADVANCED"
+  | "CALORIES"
+  | "GYM_PLAN"
+  | "HOME_PLAN"
+  | "MORNING_PROTOCOL"
+  | "FAT_LOSS"
+  | "MUSCLE"
+  | "ALL_ROUND_RESET"
   | "NONE";
 
 // ---------- Exercise Prescription Engine — classification types ----------
