@@ -258,6 +258,30 @@ function CoachPage() {
       const res: CoachResponse = await ask({
         data: { question: message, profile, journal, dailyProgress, temporal, history },
       });
+
+      // Server function returned, but the upstream model/KB call failed —
+      // it surfaces this via debug.apiError + a placeholder answer.
+      if (res.debug.apiError) {
+        const cls = classifyError(res.debug.apiError);
+        toast.error(cls.title, {
+          description: cls.description,
+          action: { label: "Retry", onClick: () => send(message) },
+        });
+        setThread((t) => [
+          ...t,
+          {
+            role: "assistant",
+            content: res.answer || `${cls.title} — ${cls.description}`,
+            guidedPractice: res.guidedPractice,
+            guidedWorkout: res.guidedWorkout,
+            quickReplies: res.quickReplies ?? [],
+            debug: res.debug,
+            failure: { ...cls, lastUserMessage: message },
+          },
+        ]);
+        return;
+      }
+
       setThread((t) => [
         ...t,
         {
@@ -267,18 +291,25 @@ function CoachPage() {
           guidedWorkout: res.guidedWorkout,
           quickReplies: res.quickReplies ?? [],
           debug: res.debug,
+          failure: null,
         },
       ]);
     } catch (err) {
+      const cls = classifyError(err);
+      toast.error(cls.title, {
+        description: cls.description,
+        action: { label: "Retry", onClick: () => send(message) },
+      });
       setThread((t) => [
         ...t,
         {
           role: "assistant",
-          content: "Request failed.",
+          content: `${cls.title}. ${cls.description}`,
           guidedPractice: null,
           guidedWorkout: null,
           quickReplies: [],
           debug: buildFailureDebug(temporal, err),
+          failure: { ...cls, lastUserMessage: message },
         },
       ]);
     } finally {
