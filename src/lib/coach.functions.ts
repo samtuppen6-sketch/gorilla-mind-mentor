@@ -1669,7 +1669,11 @@ export const askCoach = createServerFn({ method: "POST" })
       ? `\n\nGUIDED PRACTICE SECTION: After TODAY'S NON-NEGOTIABLES (or ${ordersHeading} for life-stuck) and before COACH CLOSE, add a section labelled exactly "GUIDED PRACTICE" with two short lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
       : "";
 
-    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${suppressionInstruction}${duplicateAdviceInstruction}${guidedPracticeInstruction}`;
+    const guidedWorkoutInstruction = guidedWorkout
+      ? `\n\nGUIDED WORKOUT SECTION: Before COACH CLOSE, add a section labelled exactly "GUIDED WORKOUT" with two short lines:\nRecommended: ${guidedWorkout.title} (${guidedWorkout.durationMinutes} min, ${guidedWorkout.category}, ${guidedWorkout.level})\nStart the guided workout inside the app.\nDo NOT invent a different workout name. Use exactly "${guidedWorkout.title}".`
+      : "";
+
+    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${suppressionInstruction}${duplicateAdviceInstruction}${guidedPracticeInstruction}${guidedWorkoutInstruction}`;
 
     try {
       const res = await fetch("https://api.openai.com/v1/responses", {
