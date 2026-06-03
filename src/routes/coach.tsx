@@ -158,7 +158,8 @@ function CoachPage() {
   const ask = useServerFn(askCoach);
   const profile = useProfile();
   const journal = useJournal();
-  const [seed, setSeed] = useState(SEED);
+  const search = useSearch({ from: "/coach" });
+  const [seed, setSeed] = useState(search.prefill ?? SEED);
   const [reply, setReply] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -166,6 +167,23 @@ function CoachPage() {
   const threadEndRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // If the route was opened with ?prefill=..., load it into the seed/reply
+  // composer once so the user can edit-then-send. We only apply it on initial
+  // arrival to avoid clobbering the user's own typing.
+  const prefillAppliedRef = useRef(false);
+  useEffect(() => {
+    if (prefillAppliedRef.current) return;
+    if (!search.prefill) return;
+    prefillAppliedRef.current = true;
+    if (thread.length === 0) {
+      setSeed(search.prefill);
+    } else {
+      setReply(search.prefill);
+      setComposerOpen(true);
+      setTimeout(() => textareaRef.current?.focus(), 50);
+    }
+  }, [search.prefill, thread.length]);
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
