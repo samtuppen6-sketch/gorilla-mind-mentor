@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -68,10 +69,15 @@ function RootShell({ children }: { children: ReactNode }) {
       <head><HeadContent /></head>
       <body>
         {children}
+        <RootToaster />
         <Scripts />
       </body>
     </html>
   );
+}
+
+function RootToaster() {
+  return <Toaster theme="dark" position="top-center" richColors closeButton />;
 }
 
 function RootComponent() {

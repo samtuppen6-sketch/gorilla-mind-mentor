@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -16,7 +17,7 @@ import {
 } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
 import { loadDailyProgress } from "@/lib/practice-progress";
-import { Loader2, Send, Play, Clock, ChevronDown } from "lucide-react";
+import { Loader2, Send, Play, Clock, ChevronDown, AlertTriangle, RotateCcw } from "lucide-react";
 import type { GuidedPracticeRec } from "@/lib/practices";
 
 
@@ -41,6 +42,15 @@ export const Route = createFileRoute("/coach")({
 
 const SEED = "I hate my job, I feel stuck, I'm not motivated but want to get fit. What should I do?";
 
+type ErrorKind =
+  | "offline"
+  | "rate_limit"
+  | "no_credits"
+  | "server"
+  | "upstream"
+  | "timeout"
+  | "unknown";
+
 type ThreadMessage =
   | { role: "user"; content: string }
   | {
@@ -50,7 +60,36 @@ type ThreadMessage =
       guidedWorkout: GuidedWorkoutRecommendation | null;
       quickReplies: string[];
       debug: CoachDebug;
+      failure?: { kind: ErrorKind; title: string; description: string; lastUserMessage: string } | null;
     };
+
+function classifyError(err: unknown): { kind: ErrorKind; title: string; description: string } {
+  const raw = err instanceof Error ? err.message : String(err ?? "");
+  const msg = raw.toLowerCase();
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return { kind: "offline", title: "You're offline", description: "Check your connection and tap Retry." };
+  }
+  if (/failed to fetch|networkerror|network request failed|fetch failed/.test(msg)) {
+    return { kind: "offline", title: "Can't reach the Coach", description: "Network request failed. Check your connection and retry." };
+  }
+  if (/\b429\b|rate.?limit|too many requests/.test(msg)) {
+    return { kind: "rate_limit", title: "Coach is rate limited", description: "Too many requests right now. Wait a moment, then retry." };
+  }
+  if (/\b402\b|payment required|insufficient.*credit|out of credit/.test(msg)) {
+    return { kind: "no_credits", title: "Out of AI credits", description: "Add credits in Workspace → Usage, then retry." };
+  }
+  if (/\b5\d\d\b|internal server|bad gateway|service unavailable|gateway timeout/.test(msg)) {
+    return { kind: "server", title: "Coach service is down", description: "Upstream error. Try again in a minute." };
+  }
+  if (/timeout|timed out|aborted/.test(msg)) {
+    return { kind: "timeout", title: "Coach took too long", description: "The request timed out. Tap Retry." };
+  }
+  if (/openai|knowledge.?base|file_search|vector store|retrieval/.test(msg)) {
+    return { kind: "upstream", title: "Knowledge base error", description: "The Coach couldn't reach its knowledge base. Retry shortly." };
+  }
+  return { kind: "unknown", title: "Coach request failed", description: raw ? raw.slice(0, 140) : "Something went wrong. Tap Retry." };
+}
 
 function buildTemporalContext(message: string): TemporalContext {
   const now = new Date();
@@ -219,6 +258,30 @@ function CoachPage() {
       const res: CoachResponse = await ask({
         data: { question: message, profile, journal, dailyProgress, temporal, history },
       });
+
+      // Server function returned, but the upstream model/KB call failed —
+      // it surfaces this via debug.apiError + a placeholder answer.
+      if (res.debug.apiError) {
+        const cls = classifyError(res.debug.apiError);
+        toast.error(cls.title, {
+          description: cls.description,
+          action: { label: "Retry", onClick: () => send(message) },
+        });
+        setThread((t) => [
+          ...t,
+          {
+            role: "assistant",
+            content: res.answer || `${cls.title} — ${cls.description}`,
+            guidedPractice: res.guidedPractice,
+            guidedWorkout: res.guidedWorkout,
+            quickReplies: res.quickReplies ?? [],
+            debug: res.debug,
+            failure: { ...cls, lastUserMessage: message },
+          },
+        ]);
+        return;
+      }
+
       setThread((t) => [
         ...t,
         {
@@ -228,18 +291,25 @@ function CoachPage() {
           guidedWorkout: res.guidedWorkout,
           quickReplies: res.quickReplies ?? [],
           debug: res.debug,
+          failure: null,
         },
       ]);
     } catch (err) {
+      const cls = classifyError(err);
+      toast.error(cls.title, {
+        description: cls.description,
+        action: { label: "Retry", onClick: () => send(message) },
+      });
       setThread((t) => [
         ...t,
         {
           role: "assistant",
-          content: "Request failed.",
+          content: `${cls.title}. ${cls.description}`,
           guidedPractice: null,
           guidedWorkout: null,
           quickReplies: [],
           debug: buildFailureDebug(temporal, err),
+          failure: { ...cls, lastUserMessage: message },
         },
       ]);
     } finally {
@@ -293,10 +363,31 @@ function CoachPage() {
                 </div>
               ) : (
                 <div key={i} className="space-y-2 mr-6">
-                  <div className="rounded-xl border border-border bg-card p-5">
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Coach</p>
-                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{m.content}</p>
-                  </div>
+                  {m.failure ? (
+                    <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 space-y-3">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-destructive">{m.failure.title}</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{m.failure.description}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => send(m.failure!.lastUserMessage)}
+                        disabled={loading}
+                        className="inline-flex items-center gap-2 rounded-lg border border-destructive/40 bg-background/60 px-3 py-2 text-xs font-semibold text-foreground hover:bg-destructive/10 disabled:opacity-50"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Retry
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-border bg-card p-5">
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Coach</p>
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                    </div>
+                  )}
                   {m.guidedPractice && (
                     <div className="rounded-xl border border-gold/40 bg-card p-5 space-y-3">
                       <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Guided practice</p>
