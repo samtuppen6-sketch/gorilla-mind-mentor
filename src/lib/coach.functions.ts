@@ -845,6 +845,133 @@ function buildContextBlock(
   return lines.join("\n");
 }
 
+// ---------- Continuation router helpers ----------
+
+const CONTINUATION_MAP: Record<string, { command: ContinuationCommand; route: CoachRoute }> = {
+  "FITNESS": { command: "FITNESS", route: "CONTINUATION_FITNESS_PLAN" },
+  "JOB": { command: "JOB", route: "CONTINUATION_JOB_PLAN" },
+  "BOTH": { command: "BOTH", route: "CONTINUATION_BOTH_PLAN" },
+  "BUILD MY PLAN": { command: "BUILD_MY_PLAN", route: "CONTINUATION_BUILD_MY_PLAN" },
+  "BUILD PLAN": { command: "BUILD_MY_PLAN", route: "CONTINUATION_BUILD_MY_PLAN" },
+  "RESET": { command: "RESET", route: "CONTINUATION_RESET_NOW" },
+  "RESET NOW": { command: "RESET", route: "CONTINUATION_RESET_NOW" },
+  "MINIMUM STANDARD": { command: "MINIMUM_STANDARD", route: "CONTINUATION_MINIMUM_STANDARD" },
+  "MINIMUM": { command: "MINIMUM_STANDARD", route: "CONTINUATION_MINIMUM_STANDARD" },
+  "MORNING": { command: "MORNING", route: "CONTINUATION_MORNING_SETUP" },
+  "MORNING PLAN": { command: "MORNING", route: "CONTINUATION_MORNING_SETUP" },
+};
+
+function detectContinuationCommand(
+  message: string,
+  history: CoachHistoryTurn[],
+): { command: ContinuationCommand; route: CoachRoute } | null {
+  if (!history.length) return null;
+  const norm = message.trim().toUpperCase().replace(/[.!?,]+$/g, "").replace(/\s+/g, " ");
+  if (norm.length > 30) return null;
+  return CONTINUATION_MAP[norm] ?? null;
+}
+
+function extractReplyOptions(assistantText: string): string[] {
+  if (!assistantText) return [];
+  // Find a "REPLY WITH" section, otherwise scan for "Reply X, Y, or Z" sentences.
+  let segment = "";
+  const sectionMatch = assistantText.match(/REPLY WITH[:\s]*([\s\S]+)$/i);
+  if (sectionMatch) {
+    segment = sectionMatch[1];
+  } else {
+    const inline = assistantText.match(/\breply\s+(?:with\s+)?([A-Z][A-Z0-9 ,\/\-]+(?:\s+or\s+[A-Z][A-Z0-9 \-]+)?)/);
+    if (inline) segment = inline[1];
+  }
+  if (!segment) return [];
+  // Take only first 3 lines of REPLY WITH section.
+  segment = segment.split(/\n\n/)[0];
+  // Capture ALL-CAPS tokens (allowing spaces, hyphens, digits, apostrophes).
+  const tokens: string[] = [];
+  const tokenRe = /\b([A-Z][A-Z0-9'\-]+(?:\s+[A-Z0-9'\-]+){0,3})\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = tokenRe.exec(segment)) !== null) {
+    const t = m[1].trim();
+    if (t.length < 2 || t.length > 40) continue;
+    if (/^(REPLY|WITH|OR|AND|THE|A|AN|TO|FOR|IF|ME|MY|I'M|IS)$/.test(t)) continue;
+    if (!tokens.includes(t)) tokens.push(t);
+  }
+  return tokens.slice(0, 6);
+}
+
+// Keywords that indicate "reset" advice the model already produced — used to
+// instruct the next response NOT to repeat them.
+const DUPLICATE_ADVICE_PATTERNS: Array<{ key: string; re: RegExp }> = [
+  { key: "phone away", re: /phone\s+(?:away|down|out of)/i },
+  { key: "drink water", re: /\b(drink\s+water|water\s+before)/i },
+  { key: "clothes laid out", re: /clothes\s+(?:laid|out|ready)/i },
+  { key: "5 min breathing", re: /\b5\s*(?:min|minutes)?\s*breath/i },
+  { key: "20 min movement", re: /\b(20|30)\s*(?:min|minutes)?\s*(?:walk|movement|move)/i },
+  { key: "protein breakfast", re: /protein.*(breakfast|first meal)|first meal.*protein/i },
+  { key: "tomorrow morning routine", re: /tomorrow\s+morning/i },
+];
+
+function detectPreviousAdvice(history: CoachHistoryTurn[]): string[] {
+  const last = [...history].reverse().find((h) => h.role === "assistant");
+  if (!last) return [];
+  return DUPLICATE_ADVICE_PATTERNS.filter((p) => p.re.test(last.content)).map((p) => p.key);
+}
+
+const CONTINUATION_SHAPES: Partial<Record<CoachRoute, string>> = {
+  CONTINUATION_BOTH_PLAN: [
+    "ACTIVE ROUTE is CONTINUATION_BOTH_PLAN. The user just replied 'BOTH' to the previous coach turn. This is a CONTINUATION. Do NOT repeat the previous reset advice (phone away, water, breathing, movement, protein) — advance the conversation. Use this exact structure:",
+    "",
+    "HEADLINE — one direct line, e.g. 'Good. We handle both — but in the right order.'",
+    "WHAT THIS MEANS — 3–4 short lines showing how the job and fitness problems feed each other. Body first, work clarity second.",
+    "THE NEXT 24 HOURS",
+    "TONIGHT — numbered 4 items: phone away from bed, clothes laid out, decide tomorrow's movement, write one line about one work thing they can control tomorrow.",
+    "TOMORROW MORNING — numbered 5 items: water before phone, 5 min breathing, 20 min movement, protein breakfast, no job decisions before the body is online.",
+    "WORK RESET — 3 numbered questions to answer tomorrow about role/people/pressure/money/purpose and one move this week for more control.",
+    "FITNESS RESET — 7-day minimum standard list: 20 min movement daily, protein with first meal, water before caffeine, phone away for first 30 minutes.",
+    "COACH CLOSE — 2 short lines: 'You are not building a new life tomorrow. You are taking back command of the first hour.'",
+    "REPLY WITH — exactly: 'Reply BUILD MY PLAN and I will turn this into a 7-day structure.'",
+  ].join("\n"),
+
+  CONTINUATION_BUILD_MY_PLAN: [
+    "ACTIVE ROUTE is CONTINUATION_BUILD_MY_PLAN. The user asked for the structured plan. Do NOT repeat the previous reset advice. Build the actual 7-day plan. Use this exact structure:",
+    "",
+    "HEADLINE — 'Here is the plan. Simple. Repeatable. No drama.'",
+    "PLAN LENGTH — '7 days.'",
+    "MISSION — one short line about rebuilding control over mornings, body, and work direction.",
+    "DAILY NON-NEGOTIABLES — numbered 5: water before phone, 5 min breathing, 20 min movement, protein-first breakfast, one work-control action.",
+    "DAY 1 — RE-ENTRY — Body / Mind / Work / Rule lines.",
+    "DAY 2 — BODY LEADS — Body / Mind / Work lines.",
+    "DAY 3 — REMOVE FRICTION — Body / Nutrition / Work lines.",
+    "DAY 4 — STANDARD — Body / Mind / Work lines.",
+    "DAY 5 — CLARITY — Body / Work lines.",
+    "DAY 6 — DISCIPLINE — Body / Nutrition / Work lines.",
+    "DAY 7 — REVIEW — 4 numbered review questions.",
+    "COACH CLOSE — 'This is not about motivation. This is about proving you can lead yourself for seven days.'",
+    "REPLY WITH — exactly: 'Reply FITNESS for the training plan, JOB for the work plan, or BOTH for the full 30-day rebuild.'",
+  ].join("\n"),
+
+  CONTINUATION_FITNESS_PLAN: [
+    "ACTIVE ROUTE is CONTINUATION_FITNESS_PLAN. The user wants the fitness-specific next step. Do NOT repeat previous reset advice. Use this structure:",
+    "HEADLINE / MISSION (7-day training baseline) / DAILY NON-NEGOTIABLES (movement, protein, water) / WEEK STRUCTURE (Day 1–7 short body-led prescriptions, respect gymAccess from profile) / COACH CLOSE / REPLY WITH — 'Reply BUILD MY PLAN or JOB.'",
+  ].join("\n"),
+
+  CONTINUATION_JOB_PLAN: [
+    "ACTIVE ROUTE is CONTINUATION_JOB_PLAN. The user wants the work-specific next step. Do NOT repeat previous reset advice. Use this structure:",
+    "HEADLINE / MISSION (7-day work clarity) / DAILY NON-NEGOTIABLES (one control action, one drain removed, one boundary held) / 7-DAY WORK STRUCTURE (Day 1–7: name the hate, list 3 realistic options stay/improve/exit, one task you've avoided, decide environment/income/purpose lever, one practical next move) / COACH CLOSE / REPLY WITH — 'Reply BUILD MY PLAN or FITNESS.'",
+  ].join("\n"),
+
+  CONTINUATION_RESET_NOW: [
+    "ACTIVE ROUTE is CONTINUATION_RESET_NOW. The user wants an immediate reset. Do NOT repeat previous reset advice verbatim. Advance: give a 30-minute reset sequence appropriate to the current dayPart. End with REPLY WITH — 'Reply BUILD MY PLAN or MINIMUM STANDARD.'",
+  ].join("\n"),
+
+  CONTINUATION_MINIMUM_STANDARD: [
+    "ACTIVE ROUTE is CONTINUATION_MINIMUM_STANDARD. Give the minimum-required action for today only. One action. One line of why. End with REPLY WITH — 'Reply BUILD MY PLAN.'",
+  ].join("\n"),
+
+  CONTINUATION_MORNING_SETUP: [
+    "ACTIVE ROUTE is CONTINUATION_MORNING_SETUP. Provide a concrete morning sequence: pre-phone routine, water, breathing, movement, protein, one written line of intent. End with REPLY WITH — 'Reply BUILD MY PLAN or FITNESS.'",
+  ].join("\n"),
+};
+
 export const askCoach = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
