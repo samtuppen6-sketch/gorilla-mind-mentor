@@ -347,6 +347,41 @@ export type CoachDebug = {
   exercisePlanSource: string | null;
   exerciseKnowledgeUsed: boolean;
   safetyModificationApplied: boolean;
+  // Gorilla Mind Daily OS
+  selectedPillars: string[];
+  pillarReasoning: string;
+  activePlanType: string | null;
+  activePlanLength: string | null;
+  guidedPracticeRecommendation: GuidedPracticeRecommendation | null;
+  calorieTargetUsed: number | null;
+  calorieSource: "profile" | "calculated" | "not_available";
+  calorieMissingFields: string[];
+  macroTargetUsed: { proteinG: number; carbsG: number; fatG: number } | null;
+  programmePersonalisationMissing: string[];
+  knowledgeBaseVolumesUsed: string[];
+  genericFallbackUsed: boolean;
+  genericFallbackReason: string | null;
+};
+
+export type GuidedPracticeRecommendation = {
+  id: string;
+  title: string;
+  category: "breathwork" | "meditation" | "morning_protocol" | "sleep" | "cold_water" | "mobility";
+  durationMinutes: number;
+  reason: string;
+  buttonLabel: string;
+};
+
+export type ProgramState = {
+  activePlanType: string | null;
+  activePlanLength: string | null;
+  selectedFitnessLevel: string | null;
+  selectedBreathwork: string | null;
+  selectedMeditation: string | null;
+  selectedMorningProtocol: string | null;
+  missingPersonalisationFields: string[];
+  lastRecommendedGuidedPractice: string | null;
+  lastProgrammeRoute: CoachRoute | null;
 };
 
 export type CoachResponse = {
@@ -355,6 +390,7 @@ export type CoachResponse = {
   guidedPractice: GuidedPracticeRec | null;
   guidedWorkout: GuidedWorkoutRecommendation | null;
   quickReplies: string[];
+  programState: ProgramState;
 };
 
 const HistoryTurnSchema = z.object({
