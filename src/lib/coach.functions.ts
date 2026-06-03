@@ -740,6 +740,14 @@ function detectRoute(
     };
   }
 
+  // 1f. Exercise Prescription Engine — fitness-specific routing.
+  {
+    const fc = classifyFitness(message, profile, journal);
+    const fitnessRoute = detectFitnessRoute(message, fc);
+    if (fitnessRoute) return fitnessRoute;
+  }
+
+
   if (/\b(craving|drink|relapse|lapse|sober|alcohol)\b/i.test(message)) {
     return {
       route: "SOBRIETY_CRAVING",
