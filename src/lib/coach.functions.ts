@@ -622,12 +622,68 @@ function detectRoute(
   };
 }
 
+const DAY_PART_PRIORITY: Record<DayPart, string[]> = {
+  MORNING: [
+    "hydration",
+    "light exposure",
+    "breathwork or meditation",
+    "morning identity anchor",
+    "training/mobility plan for the day",
+    "protein-first first meal",
+    "phone boundary",
+    "assigned high-priority missing pillars",
+  ],
+  MIDDAY: [
+    "what has already been completed today",
+    "what is missing",
+    "next meal",
+    "movement/steps",
+    "training readiness",
+    "stress regulation",
+    "minimum standard if the day is drifting",
+  ],
+  EVENING: [
+    "evening review",
+    "journal check-in",
+    "nutrition repair if needed",
+    "wind-down",
+    "sleep protection",
+    "phone-down boundary",
+    "tomorrow setup",
+  ],
+  LATE_NIGHT: [
+    "phone down",
+    "lights low",
+    "extended exhale breathing only if appropriate",
+    "simple journal line",
+    "sleep window protection",
+    "NO intense training, cold exposure, heavy planning, or stimulating protocols",
+  ],
+};
+
 function buildContextBlock(
   profile: Profile | null,
   journal: Journal | null,
   progress: DailyProgressCtx | null,
+  temporal: TemporalContext | null,
 ): string {
   const lines: string[] = ["=== OPERATOR CONTEXT ==="];
+  if (temporal) {
+    lines.push("[TEMPORAL CONTEXT]");
+    lines.push(`localDate: ${temporal.localDate}`);
+    lines.push(`localTime: ${temporal.localTime}`);
+    lines.push(`timezone: ${temporal.timezone}`);
+    lines.push(`dayOfWeek: ${temporal.dayOfWeek}`);
+    lines.push(`dayPart: ${temporal.dayPart}`);
+    lines.push(`sessionContext: ${temporal.sessionContext}`);
+    lines.push(`priorityFocus (for this dayPart):`);
+    for (const p of DAY_PART_PRIORITY[temporal.dayPart]) lines.push(`  - ${p}`);
+    lines.push("");
+  } else {
+    lines.push("[TEMPORAL CONTEXT] none (no client-side time provided)");
+    lines.push("");
+  }
+
   if (profile) {
     lines.push("[USER PROFILE]");
     lines.push(`name: ${profile.name}`);
