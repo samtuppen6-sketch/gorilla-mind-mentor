@@ -13,7 +13,7 @@ import {
 import { getPracticeById } from "@/lib/practices";
 import {
   ArrowLeft, Play, Pause, Check, Clock, Dumbbell, ShieldAlert,
-  CalendarCheck, SkipForward, SkipBack, RotateCcw,
+  SkipForward, SkipBack, RotateCcw, Flame, Trophy, MessageCircle, Home, Repeat,
 } from "lucide-react";
 
 const searchSchema = z.object({
@@ -138,7 +138,10 @@ function WorkoutPlayerPage() {
   const [remaining, setRemaining] = useState<number>(hydrated?.remaining ?? 0); // seconds left in current timer (0 if untimed)
   const [running, setRunning] = useState(false);                              // resume always paused
   const [completion, setCompletion] = useState<CompletionResult | null>(null);
+  const [finalStats, setFinalStats] = useState<{ elapsedSec: number; stepsCompleted: number } | null>(null);
   const intervalRef = useRef<number | null>(null);
+  const startedAtRef = useRef<number | null>(null);
+  const elapsedAccumRef = useRef<number>(0);
 
   // Skip the very first "reset remaining on step/round/resting change" pass so
   // a hydrated `remaining` is not immediately overwritten by step.perRoundSec.
@@ -229,9 +232,14 @@ function WorkoutPlayerPage() {
 
   function handleStart() {
     if (!currentStep) return;
+    startedAtRef.current = Date.now();
     setRunning(true);
   }
   function handlePause() {
+    if (startedAtRef.current != null) {
+      elapsedAccumRef.current += Math.floor((Date.now() - startedAtRef.current) / 1000);
+      startedAtRef.current = null;
+    }
     setRunning(false);
   }
   function handleSkip() {
@@ -271,7 +279,15 @@ function WorkoutPlayerPage() {
     setResting(false);
     setStepIdx(0);
     setRound(1);
+    elapsedAccumRef.current = 0;
+    startedAtRef.current = null;
     try { window.localStorage.removeItem(storageKey); } catch { /* ignore */ }
+  }
+
+  function handleRepeat() {
+    handleRestart();
+    setCompletion(null);
+    setFinalStats(null);
   }
 
   function handleComplete() {
@@ -283,6 +299,17 @@ function WorkoutPlayerPage() {
       source,
       linkedCoachRoute,
     });
+    // Snapshot elapsed + completed steps before we tear running down.
+    let elapsedSec = elapsedAccumRef.current;
+    if (startedAtRef.current != null) {
+      elapsedSec += Math.floor((Date.now() - startedAtRef.current) / 1000);
+      startedAtRef.current = null;
+    }
+    const stepsCompleted = Math.min(
+      stepIdx + (isLastRound && !resting ? 1 : 0),
+      steps.length,
+    );
+    setFinalStats({ elapsedSec, stepsCompleted });
     setCompletion(result);
     setRunning(false);
     try { window.localStorage.removeItem(storageKey); } catch { /* ignore */ }
@@ -478,60 +505,28 @@ function WorkoutPlayerPage() {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={handleComplete}
-          disabled={!!completion}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gold/40 bg-card py-3 text-sm font-semibold text-foreground disabled:opacity-50"
-        >
-          <Check className="w-4 h-4" />
-          Mark workout complete
-        </button>
+        {!completion && (
+          <button
+            type="button"
+            onClick={handleComplete}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gold/40 bg-card py-3 text-sm font-semibold text-foreground"
+          >
+            <Check className="w-4 h-4" />
+            Mark workout complete
+          </button>
+        )}
 
-        {completion && (
-          <div className="rounded-xl border border-gold/60 bg-gold/10 p-5 space-y-3">
-            <p className="text-sm font-bold text-gold inline-flex items-center gap-2">
-              <Check className="w-4 h-4" />
-              Workout complete
-            </p>
-            <div className="text-xs text-foreground space-y-1">
-              <p>
-                <span className="text-gold-muted">Discipline points awarded: </span>
-                <span className="font-semibold text-gold">
-                  +{completion.pointsAwarded}
-                  {completion.duplicate && " (duplicate today — no DP)"}
-                </span>
-              </p>
-              <p>
-                <span className="text-gold-muted">Daily action: </span>
-                <span className="font-semibold">{dailyActionLabel(completion.dailyActionUpdated)}</span>
-              </p>
-              <p>
-                <span className="text-gold-muted">Protocol streak: </span>
-                {completion.protocolStreakUpdated
-                  ? "daily minimum met — incremented"
-                  : completion.dailyProgress.dailyMinimumMet
-                    ? "already counted today"
-                    : "daily minimum not yet met"}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <Link
-                to="/coach"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-gold py-3 text-xs font-semibold text-primary-foreground"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Coach
-              </Link>
-              <Link
-                to="/"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-gold/50 bg-card py-3 text-xs font-semibold text-foreground"
-              >
-                <CalendarCheck className="w-4 h-4" />
-                View Today
-              </Link>
-            </div>
-          </div>
+        {completion && finalStats && (
+          <WorkoutRecap
+            workoutTitle={workout.title}
+            workoutCategory={workout.category}
+            plannedMinutes={workout.durationMinutes}
+            totalSteps={steps.length}
+            stepsCompleted={finalStats.stepsCompleted}
+            elapsedSec={finalStats.elapsedSec}
+            completion={completion}
+            onRepeat={handleRepeat}
+          />
         )}
 
         {!completion && (
@@ -543,6 +538,7 @@ function WorkoutPlayerPage() {
             Back to Coach
           </Link>
         )}
+
 
         <div className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-[11px] font-mono space-y-1">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Workout debug</p>
@@ -606,6 +602,131 @@ function DRow({ k, v }: { k: string; v: string }) {
     <div className="flex gap-2 text-muted-foreground">
       <span className="text-foreground shrink-0">{k}:</span>
       <span className="break-all">{v}</span>
+    </div>
+  );
+}
+
+function coachCloseFor(category: string, stepsCompleted: number, totalSteps: number): string {
+  const partial = stepsCompleted < totalSteps;
+  if (partial) {
+    return "You stopped short of the full session. That still counts — the rep that matters is showing up tomorrow. Don't break the chain.";
+  }
+  switch (category) {
+    case "home_reset":
+      return "Reset session done. Body's on, brain's on. Use this momentum — don't sit back down.";
+    case "gym_strength":
+      return "Strength work logged. Eat, hydrate, sleep — recovery is where the work pays out.";
+    case "run_walk":
+      return "Cardio in the bank. Heart, lungs, legs — all sharpened. Walk it out and breathe.";
+    case "low_energy":
+      return "Low-energy day, full session executed. That's discipline over motivation. Respect.";
+    case "pilates_mobility":
+      return "Mobility work done. You just bought yourself another decade of pain-free training.";
+    default:
+      return "Session complete. Stack the next one — that's how this compounds.";
+  }
+}
+
+function WorkoutRecap({
+  workoutTitle,
+  workoutCategory,
+  plannedMinutes,
+  totalSteps,
+  stepsCompleted,
+  elapsedSec,
+  completion,
+  onRepeat,
+}: {
+  workoutTitle: string;
+  workoutCategory: string;
+  plannedMinutes: number;
+  totalSteps: number;
+  stepsCompleted: number;
+  elapsedSec: number;
+  completion: CompletionResult;
+  onRepeat: () => void;
+}) {
+  const actualMinutes = Math.max(1, Math.round(elapsedSec / 60));
+  const close = coachCloseFor(workoutCategory, stepsCompleted, totalSteps);
+  const streakLine = completion.protocolStreakUpdated
+    ? "Protocol streak extended — daily minimum met today"
+    : completion.dailyProgress.dailyMinimumMet
+      ? "Daily minimum already met today — streak holds"
+      : "Daily minimum not yet met — log one more action to extend the streak";
+
+  return (
+    <div className="rounded-xl border border-gold/60 bg-gold/10 p-5 space-y-5">
+      <div className="space-y-1">
+        <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted inline-flex items-center gap-2">
+          <Trophy className="w-3.5 h-3.5" />
+          Session recap
+        </p>
+        <h3 className="text-lg font-bold text-foreground">{workoutTitle}</h3>
+        <p className="text-[11px] text-muted-foreground">
+          {workoutCategory.replace(/_/g, " ")} · planned {plannedMinutes} min
+        </p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <RecapStat label="Duration" value={`${actualMinutes}m`} sub={`planned ${plannedMinutes}m`} />
+        <RecapStat label="Steps" value={`${stepsCompleted}/${totalSteps}`} sub={stepsCompleted >= totalSteps ? "full session" : "partial"} />
+        <RecapStat
+          label="DP earned"
+          value={`+${completion.pointsAwarded}`}
+          sub={completion.duplicate ? "duplicate" : "banked"}
+        />
+      </div>
+
+      <div className="rounded-lg border border-gold/30 bg-background/40 p-3 space-y-1.5">
+        <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted inline-flex items-center gap-1.5">
+          <Flame className="w-3 h-3" />
+          Streak
+        </p>
+        <p className="text-xs text-foreground">{streakLine}</p>
+        <p className="text-[11px] text-muted-foreground">
+          Daily action: <span className="text-foreground">{dailyActionLabel(completion.dailyActionUpdated)}</span>
+        </p>
+      </div>
+
+      <div className="rounded-lg border-l-2 border-gold bg-background/40 px-3 py-2.5">
+        <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-1">Coach close</p>
+        <p className="text-sm text-foreground italic leading-snug">"{close}"</p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Link
+          to="/"
+          className="inline-flex flex-col items-center justify-center gap-1 rounded-lg bg-gold py-3 text-[11px] font-semibold text-primary-foreground"
+        >
+          <Home className="w-4 h-4" />
+          Done
+        </Link>
+        <button
+          type="button"
+          onClick={onRepeat}
+          className="inline-flex flex-col items-center justify-center gap-1 rounded-lg border border-gold/50 bg-card py-3 text-[11px] font-semibold text-foreground"
+        >
+          <Repeat className="w-4 h-4" />
+          Repeat workout
+        </button>
+        <Link
+          to="/coach"
+          className="inline-flex flex-col items-center justify-center gap-1 rounded-lg border border-gold/50 bg-card py-3 text-[11px] font-semibold text-foreground text-center leading-tight"
+        >
+          <MessageCircle className="w-4 h-4" />
+          Ask coach<br />what next
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function RecapStat({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="rounded-lg border border-gold/30 bg-background/40 px-2 py-2.5 text-center">
+      <p className="text-[9px] uppercase tracking-[0.25em] text-gold-muted">{label}</p>
+      <p className="text-lg font-bold text-foreground tabular-nums leading-tight mt-0.5">{value}</p>
+      <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>
     </div>
   );
 }
