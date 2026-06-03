@@ -136,6 +136,38 @@ function ProfilePanel() {
       <Bool label="processAddictionFlag" v={draft.processAddictionFlag} onChange={(v) => update("processAddictionFlag", v)} />
       <Bool label="foodBoundaryActive" v={draft.foodBoundaryActive} onChange={(v) => update("foodBoundaryActive", v)} />
 
+      <div className="mt-4 rounded-lg border border-gold/30 bg-background/40 p-3 space-y-3">
+        <p className="text-[10px] uppercase tracking-[0.3em] text-gold">Access & Equipment</p>
+        <Select
+          label="heatExposureAccess"
+          v={draft.heatExposureAccess}
+          options={["none", "sauna", "steam_room", "hot_bath", "infrared_sauna", "gym_spa", "home_sauna"]}
+          onChange={(v) => update("heatExposureAccess", v as UserProfile["heatExposureAccess"])}
+        />
+        <Select
+          label="coldExposureAccess"
+          v={draft.coldExposureAccess}
+          options={["none", "cold_shower", "cold_plunge", "sea_swim", "ice_bath"]}
+          onChange={(v) => update("coldExposureAccess", v as UserProfile["coldExposureAccess"])}
+        />
+        <Select
+          label="strengthTrainingAccess"
+          v={draft.strengthTrainingAccess}
+          options={["none", "bodyweight_home", "dumbbells_home", "full_gym"]}
+          onChange={(v) => update("strengthTrainingAccess", v as UserProfile["strengthTrainingAccess"])}
+        />
+        <Select
+          label="pilatesMobilityAccess"
+          v={draft.pilatesMobilityAccess}
+          options={["none", "mat_home", "app_guided", "class_access", "reformer_access"]}
+          onChange={(v) => update("pilatesMobilityAccess", v as UserProfile["pilatesMobilityAccess"])}
+        />
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          These answers stop the Coach from recommending unavailable practices, such as sauna, cold plunge, or gym-based training, unless the user has access.
+        </p>
+      </div>
+
+
       <div className="pt-2 text-xs">
         <span className="text-muted-foreground">Status: </span>
         <span className={saved ? "text-gold font-semibold" : "text-foreground"}>{saved ? "Saved" : "Unsaved"}</span>
