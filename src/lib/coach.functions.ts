@@ -1521,11 +1521,11 @@ export const askCoach = createServerFn({ method: "POST" })
 
     if (!apiKey) {
       debug.apiError = "OPENAI_API_KEY missing on server";
-      return { answer: "Coach is offline. Backend secret missing.", debug, guidedPractice, quickReplies };
+      return { answer: "Coach is offline. Backend secret missing.", debug, guidedPractice, guidedWorkout, quickReplies };
     }
     if (!vectorStoreId) {
       debug.apiError = "GORILLA_MIND_VECTOR_STORE_ID missing on server";
-      return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice, quickReplies };
+      return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice, guidedWorkout, quickReplies };
     }
 
     const contextBlock = buildContextBlock(profile, journal, progress, temporal);
@@ -1667,7 +1667,7 @@ export const askCoach = createServerFn({ method: "POST" })
       if (!res.ok) {
         const text = await res.text();
         debug.apiError = `OpenAI ${res.status}: ${text.slice(0, 500)}`;
-        return { answer: "Coach failed to respond. See debug panel.", debug, guidedPractice, quickReplies };
+        return { answer: "Coach failed to respond. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
       }
 
       const json: any = await res.json();
@@ -1697,12 +1697,12 @@ export const askCoach = createServerFn({ method: "POST" })
 
       if (routing.route !== "SAFETY_CRISIS" && !debug.fileSearchCalled) {
         debug.apiError = "Knowledge-base retrieval was required, but OpenAI did not call file_search.";
-        return { answer: "Coach could not access the knowledge base. See debug panel.", debug, guidedPractice, quickReplies };
+        return { answer: "Coach could not access the knowledge base. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
       }
 
       if (routing.route !== "SAFETY_CRISIS" && debug.fileSearchCalled && debug.retrievedChunksCount === 0) {
         debug.apiError = "Knowledge-base retrieval returned zero chunks for the selected route.";
-        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice, quickReplies };
+        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
       }
 
       // Derive quick-reply chips from THIS answer's REPLY WITH section so they
@@ -1713,10 +1713,10 @@ export const askCoach = createServerFn({ method: "POST" })
       }
       debug.quickRepliesShown = quickReplies.length > 0;
 
-      return { answer: answer || "(empty response)", debug, guidedPractice, quickReplies };
+      return { answer: answer || "(empty response)", debug, guidedPractice, guidedWorkout, quickReplies };
     } catch (err) {
       debug.apiError = err instanceof Error ? err.message : String(err);
-      return { answer: "Coach request failed. See debug panel.", debug, guidedPractice, quickReplies };
+      return { answer: "Coach request failed. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
     }
   });
 
