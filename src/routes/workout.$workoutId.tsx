@@ -138,7 +138,10 @@ function WorkoutPlayerPage() {
   const [remaining, setRemaining] = useState<number>(hydrated?.remaining ?? 0); // seconds left in current timer (0 if untimed)
   const [running, setRunning] = useState(false);                              // resume always paused
   const [completion, setCompletion] = useState<CompletionResult | null>(null);
+  const [finalStats, setFinalStats] = useState<{ elapsedSec: number; stepsCompleted: number } | null>(null);
   const intervalRef = useRef<number | null>(null);
+  const startedAtRef = useRef<number | null>(null);
+  const elapsedAccumRef = useRef<number>(0);
 
   // Skip the very first "reset remaining on step/round/resting change" pass so
   // a hydrated `remaining` is not immediately overwritten by step.perRoundSec.
