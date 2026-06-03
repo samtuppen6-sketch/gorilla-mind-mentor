@@ -332,7 +332,50 @@ function detectRoute(
     };
   }
 
-  // 2. Clear current user message intent. This must beat stale journal/profile context.
+  // 1b. Explicit transformation plan request — only path that allows long plans.
+  if (transformationRequest) {
+    return {
+      route: "GENERAL_TRANSFORMATION_REQUEST",
+      reason: "User explicitly requested a full life-reset / multi-day plan. Long plan output allowed.",
+      query: "transformation reset 20 day 60 day 90 day full protocol identity discipline complete plan",
+    };
+  }
+
+  // 1c. General life-stuck — must come before keyword routes that grab "tired", "not motivated", etc.
+  if (lifeStuckMessage) {
+    return {
+      route: "GENERAL_LIFE_STUCK",
+      reason: "User expresses general life-stuck / unmotivated / lost. Default to short body-first response, one question, no long plan.",
+      query: "stuck motivation identity body first walk protein water minimum standard one day at a time",
+    };
+  }
+
+  // 1d. Late-night override — protect sleep, refuse intense protocols.
+  if (temporal?.dayPart === "LATE_NIGHT" && intenseLateNightIntent) {
+    timeBasedRouteReason = `Late-night override (${temporal.localTime}): user asked for intense activity but day part is LATE_NIGHT. Forcing SLEEP_WIND_DOWN.`;
+    return {
+      route: "SLEEP_WIND_DOWN",
+      reason: timeBasedRouteReason,
+      query: "late night wind down sleep protection no stimulants no cold no hard training phone down lights low extended exhale",
+      timeBasedRouteReason,
+    };
+  }
+
+  // 1e. Evening default with no specific intent → evening review.
+  if (
+    temporal?.dayPart === "EVENING" &&
+    !trainingMessage && !hardTrainingMessage && !poorSleepMessage && !eveningReviewMessage &&
+    /(what should i do|next|now|tonight|wind down|close.*day|end.*day)/i.test(message)
+  ) {
+    timeBasedRouteReason = `Evening time-of-day default (${temporal.localTime}) with no specific intent → EVENING_REVIEW.`;
+    return {
+      route: "EVENING_REVIEW",
+      reason: timeBasedRouteReason,
+      query: "evening review end of day journal check in nutrition repair wind down sleep protection tomorrow setup",
+      timeBasedRouteReason,
+    };
+  }
+
   if (poorSleepMessage && (trainingMessage || hardTrainingMessage || wantsMovementMessage || lowEnergyMessage)) {
     return {
       route: "RECOVERY_DAY",
