@@ -1802,8 +1802,12 @@ export const askCoach = createServerFn({ method: "POST" })
     const breathworkSubRoute: BreathworkSubRoute =
       routing.route === "BREATHWORK" ? (routing.breathworkSubRoute ?? "DOWNREGULATE") : "NONE";
 
-    // Continuation routes force PLAN_BUILDING response mode.
-    if (continuation && !isSafetyCrisis) {
+    // Continuation routes AND Daily-OS plan routes force PLAN_BUILDING response mode.
+    const PLAN_BUILDING_ROUTES = new Set<CoachRoute>([
+      "FULL_REBUILD_PLAN", "PROGRAM_REQUEST", "MORNING_PROTOCOL_REQUEST",
+      "BREATHWORK_MEDITATION_REQUEST", "NUTRITION_CALORIE_REQUEST",
+    ]);
+    if (!isSafetyCrisis && (continuation || PLAN_BUILDING_ROUTES.has(routing.route))) {
       responseMode = "PLAN_BUILDING";
     }
 
