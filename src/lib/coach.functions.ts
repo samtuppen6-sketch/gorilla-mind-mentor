@@ -158,7 +158,18 @@ export type CoachRoute =
   | "CONTINUATION_BUILD_MY_PLAN"
   | "CONTINUATION_RESET_NOW"
   | "CONTINUATION_MINIMUM_STANDARD"
-  | "CONTINUATION_MORNING_SETUP";
+  | "CONTINUATION_MORNING_SETUP"
+  // Exercise Prescription Engine
+  | "FITNESS_PLAN_REQUEST"
+  | "FITNESS_ROUTINE_BUILDER"
+  | "FULL_REBUILD_PLAN"
+  | "CORE_BACK_SUPPORT_PLAN"
+  | "GYM_STRENGTH_PLAN"
+  | "RUNNING_STARTER_PLAN"
+  | "HOME_BODYWEIGHT_PLAN"
+  | "PILATES_CORE_PLAN"
+  | "LOW_ENERGY_SESSION"
+  | "INTERMEDIATE_FITNESS_PLAN";
 
 export type ContinuationCommand =
   | "FITNESS"
@@ -168,7 +179,49 @@ export type ContinuationCommand =
   | "RESET"
   | "MINIMUM_STANDARD"
   | "MORNING"
+  | "HOME"
+  | "GYM"
+  | "RUNNING"
+  | "PILATES"
+  | "LOW_ENERGY"
+  | "BEGINNER"
+  | "INTERMEDIATE"
+  | "ADVANCED"
   | "NONE";
+
+// ---------- Exercise Prescription Engine — classification types ----------
+export type FitnessGoal =
+  | "fat_loss" | "muscle_building" | "general_fitness" | "strength"
+  | "running" | "mobility" | "core_strength" | "back_support"
+  | "confidence" | "all_round_reset" | "unknown";
+export type FitnessLevel = "beginner" | "intermediate" | "advanced" | "unknown";
+export type TrainingLocation = "home" | "gym" | "outdoors" | "mixed" | "unknown";
+export type Equipment = "none" | "dumbbells" | "resistance_bands" | "full_gym" | "cardio_machine" | "unknown";
+export type InjuryFlag = "none" | "back_pain" | "knee_pain" | "shoulder_pain" | "mobility_limited" | "unknown";
+export type AvailableTime = "10_minutes" | "20_minutes" | "30_minutes" | "45_minutes" | "60_minutes" | "unknown";
+export type EnergyLevelTag = "low" | "moderate" | "high" | "unknown";
+export type PreferredStyle = "weights" | "pilates" | "running" | "walking" | "bodyweight" | "mobility" | "mixed" | "unknown";
+
+export type FitnessClassification = {
+  fitnessGoal: FitnessGoal;
+  fitnessLevel: FitnessLevel;
+  trainingLocation: TrainingLocation;
+  equipment: Equipment;
+  injuryFlag: InjuryFlag;
+  availableTime: AvailableTime;
+  energyLevel: EnergyLevelTag;
+  preferredStyle: PreferredStyle;
+};
+
+export type GuidedWorkoutRecommendation = {
+  id: string;
+  title: string;
+  category: "home_bodyweight" | "gym_strength" | "pilates_core" | "running" | "mobility" | "low_energy";
+  durationMinutes: number;
+  level: "beginner" | "intermediate" | "advanced";
+  reason: string;
+  buttonLabel: string;
+};
 
 export type BreathworkSubRoute =
   | "DOWNREGULATE"
@@ -266,12 +319,29 @@ export type CoachDebug = {
   selectedRouteAfterOverride: CoachRoute | null;
   duplicateAdviceSuppressed: boolean;
   suppressedAdvice: string[];
+  // Exercise Prescription Engine
+  fitnessGoal: FitnessGoal;
+  fitnessLevel: FitnessLevel;
+  trainingLocation: TrainingLocation;
+  equipment: Equipment;
+  injuryFlag: InjuryFlag;
+  availableTime: AvailableTime;
+  energyLevel: EnergyLevelTag;
+  preferredStyle: PreferredStyle;
+  exerciseRoute: CoachRoute | null;
+  guidedWorkoutRecommendation: GuidedWorkoutRecommendation | null;
+  exercisePersonalisationMissing: string[];
+  exerciseContinuationDetected: boolean;
+  exercisePlanSource: string | null;
+  exerciseKnowledgeUsed: boolean;
+  safetyModificationApplied: boolean;
 };
 
 export type CoachResponse = {
   answer: string;
   debug: CoachDebug;
   guidedPractice: GuidedPracticeRec | null;
+  guidedWorkout: GuidedWorkoutRecommendation | null;
   quickReplies: string[];
 };
 
@@ -349,6 +419,235 @@ function detectBreathworkSubRoute(
     query: "general breathwork coherent breathing extended exhale nasal safe default protocol",
   };
 }
+
+// ---------- Exercise Prescription Engine helpers ----------
+
+export function classifyFitness(message: string, profile: Profile | null, journal: Journal | null): FitnessClassification {
+  const m = message.toLowerCase();
+  const goal: FitnessGoal =
+    /\b(fat loss|lose fat|cut|weight loss)\b/.test(m) ? "fat_loss" :
+    /\b(muscle|hypertrophy|build muscle|bulk|gain mass)\b/.test(m) ? "muscle_building" :
+    /\b(strength|strong|stronger|lift heavy)\b/.test(m) ? "strength" :
+    /\b(run|running|5k|10k|jog)\b/.test(m) ? "running" :
+    /\b(bad back|back pain|strengthen.*back)\b/.test(m) ? "back_support" :
+    /\b(core|abs)\b/.test(m) ? "core_strength" :
+    /\b(mobility|flexibility|stiff)\b/.test(m) ? "mobility" :
+    /\b(confidence|reset|start over|get back)\b/.test(m) ? "all_round_reset" :
+    /\b(fit|fitness|get in shape|exercise|workout)\b/.test(m) ? "general_fitness" : "unknown";
+
+  const level: FitnessLevel =
+    /\b(advanced|experienced|years of training)\b/.test(m) ? "advanced" :
+    /\b(intermediate|already train|been training)\b/.test(m) ? "intermediate" :
+    /\b(beginner|never trained|new to|just starting|out of shape)\b/.test(m) ? "beginner" :
+    (profile?.trainingLevel === "beginner" || profile?.trainingLevel === "intermediate" || profile?.trainingLevel === "advanced") ? (profile.trainingLevel as FitnessLevel) : "unknown";
+
+  const location: TrainingLocation =
+    /\b(gym|weights room)\b/.test(m) ? "gym" :
+    /\b(home|at home|from home|no gym|no equipment)\b/.test(m) ? "home" :
+    /\b(outdoor|outside|park|trail)\b/.test(m) ? "outdoors" :
+    /\b(mixed|both)\b/.test(m) ? "mixed" :
+    (profile?.gymAccess === "full" || profile?.gymAccess === "yes") ? "gym" :
+    (profile?.gymAccess === "none") ? "home" : "unknown";
+
+  const equipment: Equipment =
+    /\b(full gym|barbell|rack|machines)\b/.test(m) ? "full_gym" :
+    /\b(dumbbell)\b/.test(m) ? "dumbbells" :
+    /\b(band|resistance band)\b/.test(m) ? "resistance_bands" :
+    /\b(treadmill|bike|rower|cardio machine)\b/.test(m) ? "cardio_machine" :
+    /\b(no equipment|bodyweight|nothing)\b/.test(m) ? "none" :
+    location === "gym" ? "full_gym" : location === "home" ? "none" : "unknown";
+
+  const injury: InjuryFlag =
+    /\b(bad back|back pain|lower back|sciatic|herniat)\b/.test(m) ? "back_pain" :
+    /\b(knee|knees)\b/.test(m) ? "knee_pain" :
+    /\b(shoulder)\b/.test(m) ? "shoulder_pain" :
+    /\b(stiff|mobility limited|tight everywhere)\b/.test(m) ? "mobility_limited" :
+    /\b(no injury|no pain|nothing wrong)\b/.test(m) ? "none" : "unknown";
+
+  const time: AvailableTime =
+    /\b10\s*(min|minutes)\b/.test(m) ? "10_minutes" :
+    /\b20\s*(min|minutes)\b/.test(m) ? "20_minutes" :
+    /\b30\s*(min|minutes)\b/.test(m) ? "30_minutes" :
+    /\b45\s*(min|minutes)\b/.test(m) ? "45_minutes" :
+    /\b(60|an hour|hour)\b/.test(m) ? "60_minutes" : "unknown";
+
+  const energy: EnergyLevelTag =
+    /\b(low energy|tired|drained|flat|exhausted|wiped)\b/.test(m) ? "low" :
+    /\b(high energy|energised|fired up|fresh)\b/.test(m) ? "high" :
+    /\b(moderate|ok|fine|normal)\b/.test(m) ? "moderate" :
+    (journal && journal.energy <= 3 ? "low" : journal && journal.energy >= 7 ? "high" : "unknown");
+
+  const style: PreferredStyle =
+    /\b(weights|lift|lifting|strength training)\b/.test(m) ? "weights" :
+    /\bpilates\b/.test(m) ? "pilates" :
+    /\b(run|running|jog)\b/.test(m) ? "running" :
+    /\b(walk|walking)\b/.test(m) ? "walking" :
+    /\b(bodyweight|calisthenic)\b/.test(m) ? "bodyweight" :
+    /\b(mobility|stretch|yoga)\b/.test(m) ? "mobility" :
+    /\b(mixed|variety)\b/.test(m) ? "mixed" : "unknown";
+
+  return {
+    fitnessGoal: goal, fitnessLevel: level, trainingLocation: location, equipment,
+    injuryFlag: injury, availableTime: time, energyLevel: energy, preferredStyle: style,
+  };
+}
+
+function detectFitnessRoute(message: string, fc: FitnessClassification): { route: CoachRoute; reason: string; query: string } | null {
+  const m = message.toLowerCase();
+  const exerciseIntent = /\b(exercise|workout|train|training|fit|fitness|routine|plan|lift|run|running|pilates|gym|cardio|movement)\b/.test(m);
+  if (!exerciseIntent) return null;
+
+  // Full rebuild signal: fitness + meditation + breathwork together
+  if (/\b(fitness|exercise|workout|train).+\b(meditat|breath)|breath.+\b(fitness|exercise)|full reset.*fitness/.test(m)) {
+    return {
+      route: "FULL_REBUILD_PLAN",
+      reason: "User requested combined fitness + meditation/breathwork — full rebuild plan.",
+      query: "gorilla mind morning protocol fitness plan beginner breathwork meditation identity protein sleep weekly structure",
+    };
+  }
+  // Bad back / core
+  if (fc.injuryFlag === "back_pain" || /\b(bad back|back pain|core|strengthen.*core|strengthen.*back)\b/.test(m)) {
+    return {
+      route: "CORE_BACK_SUPPORT_PLAN",
+      reason: "Back pain / core support intent — low-impact Pilates-style core routine, no aggressive loading.",
+      query: "core back support pilates dead bug glute bridge bird dog side plank pelvic tilt safe lower back rehabilitation",
+    };
+  }
+  // Gym / weights
+  if (fc.trainingLocation === "gym" || /\b(gym|weights|lift|barbell|dumbbell)\b/.test(m)) {
+    return {
+      route: "GYM_STRENGTH_PLAN",
+      reason: "Gym access / weights intent — full-body strength prescription.",
+      query: "full body gym strength beginner intermediate squat hinge press row plank rep ranges technique RPE",
+    };
+  }
+  // Running
+  if (fc.preferredStyle === "running" || /\b(run|running|5k|10k|jog|cardio)\b/.test(m)) {
+    return {
+      route: "RUNNING_STARTER_PLAN",
+      reason: "Running intent — run/walk interval starter prescription.",
+      query: "beginner running run walk intervals couch to 5k joint readiness nasal breathing cadence",
+    };
+  }
+  // Pilates / mobility
+  if (fc.preferredStyle === "pilates" || /\bpilates\b/.test(m)) {
+    return {
+      route: "PILATES_CORE_PLAN",
+      reason: "Pilates / core / mobility intent.",
+      query: "pilates core mobility beginner control breathing pelvic tilt bird dog dead bug",
+    };
+  }
+  // Low energy / short time
+  if (fc.energyLevel === "low" || fc.availableTime === "10_minutes" || fc.availableTime === "20_minutes" && /\blow\b/.test(m)) {
+    return {
+      route: "LOW_ENERGY_SESSION",
+      reason: "Low energy / short time — minimum standard session.",
+      query: "low energy minimum standard short session walk squats glute bridge plank breathing recovery day",
+    };
+  }
+  // Home / bodyweight
+  if (fc.trainingLocation === "home" || /\b(home|bodyweight|no equipment)\b/.test(m)) {
+    return {
+      route: "HOME_BODYWEIGHT_PLAN",
+      reason: "Home / bodyweight intent.",
+      query: "home bodyweight beginner circuit squat press up glute bridge plank hip hinge weekly structure",
+    };
+  }
+  // Intermediate explicit
+  if (fc.fitnessLevel === "intermediate" || fc.fitnessLevel === "advanced") {
+    return {
+      route: "INTERMEDIATE_FITNESS_PLAN",
+      reason: "Intermediate/advanced level — progression-oriented weekly structure.",
+      query: "intermediate fitness weekly structure full body strength zone 2 mobility conditioning progression",
+    };
+  }
+  // Default: routine builder
+  return {
+    route: "FITNESS_ROUTINE_BUILDER",
+    reason: "Generic fitness request — lead with a safe starter session, then ask HOME / GYM / RUNNING / PILATES.",
+    query: "beginner fitness routine bodyweight starter session safe minimum standard weekly structure",
+  };
+}
+
+function buildWorkoutForRoute(route: CoachRoute, fc: FitnessClassification): GuidedWorkoutRecommendation | null {
+  switch (route) {
+    case "HOME_BODYWEIGHT_PLAN":
+    case "FITNESS_ROUTINE_BUILDER":
+    case "FULL_REBUILD_PLAN":
+      return {
+        id: "beginner_home_reset_20", title: "Beginner Home Reset",
+        category: "home_bodyweight", durationMinutes: 20, level: "beginner",
+        reason: "Best for a low-friction first session without equipment.",
+        buttonLabel: "Start Home Reset",
+      };
+    case "CORE_BACK_SUPPORT_PLAN":
+    case "PILATES_CORE_PLAN":
+      return {
+        id: "core_back_support_15", title: "Core & Back Support",
+        category: "pilates_core", durationMinutes: 15, level: "beginner",
+        reason: "Best for building core control without aggressive loading.",
+        buttonLabel: "Start Core Support",
+      };
+    case "GYM_STRENGTH_PLAN":
+      return {
+        id: "full_body_gym_45", title: "Full-Body Gym Standard",
+        category: "gym_strength", durationMinutes: 45,
+        level: fc.fitnessLevel === "intermediate" || fc.fitnessLevel === "advanced" ? "intermediate" : "beginner",
+        reason: "Best for building strength, confidence and fitness with controlled loading.",
+        buttonLabel: "Start Gym Standard",
+      };
+    case "RUNNING_STARTER_PLAN":
+      return {
+        id: "run_walk_foundation_25", title: "Run-Walk Foundation",
+        category: "running", durationMinutes: 25, level: "beginner",
+        reason: "Best for building running capacity without overloading joints.",
+        buttonLabel: "Start Run-Walk",
+      };
+    case "LOW_ENERGY_SESSION":
+      return {
+        id: "low_energy_minimum_15", title: "Minimum Standard Session",
+        category: "low_energy", durationMinutes: 15, level: "beginner",
+        reason: "Best for keeping the standard on a low-energy day without overreaching.",
+        buttonLabel: "Start Minimum Standard",
+      };
+    case "INTERMEDIATE_FITNESS_PLAN":
+      return {
+        id: "full_body_intermediate_45", title: "Intermediate Full-Body",
+        category: "gym_strength", durationMinutes: 45, level: "intermediate",
+        reason: "Best for progressing strength and conditioning with controlled volume.",
+        buttonLabel: "Start Intermediate Session",
+      };
+    default:
+      return null;
+  }
+}
+
+const FITNESS_PERSONALISATION_QUESTIONS: Record<string, string> = {
+  trainingLocation: "Where are you training: home, gym, or outdoors?",
+  availableTime: "How much time today: 10, 20, 30, or 45 minutes?",
+  energyLevel: "Current energy: low, moderate, or high?",
+  injuryFlag: "Any pain or injuries I should work around?",
+  fitnessGoal: "Goal: fat loss, muscle, fitness, confidence, or all-round reset?",
+  preferredStyle: "Do you want weights, running, Pilates/core, or bodyweight?",
+};
+
+function exercisePersonalisationMissing(fc: FitnessClassification): string[] {
+  const missing: string[] = [];
+  if (fc.trainingLocation === "unknown") missing.push("trainingLocation");
+  if (fc.availableTime === "unknown") missing.push("availableTime");
+  if (fc.energyLevel === "unknown") missing.push("energyLevel");
+  if (fc.injuryFlag === "unknown") missing.push("injuryFlag");
+  if (fc.fitnessGoal === "unknown") missing.push("fitnessGoal");
+  if (fc.preferredStyle === "unknown") missing.push("preferredStyle");
+  return missing.slice(0, 3);
+}
+
+const FITNESS_ROUTES: Set<CoachRoute> = new Set([
+  "FITNESS_PLAN_REQUEST", "FITNESS_ROUTINE_BUILDER", "FULL_REBUILD_PLAN",
+  "CORE_BACK_SUPPORT_PLAN", "GYM_STRENGTH_PLAN", "RUNNING_STARTER_PLAN",
+  "HOME_BODYWEIGHT_PLAN", "PILATES_CORE_PLAN", "LOW_ENERGY_SESSION",
+  "INTERMEDIATE_FITNESS_PLAN",
+]);
 
 function detectRoute(
   message: string,
@@ -440,6 +739,14 @@ function detectRoute(
       query: "evening review end of day honest check in one standard journal operator log missed day repair reset",
     };
   }
+
+  // 1f. Exercise Prescription Engine — fitness-specific routing.
+  {
+    const fc = classifyFitness(message, profile, journal);
+    const fitnessRoute = detectFitnessRoute(message, fc);
+    if (fitnessRoute) return fitnessRoute;
+  }
+
 
   if (/\b(craving|drink|relapse|lapse|sober|alcohol)\b/i.test(message)) {
     return {
@@ -859,6 +1166,15 @@ const CONTINUATION_MAP: Record<string, { command: ContinuationCommand; route: Co
   "MINIMUM": { command: "MINIMUM_STANDARD", route: "CONTINUATION_MINIMUM_STANDARD" },
   "MORNING": { command: "MORNING", route: "CONTINUATION_MORNING_SETUP" },
   "MORNING PLAN": { command: "MORNING", route: "CONTINUATION_MORNING_SETUP" },
+  // Fitness continuation chips
+  "HOME": { command: "HOME", route: "HOME_BODYWEIGHT_PLAN" },
+  "GYM": { command: "GYM", route: "GYM_STRENGTH_PLAN" },
+  "RUNNING": { command: "RUNNING", route: "RUNNING_STARTER_PLAN" },
+  "PILATES": { command: "PILATES", route: "PILATES_CORE_PLAN" },
+  "LOW ENERGY": { command: "LOW_ENERGY", route: "LOW_ENERGY_SESSION" },
+  "BEGINNER": { command: "BEGINNER", route: "FITNESS_ROUTINE_BUILDER" },
+  "INTERMEDIATE": { command: "INTERMEDIATE", route: "INTERMEDIATE_FITNESS_PLAN" },
+  "ADVANCED": { command: "ADVANCED", route: "INTERMEDIATE_FITNESS_PLAN" },
 };
 
 function detectContinuationCommand(
@@ -1111,8 +1427,37 @@ export const askCoach = createServerFn({ method: "POST" })
       CONTINUATION_RESET_NOW: ["BUILD MY PLAN", "MINIMUM STANDARD"],
       CONTINUATION_MINIMUM_STANDARD: ["BUILD MY PLAN"],
       CONTINUATION_MORNING_SETUP: ["BUILD MY PLAN", "FITNESS"],
+      FITNESS_PLAN_REQUEST: ["HOME", "GYM", "RUNNING", "PILATES"],
+      FITNESS_ROUTINE_BUILDER: ["HOME", "GYM", "RUNNING", "PILATES"],
+      FULL_REBUILD_PLAN: ["HOME", "GYM", "RUNNING", "PILATES"],
+      CORE_BACK_SUPPORT_PLAN: ["HOME", "PILATES", "BUILD MY PLAN"],
+      GYM_STRENGTH_PLAN: ["BEGINNER", "INTERMEDIATE", "LOW ENERGY", "BUILD MY PLAN"],
+      RUNNING_STARTER_PLAN: ["BEGINNER", "INTERMEDIATE", "BUILD MY PLAN"],
+      HOME_BODYWEIGHT_PLAN: ["BEGINNER", "INTERMEDIATE", "LOW ENERGY", "BUILD MY PLAN"],
+      PILATES_CORE_PLAN: ["BEGINNER", "INTERMEDIATE", "BUILD MY PLAN"],
+      LOW_ENERGY_SESSION: ["HOME", "BUILD MY PLAN"],
+      INTERMEDIATE_FITNESS_PLAN: ["GYM", "HOME", "BUILD MY PLAN"],
     };
     let quickReplies: string[] = fallbackQuickRepliesByRoute[routing.route] ?? [];
+
+    // ---------- Exercise Prescription Engine wiring ----------
+    const fc = classifyFitness(data.question, profile, journal);
+    const isFitnessRoute = FITNESS_ROUTES.has(routing.route);
+    const guidedWorkout: GuidedWorkoutRecommendation | null = isFitnessRoute
+      ? buildWorkoutForRoute(routing.route, fc)
+      : null;
+    const personalisationMissing = isFitnessRoute ? exercisePersonalisationMissing(fc) : [];
+    const safetyModificationApplied = isFitnessRoute && (fc.injuryFlag === "back_pain" || routing.route === "CORE_BACK_SUPPORT_PLAN" || routing.route === "PILATES_CORE_PLAN" || routing.route === "LOW_ENERGY_SESSION");
+    const exercisePlanSource = isFitnessRoute
+      ? (routing.route === "GYM_STRENGTH_PLAN" ? "TEMPLATE_GYM_FULL_BODY"
+        : routing.route === "RUNNING_STARTER_PLAN" ? "TEMPLATE_RUN_WALK"
+        : routing.route === "PILATES_CORE_PLAN" || routing.route === "CORE_BACK_SUPPORT_PLAN" ? "TEMPLATE_PILATES_CORE"
+        : routing.route === "LOW_ENERGY_SESSION" ? "TEMPLATE_LOW_ENERGY"
+        : routing.route === "INTERMEDIATE_FITNESS_PLAN" ? "TEMPLATE_INTERMEDIATE_FULL_BODY"
+        : routing.route === "FULL_REBUILD_PLAN" ? "TEMPLATE_FULL_REBUILD"
+        : "TEMPLATE_HOME_BODYWEIGHT")
+      : null;
+
 
     const debug: CoachDebug = {
       selectedRoute: routing.route,
@@ -1157,15 +1502,30 @@ export const askCoach = createServerFn({ method: "POST" })
       selectedRouteAfterOverride,
       duplicateAdviceSuppressed,
       suppressedAdvice,
+      fitnessGoal: fc.fitnessGoal,
+      fitnessLevel: fc.fitnessLevel,
+      trainingLocation: fc.trainingLocation,
+      equipment: fc.equipment,
+      injuryFlag: fc.injuryFlag,
+      availableTime: fc.availableTime,
+      energyLevel: fc.energyLevel,
+      preferredStyle: fc.preferredStyle,
+      exerciseRoute: isFitnessRoute ? routing.route : null,
+      guidedWorkoutRecommendation: guidedWorkout,
+      exercisePersonalisationMissing: personalisationMissing,
+      exerciseContinuationDetected: !!continuation && ["HOME","GYM","RUNNING","PILATES","LOW_ENERGY","BEGINNER","INTERMEDIATE","ADVANCED"].includes(continuation.command),
+      exercisePlanSource,
+      exerciseKnowledgeUsed: isFitnessRoute,
+      safetyModificationApplied,
     };
 
     if (!apiKey) {
       debug.apiError = "OPENAI_API_KEY missing on server";
-      return { answer: "Coach is offline. Backend secret missing.", debug, guidedPractice, quickReplies };
+      return { answer: "Coach is offline. Backend secret missing.", debug, guidedPractice, guidedWorkout, quickReplies };
     }
     if (!vectorStoreId) {
       debug.apiError = "GORILLA_MIND_VECTOR_STORE_ID missing on server";
-      return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice, quickReplies };
+      return { answer: "Coach is offline. Vector store secret missing.", debug, guidedPractice, guidedWorkout, quickReplies };
     }
 
     const contextBlock = buildContextBlock(profile, journal, progress, temporal);
@@ -1237,6 +1597,28 @@ export const askCoach = createServerFn({ method: "POST" })
 
     const transformationShape = "ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST. The user explicitly asked for a full plan. A longer multi-day or multi-week plan is allowed. Anchor in the Top 21 fundamentals and the user's assigned pillars. Begin with HEADLINE and a one-paragraph WHAT'S HAPPENING, then provide the plan in clear phases (Days 1–7, 8–21, 22–60). End with TODAY'S NON-NEGOTIABLES, COACH CLOSE, and REPLY WITH (give a concrete next reply option).";
 
+    // ---------- Exercise Prescription Engine shapes ----------
+    const morningLockIn = "MORNING LOCK-IN\n1. Water before phone.\n2. Mineralised water if appropriate (water + small pinch Celtic sea salt + lemon).\n3. Morning daylight outside.\n4. 5 minutes breathwork.\n5. 5 minutes meditation or identity reset.\n6. Movement or training.\n7. Protein-first breakfast.\n8. One-line journal: 'What is the standard today?'";
+    const exerciseFormatRule = "EXERCISE RESPONSE FORMAT — use exactly these section labels in this order: HEADLINE / THE STANDARD / MORNING LOCK-IN / TODAY'S SESSION / THIS WEEK / BREATHWORK / MEDITATION SUPPORT / WHAT I NEED FROM YOU / REPLY WITH. Keep MORNING LOCK-IN compact (do not bury the training plan). TODAY'S SESSION must include exact exercises, reps, sets and timing. THIS WEEK must be a simple 7-day structure. REPLY WITH must give 2–4 concrete chips.";
+    const exerciseSafety = "EXERCISE SAFETY: if user reports sharp, sharp-pinching, neurological, shooting, numb/weakness, or worsening pain, advise medical / physiotherapy review before training. Do not diagnose. No ego lifting. Leave 2 reps in reserve for beginners. Technique before load.";
+    const askOnlyMissing = personalisationMissing.length
+      ? `Under 'WHAT I NEED FROM YOU' ask ONLY these missing details (max 3): ${personalisationMissing.map((k) => FITNESS_PERSONALISATION_QUESTIONS[k]).join(" / ")}.`
+      : "Under 'WHAT I NEED FROM YOU' ask at most 1 sharpening question; user has already given enough detail — lead with the prescription.";
+
+    const fitnessShapesByRoute: Partial<Record<CoachRoute, string>> = {
+      FITNESS_ROUTINE_BUILDER: `ACTIVE ROUTE FITNESS_ROUTINE_BUILDER. Beginner-safe starter. Prescribe the 20-minute beginner bodyweight reset: 5-minute walk/march warm-up; 3 rounds of 10 bodyweight squats, 8 incline press-ups, 10 hip hinges, 20-second plank, 30s rest; 3-minute nasal breathing cool-down. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH must include: HOME, GYM, RUNNING, or PILATES.`,
+      HOME_BODYWEIGHT_PLAN: `ACTIVE ROUTE HOME_BODYWEIGHT_PLAN. Use the BEGINNER HOME FITNESS PLAN template: 5-min walk/march warm-up; 3 rounds of 10 bodyweight squats, 8 incline press-ups, 10 glute bridges, 10 hip hinges, 20-second plank, 30–60s rest; 3-min nasal breathing + gentle stretch cool-down. Weekly: Day1 circuit, Day2 walk+mobility, Day3 circuit, Day4 walk+breathwork, Day5 circuit, Day6 longer walk, Day7 review. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / LOW ENERGY / BUILD MY PLAN.`,
+      GYM_STRENGTH_PLAN: `ACTIVE ROUTE GYM_STRENGTH_PLAN. Use the GYM STRENGTH PLAN template. Warm-up: 5–8 min incline walk/bike. Full-body: leg press or goblet squat 3x10; chest press or press-ups 3x8–10; seated/cable row 3x10; RDL or hip hinge 3x8; plank 3x20–30s. Finish: 10-min incline walk + 3-min extended exhale breathing. Weekly: 3 full-body strength + 2 walks + 2 mobility/core. Rules: 2 reps in reserve, no ego lifting, technique before load. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / LOW ENERGY / BUILD MY PLAN.`,
+      PILATES_CORE_PLAN: `ACTIVE ROUTE PILATES_CORE_PLAN. Use the PILATES / CORE template. 2-min nasal breathing reset; pelvic tilts 2x10; dead bugs 2x8/side; glute bridges 2x12; bird dogs 2x8/side; side plank from knees 2x15–20s/side; child's pose 2 min. No pain chasing, slow reps, brace lightly, stop if symptoms increase. Weekly: Day1 core control, Day2 walk, Day3 pilates/core, Day4 mobility+breathwork, Day5 core control, Day6 longer walk, Day7 recovery review. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / BUILD MY PLAN.`,
+      CORE_BACK_SUPPORT_PLAN: `ACTIVE ROUTE CORE_BACK_SUPPORT_PLAN. Safety first: if pain is sharp, neurological, numb/weak, shooting, or worsening — recommend medical/physio review before training, do not diagnose. Prescribe the safe core/back-support routine: 2-min nasal breathing; pelvic tilts 2x10; dead bugs 2x8/side; glute bridges 2x12; bird dogs 2x8/side; side plank from knees 2x15–20s/side; child's pose 2 min. No heavy lifting, no aggressive sit-ups. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: HOME / PILATES / BUILD MY PLAN.`,
+      RUNNING_STARTER_PLAN: `ACTIVE ROUTE RUNNING_STARTER_PLAN. Use the RUNNING STARTER template. 5-min brisk walk; 8 rounds of 30s light jog + 90s walk; 5-min cool-down walk; 3-min nasal breathing. Rules: run slower than you think, no sprinting, build joints before ego, walking is part of the plan. Weekly: Day1 intervals, Day2 walk+mobility, Day3 intervals, Day4 rest or easy walk, Day5 intervals, Day6 long walk, Day7 review. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / BUILD MY PLAN.`,
+      LOW_ENERGY_SESSION: `ACTIVE ROUTE LOW_ENERGY_SESSION. Use the LOW ENERGY template. 1) Water. 2) 10-minute walk. 3) 3 rounds: 10 squats, 10 glute bridges, 20-second plank. 4) Extended exhale breathing for 3 minutes. Frame: 'This is not a performance day. This is a minimum standard day.' Keep MORNING LOCK-IN to a 3-line compact version. ${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: HOME / BUILD MY PLAN.`,
+      INTERMEDIATE_FITNESS_PLAN: `ACTIVE ROUTE INTERMEDIATE_FITNESS_PLAN. Use INTERMEDIATE template. Weekly: Day1 full-body strength, Day2 Zone 2 cardio + core, Day3 upper/lower split, Day4 mobility + breathwork, Day5 full-body strength, Day6 conditioning or long walk, Day7 recovery review. Ask for equipment and goals before prescribing load percentages or advanced volume. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: GYM / HOME / BUILD MY PLAN.`,
+      FULL_REBUILD_PLAN: `ACTIVE ROUTE FULL_REBUILD_PLAN. User asked for fitness + meditation + breathwork together. Provide a unified plan: full MORNING LOCK-IN, then TODAY'S SESSION (beginner home reset if no detail), THIS WEEK structure that combines training + breathwork + meditation days, BREATHWORK / MEDITATION SUPPORT section with one specific practice per day. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: HOME / GYM / RUNNING / PILATES.`,
+      FITNESS_PLAN_REQUEST: `ACTIVE ROUTE FITNESS_PLAN_REQUEST. Same shape as FITNESS_ROUTINE_BUILDER. ${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: HOME / GYM / RUNNING / PILATES.`,
+    };
+    const fitnessShape = fitnessShapesByRoute[routing.route];
+
     const continuationShape = CONTINUATION_SHAPES[routing.route];
     const routeInstruction =
       routing.route === "SAFETY_CRISIS"
@@ -1247,9 +1629,11 @@ export const askCoach = createServerFn({ method: "POST" })
             ? lifeStuckShape
             : routing.route === "GENERAL_TRANSFORMATION_REQUEST"
               ? transformationShape
-              : continuationShape
-                ? continuationShape
-                : `ACTIVE ROUTE is ${routing.route}. RESPONSE MODE is ${responseMode}. Honour the time-of-day rules. Use the smallest useful next action. ${baseFormatRule} Do NOT produce a multi-day plan.`;
+              : fitnessShape
+                ? fitnessShape
+                : continuationShape
+                  ? continuationShape
+                  : `ACTIVE ROUTE is ${routing.route}. RESPONSE MODE is ${responseMode}. Honour the time-of-day rules. Use the smallest useful next action. ${baseFormatRule} Do NOT produce a multi-day plan.`;
 
     const suppressionInstruction = retrievalSuppressedVolumes.length
       ? `\n\nRETRIEVAL SUPPRESSION: Do NOT lean on or quote content from the following knowledge volumes for this answer: ${retrievalSuppressedVolumes.join(", ")}. Reason: ${reasonForSuppression}`
@@ -1285,7 +1669,11 @@ export const askCoach = createServerFn({ method: "POST" })
       ? `\n\nGUIDED PRACTICE SECTION: After TODAY'S NON-NEGOTIABLES (or ${ordersHeading} for life-stuck) and before COACH CLOSE, add a section labelled exactly "GUIDED PRACTICE" with two short lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
       : "";
 
-    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${suppressionInstruction}${duplicateAdviceInstruction}${guidedPracticeInstruction}`;
+    const guidedWorkoutInstruction = guidedWorkout
+      ? `\n\nGUIDED WORKOUT SECTION: Before COACH CLOSE, add a section labelled exactly "GUIDED WORKOUT" with two short lines:\nRecommended: ${guidedWorkout.title} (${guidedWorkout.durationMinutes} min, ${guidedWorkout.category}, ${guidedWorkout.level})\nStart the guided workout inside the app.\nDo NOT invent a different workout name. Use exactly "${guidedWorkout.title}".`
+      : "";
+
+    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${suppressionInstruction}${duplicateAdviceInstruction}${guidedPracticeInstruction}${guidedWorkoutInstruction}`;
 
     try {
       const res = await fetch("https://api.openai.com/v1/responses", {
@@ -1307,7 +1695,7 @@ export const askCoach = createServerFn({ method: "POST" })
       if (!res.ok) {
         const text = await res.text();
         debug.apiError = `OpenAI ${res.status}: ${text.slice(0, 500)}`;
-        return { answer: "Coach failed to respond. See debug panel.", debug, guidedPractice, quickReplies };
+        return { answer: "Coach failed to respond. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
       }
 
       const json: any = await res.json();
@@ -1337,12 +1725,12 @@ export const askCoach = createServerFn({ method: "POST" })
 
       if (routing.route !== "SAFETY_CRISIS" && !debug.fileSearchCalled) {
         debug.apiError = "Knowledge-base retrieval was required, but OpenAI did not call file_search.";
-        return { answer: "Coach could not access the knowledge base. See debug panel.", debug, guidedPractice, quickReplies };
+        return { answer: "Coach could not access the knowledge base. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
       }
 
       if (routing.route !== "SAFETY_CRISIS" && debug.fileSearchCalled && debug.retrievedChunksCount === 0) {
         debug.apiError = "Knowledge-base retrieval returned zero chunks for the selected route.";
-        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice, quickReplies };
+        return { answer: "Coach could not find relevant knowledge base material for this route. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
       }
 
       // Derive quick-reply chips from THIS answer's REPLY WITH section so they
@@ -1353,10 +1741,10 @@ export const askCoach = createServerFn({ method: "POST" })
       }
       debug.quickRepliesShown = quickReplies.length > 0;
 
-      return { answer: answer || "(empty response)", debug, guidedPractice, quickReplies };
+      return { answer: answer || "(empty response)", debug, guidedPractice, guidedWorkout, quickReplies };
     } catch (err) {
       debug.apiError = err instanceof Error ? err.message : String(err);
-      return { answer: "Coach request failed. See debug panel.", debug, guidedPractice, quickReplies };
+      return { answer: "Coach request failed. See debug panel.", debug, guidedPractice, guidedWorkout, quickReplies };
     }
   });
 

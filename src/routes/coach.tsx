@@ -11,6 +11,7 @@ import {
   type SessionContext,
   type TemporalContext,
   type CoachHistoryTurn,
+  type GuidedWorkoutRecommendation,
 } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
 import { loadDailyProgress } from "@/lib/practice-progress";
@@ -128,6 +129,21 @@ function buildFailureDebug(temporal: TemporalContext, err: unknown): CoachDebug 
     selectedRouteAfterOverride: null,
     duplicateAdviceSuppressed: false,
     suppressedAdvice: [],
+    fitnessGoal: "unknown",
+    fitnessLevel: "unknown",
+    trainingLocation: "unknown",
+    equipment: "unknown",
+    injuryFlag: "unknown",
+    availableTime: "unknown",
+    energyLevel: "unknown",
+    preferredStyle: "unknown",
+    exerciseRoute: null,
+    guidedWorkoutRecommendation: null,
+    exercisePersonalisationMissing: [],
+    exerciseContinuationDetected: false,
+    exercisePlanSource: null,
+    exerciseKnowledgeUsed: false,
+    safetyModificationApplied: false,
   };
 }
 
