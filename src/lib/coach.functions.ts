@@ -306,7 +306,8 @@ function detectRoute(
   message: string,
   profile: Profile | null,
   journal: Journal | null,
-): { route: CoachRoute; reason: string; query: string; breathworkSubRoute?: BreathworkSubRoute } {
+  temporal: TemporalContext | null,
+): { route: CoachRoute; reason: string; query: string; breathworkSubRoute?: BreathworkSubRoute; timeBasedRouteReason: string | null } {
   const text = `${message.toLowerCase()} ${journal?.journalText?.toLowerCase() ?? ""}`;
   const flags = journal?.patternFlags ?? [];
   const flagSet = new Set(flags.map((f) => f.toLowerCase()));
@@ -316,6 +317,11 @@ function detectRoute(
   const wantsMovementMessage = /\b(move|moving|movement|want to move|need to move|walk|walking|stretch)\b/i.test(message);
   const lowEnergyMessage = /\b(low energy|low readiness|feel low|drained|flat|sluggish|no energy)\b/i.test(message);
   const eveningReviewMessage = /\b(check ?in|reset.*(bad day|after.*day)|after a bad day|end of day|end-of-day|wrap up|wrap-up|evening review|reflect|reflection|debrief|day debrief|review.*day)\b/i.test(message);
+  const lifeStuckMessage = /\b(hate my job|feel stuck|feeling stuck|i'?m stuck|not motivated|no motivation|wasting my life|don'?t know where to start|i feel lost|directionless|going nowhere)\b/i.test(message);
+  const transformationRequest = /\b(transform my life|change my life|reset my life|full reset|20.?day plan|60.?day plan|90.?day plan|full plan|complete plan|whole protocol)\b/i.test(message);
+  const intenseLateNightIntent = /\b(cold (shower|plunge|exposure)|ice bath|train|training|gym|lift|workout|sprint|hiit|energise|wake up|caffeine|plan my)\b/i.test(message);
+  let timeBasedRouteReason: string | null = null;
+
 
   // 1. SAFETY override
   if (hasMatch(text, SAFETY_PATTERNS)) {
