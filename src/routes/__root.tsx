@@ -77,14 +77,6 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function RootToaster() {
-  // Lazy import to avoid pulling sonner into the SSR shell graph eagerly.
-  // sonner is client-only; render once at the root so any page can toast.
-  const Toaster = require("sonner").Toaster as React.ComponentType<{
-    theme?: "dark" | "light" | "system";
-    position?: "top-center" | "bottom-center" | "top-right" | "bottom-right";
-    richColors?: boolean;
-    closeButton?: boolean;
-  }>;
   return <Toaster theme="dark" position="top-center" richColors closeButton />;
 }
 
