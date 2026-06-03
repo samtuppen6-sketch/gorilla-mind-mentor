@@ -790,6 +790,14 @@ function detectRoute(
     };
   }
 
+  // 1c-bis. Daily-OS program-level detector — runs before fitness/keyword routes
+  // so plan/routine/morning-protocol/nutrition asks build real plans.
+  {
+    const program = detectProgramRoute(message);
+    if (program) return program;
+  }
+
+
 
   // 1d. Late-night override — protect sleep, refuse intense protocols.
   if (temporal?.dayPart === "LATE_NIGHT" && intenseLateNightIntent) {
