@@ -42,6 +42,15 @@ export const Route = createFileRoute("/coach")({
 
 const SEED = "I hate my job, I feel stuck, I'm not motivated but want to get fit. What should I do?";
 
+type ErrorKind =
+  | "offline"
+  | "rate_limit"
+  | "no_credits"
+  | "server"
+  | "upstream"
+  | "timeout"
+  | "unknown";
+
 type ThreadMessage =
   | { role: "user"; content: string }
   | {
@@ -51,7 +60,36 @@ type ThreadMessage =
       guidedWorkout: GuidedWorkoutRecommendation | null;
       quickReplies: string[];
       debug: CoachDebug;
+      failure?: { kind: ErrorKind; title: string; description: string; lastUserMessage: string } | null;
     };
+
+function classifyError(err: unknown): { kind: ErrorKind; title: string; description: string } {
+  const raw = err instanceof Error ? err.message : String(err ?? "");
+  const msg = raw.toLowerCase();
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return { kind: "offline", title: "You're offline", description: "Check your connection and tap Retry." };
+  }
+  if (/failed to fetch|networkerror|network request failed|fetch failed/.test(msg)) {
+    return { kind: "offline", title: "Can't reach the Coach", description: "Network request failed. Check your connection and retry." };
+  }
+  if (/\b429\b|rate.?limit|too many requests/.test(msg)) {
+    return { kind: "rate_limit", title: "Coach is rate limited", description: "Too many requests right now. Wait a moment, then retry." };
+  }
+  if (/\b402\b|payment required|insufficient.*credit|out of credit/.test(msg)) {
+    return { kind: "no_credits", title: "Out of AI credits", description: "Add credits in Workspace → Usage, then retry." };
+  }
+  if (/\b5\d\d\b|internal server|bad gateway|service unavailable|gateway timeout/.test(msg)) {
+    return { kind: "server", title: "Coach service is down", description: "Upstream error. Try again in a minute." };
+  }
+  if (/timeout|timed out|aborted/.test(msg)) {
+    return { kind: "timeout", title: "Coach took too long", description: "The request timed out. Tap Retry." };
+  }
+  if (/openai|knowledge.?base|file_search|vector store|retrieval/.test(msg)) {
+    return { kind: "upstream", title: "Knowledge base error", description: "The Coach couldn't reach its knowledge base. Retry shortly." };
+  }
+  return { kind: "unknown", title: "Coach request failed", description: raw ? raw.slice(0, 140) : "Something went wrong. Tap Retry." };
+}
 
 function buildTemporalContext(message: string): TemporalContext {
   const now = new Date();
