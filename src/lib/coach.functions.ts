@@ -1237,6 +1237,7 @@ export const askCoach = createServerFn({ method: "POST" })
 
     const transformationShape = "ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST. The user explicitly asked for a full plan. A longer multi-day or multi-week plan is allowed. Anchor in the Top 21 fundamentals and the user's assigned pillars. Begin with HEADLINE and a one-paragraph WHAT'S HAPPENING, then provide the plan in clear phases (Days 1–7, 8–21, 22–60). End with TODAY'S NON-NEGOTIABLES, COACH CLOSE, and REPLY WITH (give a concrete next reply option).";
 
+    const continuationShape = CONTINUATION_SHAPES[routing.route];
     const routeInstruction =
       routing.route === "SAFETY_CRISIS"
         ? "ACTIVE ROUTE is SAFETY_CRISIS. Do NOT produce the normal HEADLINE/DO THIS NOW format. Respond with a short calm safety-first message directing the user to local emergency services / crisis line / doctor."
@@ -1246,10 +1247,16 @@ export const askCoach = createServerFn({ method: "POST" })
             ? lifeStuckShape
             : routing.route === "GENERAL_TRANSFORMATION_REQUEST"
               ? transformationShape
-              : `ACTIVE ROUTE is ${routing.route}. RESPONSE MODE is ${responseMode}. Honour the time-of-day rules. Use the smallest useful next action. ${baseFormatRule} Do NOT produce a multi-day plan.`;
+              : continuationShape
+                ? continuationShape
+                : `ACTIVE ROUTE is ${routing.route}. RESPONSE MODE is ${responseMode}. Honour the time-of-day rules. Use the smallest useful next action. ${baseFormatRule} Do NOT produce a multi-day plan.`;
 
     const suppressionInstruction = retrievalSuppressedVolumes.length
       ? `\n\nRETRIEVAL SUPPRESSION: Do NOT lean on or quote content from the following knowledge volumes for this answer: ${retrievalSuppressedVolumes.join(", ")}. Reason: ${reasonForSuppression}`
+      : "";
+
+    const duplicateAdviceInstruction = duplicateAdviceSuppressed
+      ? `\n\nDUPLICATE ADVICE SUPPRESSION: The previous coach turn already prescribed these actions: ${suppressedAdvice.join(", ")}. You MUST NOT repeat that same action list. Open with a short acknowledgement such as "Good. We are moving into the plan now." and advance to the next layer of the plan. If you need to reference a previous action, do so in a single short clause, not as a re-prescription.`
       : "";
 
     // Prior conversation block — render as text so the model treats this as a continuation.
