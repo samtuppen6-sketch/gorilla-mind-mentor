@@ -1427,8 +1427,37 @@ export const askCoach = createServerFn({ method: "POST" })
       CONTINUATION_RESET_NOW: ["BUILD MY PLAN", "MINIMUM STANDARD"],
       CONTINUATION_MINIMUM_STANDARD: ["BUILD MY PLAN"],
       CONTINUATION_MORNING_SETUP: ["BUILD MY PLAN", "FITNESS"],
+      FITNESS_PLAN_REQUEST: ["HOME", "GYM", "RUNNING", "PILATES"],
+      FITNESS_ROUTINE_BUILDER: ["HOME", "GYM", "RUNNING", "PILATES"],
+      FULL_REBUILD_PLAN: ["HOME", "GYM", "RUNNING", "PILATES"],
+      CORE_BACK_SUPPORT_PLAN: ["HOME", "PILATES", "BUILD MY PLAN"],
+      GYM_STRENGTH_PLAN: ["BEGINNER", "INTERMEDIATE", "LOW ENERGY", "BUILD MY PLAN"],
+      RUNNING_STARTER_PLAN: ["BEGINNER", "INTERMEDIATE", "BUILD MY PLAN"],
+      HOME_BODYWEIGHT_PLAN: ["BEGINNER", "INTERMEDIATE", "LOW ENERGY", "BUILD MY PLAN"],
+      PILATES_CORE_PLAN: ["BEGINNER", "INTERMEDIATE", "BUILD MY PLAN"],
+      LOW_ENERGY_SESSION: ["HOME", "BUILD MY PLAN"],
+      INTERMEDIATE_FITNESS_PLAN: ["GYM", "HOME", "BUILD MY PLAN"],
     };
     let quickReplies: string[] = fallbackQuickRepliesByRoute[routing.route] ?? [];
+
+    // ---------- Exercise Prescription Engine wiring ----------
+    const fc = classifyFitness(data.question, profile, journal);
+    const isFitnessRoute = FITNESS_ROUTES.has(routing.route);
+    const guidedWorkout: GuidedWorkoutRecommendation | null = isFitnessRoute
+      ? buildWorkoutForRoute(routing.route, fc)
+      : null;
+    const personalisationMissing = isFitnessRoute ? exercisePersonalisationMissing(fc) : [];
+    const safetyModificationApplied = isFitnessRoute && (fc.injuryFlag === "back_pain" || routing.route === "CORE_BACK_SUPPORT_PLAN" || routing.route === "PILATES_CORE_PLAN" || routing.route === "LOW_ENERGY_SESSION");
+    const exercisePlanSource = isFitnessRoute
+      ? (routing.route === "GYM_STRENGTH_PLAN" ? "TEMPLATE_GYM_FULL_BODY"
+        : routing.route === "RUNNING_STARTER_PLAN" ? "TEMPLATE_RUN_WALK"
+        : routing.route === "PILATES_CORE_PLAN" || routing.route === "CORE_BACK_SUPPORT_PLAN" ? "TEMPLATE_PILATES_CORE"
+        : routing.route === "LOW_ENERGY_SESSION" ? "TEMPLATE_LOW_ENERGY"
+        : routing.route === "INTERMEDIATE_FITNESS_PLAN" ? "TEMPLATE_INTERMEDIATE_FULL_BODY"
+        : routing.route === "FULL_REBUILD_PLAN" ? "TEMPLATE_FULL_REBUILD"
+        : "TEMPLATE_HOME_BODYWEIGHT")
+      : null;
+
 
     const debug: CoachDebug = {
       selectedRoute: routing.route,
