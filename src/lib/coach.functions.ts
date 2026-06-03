@@ -220,7 +220,8 @@ export type ResponseMode =
   | "MORNING_ACTIVATION"
   | "AFTERNOON_RESCUE"
   | "EVENING_RESET"
-  | "LATE_NIGHT_SHUTDOWN";
+  | "LATE_NIGHT_SHUTDOWN"
+  | "PLAN_BUILDING";
 
 export type CoachDebug = {
   selectedRoute: CoachRoute;
@@ -256,6 +257,15 @@ export type CoachDebug = {
   quickRepliesShown: boolean;
   retrievalSuppressedVolumes: string[];
   reasonForSuppression: string | null;
+  previousCoachReplyOptions: string[];
+  userContinuationCommandDetected: boolean;
+  continuationCommand: ContinuationCommand;
+  routeOverrideApplied: boolean;
+  routeOverrideReason: string | null;
+  selectedRouteBeforeOverride: CoachRoute | null;
+  selectedRouteAfterOverride: CoachRoute | null;
+  duplicateAdviceSuppressed: boolean;
+  suppressedAdvice: string[];
 };
 
 export type CoachResponse = {
