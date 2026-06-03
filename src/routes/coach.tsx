@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
-import { askCoach, type CoachResponse } from "@/lib/coach.functions";
+import { askCoach, type CoachResponse, type DayPart, type SessionContext, type TemporalContext } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
 import { loadDailyProgress } from "@/lib/practice-progress";
 import { Loader2, Send, Play, Clock } from "lucide-react";
