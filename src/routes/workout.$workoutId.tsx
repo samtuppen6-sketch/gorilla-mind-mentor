@@ -232,9 +232,14 @@ function WorkoutPlayerPage() {
 
   function handleStart() {
     if (!currentStep) return;
+    startedAtRef.current = Date.now();
     setRunning(true);
   }
   function handlePause() {
+    if (startedAtRef.current != null) {
+      elapsedAccumRef.current += Math.floor((Date.now() - startedAtRef.current) / 1000);
+      startedAtRef.current = null;
+    }
     setRunning(false);
   }
   function handleSkip() {
@@ -274,7 +279,15 @@ function WorkoutPlayerPage() {
     setResting(false);
     setStepIdx(0);
     setRound(1);
+    elapsedAccumRef.current = 0;
+    startedAtRef.current = null;
     try { window.localStorage.removeItem(storageKey); } catch { /* ignore */ }
+  }
+
+  function handleRepeat() {
+    handleRestart();
+    setCompletion(null);
+    setFinalStats(null);
   }
 
   function handleComplete() {
@@ -286,6 +299,17 @@ function WorkoutPlayerPage() {
       source,
       linkedCoachRoute,
     });
+    // Snapshot elapsed + completed steps before we tear running down.
+    let elapsedSec = elapsedAccumRef.current;
+    if (startedAtRef.current != null) {
+      elapsedSec += Math.floor((Date.now() - startedAtRef.current) / 1000);
+      startedAtRef.current = null;
+    }
+    const stepsCompleted = Math.min(
+      stepIdx + (isLastRound && !resting ? 1 : 0),
+      steps.length,
+    );
+    setFinalStats({ elapsedSec, stepsCompleted });
     setCompletion(result);
     setRunning(false);
     try { window.localStorage.removeItem(storageKey); } catch { /* ignore */ }
