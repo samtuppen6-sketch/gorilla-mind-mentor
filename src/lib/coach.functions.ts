@@ -199,6 +199,12 @@ const TemporalSchema = z.object({
 });
 export type TemporalContext = z.infer<typeof TemporalSchema>;
 
+export type ResponseMode =
+  | "MORNING_ACTIVATION"
+  | "AFTERNOON_RESCUE"
+  | "EVENING_RESET"
+  | "LATE_NIGHT_SHUTDOWN";
+
 export type CoachDebug = {
   selectedRoute: CoachRoute;
   breathworkSubRoute: BreathworkSubRoute;
@@ -227,13 +233,27 @@ export type CoachDebug = {
   sessionContext: SessionContext | null;
   temporalSource: "client" | "fallback";
   timeBasedRouteReason: string | null;
+  responseMode: ResponseMode;
+  conversationContinuation: boolean;
+  userCanReply: boolean;
+  quickRepliesShown: boolean;
+  retrievalSuppressedVolumes: string[];
+  reasonForSuppression: string | null;
 };
 
 export type CoachResponse = {
   answer: string;
   debug: CoachDebug;
   guidedPractice: GuidedPracticeRec | null;
+  quickReplies: string[];
 };
+
+const HistoryTurnSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().max(8000),
+});
+export type CoachHistoryTurn = z.infer<typeof HistoryTurnSchema>;
+
 
 const SAFETY_PATTERNS = [
   /\bsuicid/i, /\bkill myself\b/i, /\bend (my|it all) life\b/i, /\bself.?harm\b/i,
