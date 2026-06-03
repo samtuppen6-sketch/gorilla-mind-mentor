@@ -1710,6 +1710,55 @@ export const askCoach = createServerFn({ method: "POST" })
       : null;
 
 
+    // ---------- Daily OS pillar + calorie + plan-card resolution ----------
+    const PLAN_ROUTES_SET = new Set<CoachRoute>([
+      "FULL_REBUILD_PLAN", "PROGRAM_REQUEST", "MORNING_PROTOCOL_REQUEST",
+      "BREATHWORK_MEDITATION_REQUEST", "NUTRITION_CALORIE_REQUEST",
+    ]);
+    const isPlanRoute = PLAN_ROUTES_SET.has(routing.route);
+    const pillarPick = selectPillarsForRoute(routing.route, data.question, profile);
+    const calorie = resolveCalorieTarget(profile);
+    const planCard = isPlanRoute || routing.route === "MISSED_DAY_REPAIR" || routing.route === "MISSED_MORNING"
+      ? selectGuidedPracticeForPlan(routing.route, temporal.dayPart)
+      : null;
+
+    // If a plan card exists, override the generic guidedPractice so the
+    // recommended button matches the prescription word-for-word.
+    const effectiveGuidedPractice: GuidedPracticeRec | null = planCard
+      ? {
+          id: planCard.id,
+          title: planCard.title,
+          category: planCard.category === "breathwork" ? "Breathwork"
+            : planCard.category === "meditation" ? "Meditation"
+            : planCard.category === "morning_protocol" ? "Meditation"
+            : planCard.category === "sleep" ? "Breathwork"
+            : planCard.category === "cold_water" ? "Cold Exposure"
+            : "Mobility",
+          durationMinutes: planCard.durationMinutes,
+          reason: planCard.reason,
+          buttonLabel: planCard.buttonLabel,
+        }
+      : guidedPractice;
+
+    const activePlanType =
+      routing.route === "FULL_REBUILD_PLAN" ? "FULL_REBUILD" :
+      routing.route === "MORNING_PROTOCOL_REQUEST" ? "MORNING_PROTOCOL" :
+      routing.route === "BREATHWORK_MEDITATION_REQUEST" ? "BREATH_AND_MEDITATION" :
+      routing.route === "NUTRITION_CALORIE_REQUEST" ? "NUTRITION" :
+      isFitnessRoute ? "FITNESS" : null;
+    const activePlanLength =
+      routing.route === "FULL_REBUILD_PLAN" || isFitnessRoute ? "7_DAYS" :
+      routing.route === "MORNING_PROTOCOL_REQUEST" ? "1_DAY" : null;
+    const programmePersonalisationMissing = isPlanRoute || isFitnessRoute
+      ? [...personalisationMissing, ...calorie.calorieMissingFields].filter((v, i, a) => a.indexOf(v) === i)
+      : [];
+    const knowledgeBaseVolumesUsed: string[] = [];
+    if (isPlanRoute) knowledgeBaseVolumesUsed.push("gorilla_mind_top_21_pillars", "gorilla_mind_master_system_prompt");
+    const genericFallbackUsed = routing.route === "GENERAL_COACHING";
+    const genericFallbackReason = genericFallbackUsed
+      ? "No specific message, journal, profile or program route triggered — falling back to GENERAL_COACHING."
+      : null;
+
     const debug: CoachDebug = {
       selectedRoute: routing.route,
       breathworkSubRoute,
@@ -1728,8 +1777,8 @@ export const askCoach = createServerFn({ method: "POST" })
       primaryGapUsed: profile?.primaryGap ?? null,
       protocolDayUsed: profile?.protocolDay ?? null,
       safetyFlagsUsed: safetyFlags,
-      guidedPracticeId: guidedPractice?.id ?? null,
-      guidedPracticeReason: guidedPractice?.reason ?? null,
+      guidedPracticeId: effectiveGuidedPractice?.id ?? null,
+      guidedPracticeReason: effectiveGuidedPractice?.reason ?? null,
       localDate: temporal.localDate,
       localTime: temporal.localTime,
       timezone: temporal.timezone,
@@ -1764,11 +1813,37 @@ export const askCoach = createServerFn({ method: "POST" })
       exerciseRoute: isFitnessRoute ? routing.route : null,
       guidedWorkoutRecommendation: guidedWorkout,
       exercisePersonalisationMissing: personalisationMissing,
-      exerciseContinuationDetected: !!continuation && ["HOME","GYM","RUNNING","PILATES","LOW_ENERGY","BEGINNER","INTERMEDIATE","ADVANCED"].includes(continuation.command),
+      exerciseContinuationDetected: !!continuation && ["HOME","GYM","RUNNING","PILATES","LOW_ENERGY","BEGINNER","INTERMEDIATE","ADVANCED","GYM_PLAN","HOME_PLAN"].includes(continuation.command),
       exercisePlanSource,
       exerciseKnowledgeUsed: isFitnessRoute,
       safetyModificationApplied,
+      selectedPillars: pillarPick.ids,
+      pillarReasoning: pillarPick.reasoning,
+      activePlanType,
+      activePlanLength,
+      guidedPracticeRecommendation: planCard,
+      calorieTargetUsed: calorie.calorieTargetUsed,
+      calorieSource: calorie.calorieSource,
+      calorieMissingFields: calorie.calorieMissingFields,
+      macroTargetUsed: calorie.macroTargetUsed,
+      programmePersonalisationMissing,
+      knowledgeBaseVolumesUsed,
+      genericFallbackUsed,
+      genericFallbackReason,
     };
+
+    const programState: ProgramState = {
+      activePlanType,
+      activePlanLength,
+      selectedFitnessLevel: fc.fitnessLevel !== "unknown" ? fc.fitnessLevel : null,
+      selectedBreathwork: planCard?.category === "breathwork" ? planCard.id : null,
+      selectedMeditation: planCard?.category === "meditation" ? planCard.id : null,
+      selectedMorningProtocol: planCard?.category === "morning_protocol" ? planCard.id : null,
+      missingPersonalisationFields: programmePersonalisationMissing,
+      lastRecommendedGuidedPractice: planCard?.id ?? effectiveGuidedPractice?.id ?? null,
+      lastProgrammeRoute: isPlanRoute || isFitnessRoute ? routing.route : null,
+    };
+
 
     if (!apiKey) {
       debug.apiError = "OPENAI_API_KEY missing on server";
