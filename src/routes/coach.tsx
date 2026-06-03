@@ -17,7 +17,7 @@ import {
 } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
 import { loadDailyProgress } from "@/lib/practice-progress";
-import { Loader2, Send, Play, Clock, ChevronDown } from "lucide-react";
+import { Loader2, Send, Play, Clock, ChevronDown, AlertTriangle, RotateCcw } from "lucide-react";
 import type { GuidedPracticeRec } from "@/lib/practices";
 
 
