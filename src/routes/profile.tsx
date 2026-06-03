@@ -103,7 +103,7 @@ function ProfilePanel() {
         style={{ pointerEvents: "auto", cursor: "pointer", position: "relative", zIndex: 50 }}
         className="block w-full rounded-lg border-2 border-gold bg-gold/20 py-3 text-xs font-bold uppercase tracking-[0.2em] text-gold hover:bg-gold/30"
       >
-        TEST SAVE PROFILE
+        Save Profile
       </button>
 
       {saved && (
@@ -136,14 +136,45 @@ function ProfilePanel() {
       <Bool label="processAddictionFlag" v={draft.processAddictionFlag} onChange={(v) => update("processAddictionFlag", v)} />
       <Bool label="foodBoundaryActive" v={draft.foodBoundaryActive} onChange={(v) => update("foodBoundaryActive", v)} />
 
+      <div className="mt-4 rounded-lg border border-gold/30 bg-background/40 p-3 space-y-3">
+        <p className="text-[10px] uppercase tracking-[0.3em] text-gold">Access & Equipment</p>
+        <Select
+          label="heatExposureAccess"
+          v={draft.heatExposureAccess}
+          options={["none", "sauna", "steam_room", "hot_bath", "infrared_sauna", "gym_spa", "home_sauna"]}
+          onChange={(v) => update("heatExposureAccess", v as UserProfile["heatExposureAccess"])}
+        />
+        <Select
+          label="coldExposureAccess"
+          v={draft.coldExposureAccess}
+          options={["none", "cold_shower", "cold_plunge", "sea_swim", "ice_bath"]}
+          onChange={(v) => update("coldExposureAccess", v as UserProfile["coldExposureAccess"])}
+        />
+        <Select
+          label="strengthTrainingAccess"
+          v={draft.strengthTrainingAccess}
+          options={["none", "bodyweight_home", "dumbbells_home", "full_gym"]}
+          onChange={(v) => update("strengthTrainingAccess", v as UserProfile["strengthTrainingAccess"])}
+        />
+        <Select
+          label="pilatesMobilityAccess"
+          v={draft.pilatesMobilityAccess}
+          options={["none", "mat_home", "app_guided", "class_access", "reformer_access"]}
+          onChange={(v) => update("pilatesMobilityAccess", v as UserProfile["pilatesMobilityAccess"])}
+        />
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          These answers stop the Coach from recommending unavailable practices, such as sauna, cold plunge, or gym-based training, unless the user has access.
+        </p>
+      </div>
+
+
       <div className="pt-2 text-xs">
         <span className="text-muted-foreground">Status: </span>
         <span className={saved ? "text-gold font-semibold" : "text-foreground"}>{saved ? "Saved" : "Unsaved"}</span>
       </div>
 
       <div className="relative flex flex-wrap gap-2" style={{ zIndex: 50 }}>
-        <button type="button" onClick={handleSaveProfile} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 flex-1 min-w-[120px] rounded-lg bg-gold py-3 text-xs font-semibold text-primary-foreground hover:opacity-90">Save profile</button>
-        <button type="button" onClick={handleForceTestSave} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border-2 border-gold bg-gold/10 px-3 py-2 text-xs font-bold uppercase tracking-wider text-gold">FORCE TEST SAVE</button>
+        <button type="button" onClick={handleSaveProfile} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 flex-1 min-w-[120px] rounded-lg bg-gold py-3 text-xs font-semibold text-primary-foreground hover:opacity-90">Save Profile</button>
         <button type="button" onClick={handleLoadProfile} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border border-gold/40 px-3 py-2 text-xs text-gold">Load saved profile</button>
         <button type="button" onClick={handleReset} style={{ pointerEvents: "auto", cursor: "pointer" }} className="relative z-10 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">Reset</button>
       </div>
@@ -155,6 +186,12 @@ function ProfilePanel() {
       <div className="mt-4 rounded-lg border border-dashed border-gold/40 bg-background/60 p-3">
         <p className="text-[10px] uppercase tracking-[0.3em] text-gold mb-2">SAVED PROFILE DEBUG</p>
         <p className="text-[10px] text-muted-foreground mb-1">localStorage key: <span className="text-foreground">{PROFILE_STORAGE_KEY}</span></p>
+        <div className="mb-2 space-y-0.5 text-[10px]">
+          <p><span className="text-muted-foreground">heatExposureAccess:</span> <span className="text-gold">{draft.heatExposureAccess}</span></p>
+          <p><span className="text-muted-foreground">coldExposureAccess:</span> <span className="text-gold">{draft.coldExposureAccess}</span></p>
+          <p><span className="text-muted-foreground">strengthTrainingAccess:</span> <span className="text-gold">{draft.strengthTrainingAccess}</span></p>
+          <p><span className="text-muted-foreground">pilatesMobilityAccess:</span> <span className="text-gold">{draft.pilatesMobilityAccess}</span></p>
+        </div>
         <pre className="text-[10px] leading-relaxed text-foreground whitespace-pre-wrap break-all max-h-64 overflow-auto">
 {savedJson ? (() => { try { return JSON.stringify(JSON.parse(savedJson), null, 2); } catch { return savedJson; } })() : "(nothing saved yet)"}
         </pre>
@@ -320,5 +357,15 @@ function Bool({ label, v, onChange }: { label: string; v: boolean; onChange: (v:
       <span className="text-xs text-foreground">{label}</span>
       <input type="checkbox" checked={v} onChange={(e) => onChange(e.target.checked)} className="w-4 h-4 accent-[color:var(--gold)]" />
     </label>
+  );
+}
+function Select({ label, v, options, onChange }: { label: string; v: string; options: string[]; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className="block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">{label}</label>
+      <select value={v} onChange={(e) => onChange(e.target.value)} className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-gold">
+        {options.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
+      </select>
+    </div>
   );
 }
