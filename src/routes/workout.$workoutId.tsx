@@ -711,6 +711,22 @@ function WorkoutRecap({
         </button>
         <Link
           to="/coach"
+          search={{
+            prefill: [
+              `I just finished "${workoutTitle}" (${workoutCategory.replace(/_/g, " ")}).`,
+              `Duration: ${actualMinutes} min (planned ${plannedMinutes}).`,
+              `Steps completed: ${stepsCompleted}/${totalSteps}${stepsCompleted < totalSteps ? " (partial)" : " (full session)"}.`,
+              `DP earned: +${completion.pointsAwarded}${completion.duplicate ? " (duplicate today)" : ""}.`,
+              `Streak: ${
+                completion.protocolStreakUpdated
+                  ? "extended (daily minimum met)"
+                  : completion.dailyProgress.dailyMinimumMet
+                    ? "already counted today"
+                    : "daily minimum not yet met"
+              }.`,
+              `What should I do next?`,
+            ].join(" "),
+          }}
           className="inline-flex flex-col items-center justify-center gap-1 rounded-lg border border-gold/50 bg-card py-3 text-[11px] font-semibold text-foreground text-center leading-tight"
         >
           <MessageCircle className="w-4 h-4" />

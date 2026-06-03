@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import {
@@ -19,7 +20,12 @@ import { Loader2, Send, Play, Clock, ChevronDown } from "lucide-react";
 import type { GuidedPracticeRec } from "@/lib/practices";
 
 
+const coachSearchSchema = z.object({
+  prefill: z.string().max(2000).optional(),
+});
+
 export const Route = createFileRoute("/coach")({
+  validateSearch: coachSearchSchema,
   head: () => ({
     meta: [
       { title: "AI Coach — Gorilla Mind" },
@@ -152,7 +158,8 @@ function CoachPage() {
   const ask = useServerFn(askCoach);
   const profile = useProfile();
   const journal = useJournal();
-  const [seed, setSeed] = useState(SEED);
+  const search = useSearch({ from: "/coach" });
+  const [seed, setSeed] = useState(search.prefill ?? SEED);
   const [reply, setReply] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -160,6 +167,23 @@ function CoachPage() {
   const threadEndRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // If the route was opened with ?prefill=..., load it into the seed/reply
+  // composer once so the user can edit-then-send. We only apply it on initial
+  // arrival to avoid clobbering the user's own typing.
+  const prefillAppliedRef = useRef(false);
+  useEffect(() => {
+    if (prefillAppliedRef.current) return;
+    if (!search.prefill) return;
+    prefillAppliedRef.current = true;
+    if (thread.length === 0) {
+      setSeed(search.prefill);
+    } else {
+      setReply(search.prefill);
+      setComposerOpen(true);
+      setTimeout(() => textareaRef.current?.focus(), 50);
+    }
+  }, [search.prefill, thread.length]);
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
