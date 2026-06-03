@@ -38,9 +38,10 @@ function CoachPage() {
     if (!question.trim() || loading) return;
     setLoading(true);
     setResult(null);
+    const temporal = buildTemporalContext(question);
     try {
       const dailyProgress = loadDailyProgress();
-      const res = await ask({ data: { question: question.trim(), profile, journal, dailyProgress } });
+      const res = await ask({ data: { question: question.trim(), profile, journal, dailyProgress, temporal } });
 
       setResult(res);
     } catch (err) {
@@ -67,6 +68,14 @@ function CoachPage() {
           safetyFlagsUsed: [],
           guidedPracticeId: null,
           guidedPracticeReason: null,
+          localDate: temporal.localDate,
+          localTime: temporal.localTime,
+          timezone: temporal.timezone,
+          dayOfWeek: temporal.dayOfWeek,
+          dayPart: temporal.dayPart,
+          sessionContext: temporal.sessionContext,
+          temporalSource: "client",
+          timeBasedRouteReason: null,
         },
       });
     } finally {
