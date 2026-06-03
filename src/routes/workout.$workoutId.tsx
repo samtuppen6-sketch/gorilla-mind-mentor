@@ -540,6 +540,8 @@ function WorkoutPlayerPage() {
         <div className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-[11px] font-mono space-y-1">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Workout debug</p>
           <DRow k="workoutId" v={workout.id} />
+          <DRow k="resumed from storage" v={String(hydrated !== null)} />
+          <DRow k="storageKey" v={storageKey} />
           <DRow k="category" v={workout.category} />
           <DRow k="level" v={workout.level} />
           <DRow k="durationMinutes" v={String(workout.durationMinutes)} />
