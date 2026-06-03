@@ -12,6 +12,7 @@ import {
   type UserProfile,
 } from "@/lib/profile-store";
 import type { GuidedPractice } from "@/lib/practices";
+import { computeProtocolDailyState } from "@/lib/protocol-pillars";
 
 // ---------- Storage keys ----------
 export const PRACTICE_LOG_KEY = "gm.practiceLog.v1";
@@ -31,7 +32,24 @@ export type DailyActionKey =
   | "coldExposureCompleted"
   | "heatExposureCompleted"
   | "journalCompleted"
-  | "guidedPracticeCompleted";
+  | "guidedPracticeCompleted"
+  // Top 21 Protocol pillar keys (set by direct pillar marks or future
+  // morning/evening flows). All optional on DailyProgress.
+  | "sleepCompleted"
+  | "hydrationCompleted"
+  | "morningProtocolCompleted"
+  | "eveningProtocolCompleted"
+  | "pmaCompleted"
+  | "morningWalkCompleted"
+  | "cardiacCoherenceCompleted"
+  | "digitalDisciplineCompleted"
+  | "recoveryCompleted"
+  | "visualisationCompleted"
+  | "identityCompleted"
+  | "structureCompleted"
+  | "habitStackingCompleted"
+  | "standardMet"
+  | "proteinCompleted";
 
 export type PracticeLogEntry = {
   id: string;
@@ -64,10 +82,37 @@ export type DailyProgress = {
   heatExposureCompleted: boolean;
   journalCompleted: boolean;
   guidedPracticeCompleted: boolean;
+  // Top 21 Protocol pillar action keys (optional — flipped by future
+  // pillar-specific check-ins). Default false on a fresh day.
+  sleepCompleted?: boolean;
+  hydrationCompleted?: boolean;
+  morningProtocolCompleted?: boolean;
+  eveningProtocolCompleted?: boolean;
+  pmaCompleted?: boolean;
+  morningWalkCompleted?: boolean;
+  cardiacCoherenceCompleted?: boolean;
+  digitalDisciplineCompleted?: boolean;
+  recoveryCompleted?: boolean;
+  visualisationCompleted?: boolean;
+  identityCompleted?: boolean;
+  structureCompleted?: boolean;
+  habitStackingCompleted?: boolean;
+  standardMet?: boolean;
+  proteinCompleted?: boolean;
   completedPracticeIdsToday: string[];
   disciplinePointsToday: number;
   dailyMinimumMet: boolean;
   fullProtocolCompleted: boolean;
+  // Derived/cached Top 21 state (recomputed on every completion).
+  completedPillarsToday?: number;
+  completedPillarIdsToday?: string[];
+  completedDailyActionKeysToday?: string[];
+  highPriorityPillarsCompletedToday?: string[];
+  unavailablePillars?: string[];
+  assignedPillars?: string[];
+  dailyMinimumCount?: number;
+  highPriorityMinimumCount?: number;
+  protocolStreakEligible?: boolean;
 };
 
 export type CompletionResult = {
@@ -150,25 +195,24 @@ function alsoMindfulness(practice: GuidedPractice): boolean {
   return practice.category === "Meditation";
 }
 
-// ---------- Daily minimum / full protocol ----------
+// ---------- Daily minimum / full protocol (Top 21 driven) ----------
 function recomputeFlags(p: DailyProgress): DailyProgress {
-  const meaningful = [
-    p.breathworkCompleted,
-    p.meditationCompleted || p.mindfulnessCompleted,
-    p.trainingCompleted || p.mobilityCompleted || p.pilatesCompleted,
-    p.nutritionCompleted,
-    p.journalCompleted,
-    p.coldExposureCompleted,
-    p.heatExposureCompleted,
-  ].filter(Boolean).length;
-  const dailyMinimumMet = meaningful >= 3;
-  const fullProtocolCompleted =
-    p.breathworkCompleted &&
-    (p.meditationCompleted || p.mindfulnessCompleted) &&
-    (p.trainingCompleted || p.mobilityCompleted || p.pilatesCompleted) &&
-    p.nutritionCompleted &&
-    p.journalCompleted;
-  return { ...p, dailyMinimumMet, fullProtocolCompleted };
+  const profile = getProfile();
+  const state = computeProtocolDailyState(p, profile);
+  return {
+    ...p,
+    dailyMinimumMet: state.dailyMinimumMet,
+    fullProtocolCompleted: state.fullProtocolCompleted,
+    completedPillarsToday: state.completedPillarIdsToday.length,
+    completedPillarIdsToday: state.completedPillarIdsToday,
+    completedDailyActionKeysToday: state.completedDailyActionKeysToday,
+    highPriorityPillarsCompletedToday: state.highPriorityPillarsCompletedToday,
+    unavailablePillars: state.unavailablePillarIds,
+    assignedPillars: state.assignedPillarIds,
+    dailyMinimumCount: state.dailyMinimumCount,
+    highPriorityMinimumCount: state.highPriorityMinimumCount,
+    protocolStreakEligible: state.protocolStreakEligible,
+  };
 }
 
 // ---------- Streak update ----------
@@ -309,7 +353,7 @@ export function completePracticeSession(args: {
 // Human-readable label for the updated daily action.
 export function dailyActionLabel(k: DailyActionKey | null): string {
   if (!k) return "—";
-  const map: Record<DailyActionKey, string> = {
+  const map: Partial<Record<DailyActionKey, string>> = {
     breathworkCompleted: "Breathwork completed",
     meditationCompleted: "Meditation completed",
     mindfulnessCompleted: "Mindfulness completed",
@@ -322,5 +366,5 @@ export function dailyActionLabel(k: DailyActionKey | null): string {
     journalCompleted: "Journal completed",
     guidedPracticeCompleted: "Guided practice completed",
   };
-  return map[k];
+  return map[k] ?? k;
 }

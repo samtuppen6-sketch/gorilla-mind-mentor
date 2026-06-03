@@ -1,5 +1,14 @@
 import { useSyncExternalStore } from "react";
 
+export type HeatExposureAccess =
+  | "none" | "sauna" | "steam_room" | "hot_bath" | "infrared_sauna" | "gym_spa" | "other";
+export type ColdExposureAccess =
+  | "none" | "cold_shower" | "cold_plunge" | "sea_swim" | "ice_bath" | "other";
+export type StrengthTrainingAccess =
+  | "none" | "bodyweight_only" | "home_gym" | "full_gym";
+export type PilatesMobilityAccess =
+  | "none" | "mat_only" | "bands" | "reformer" | "gym_classes";
+
 export type UserProfile = {
   name: string;
   identityAnchor: string;
@@ -19,6 +28,11 @@ export type UserProfile = {
   readinessState: string;
   currentStreak: number;
   disciplinePoints: number;
+  // Top 21 Protocol access fields — conditional pillar gating.
+  heatExposureAccess: HeatExposureAccess;
+  coldExposureAccess: ColdExposureAccess;
+  strengthTrainingAccess: StrengthTrainingAccess;
+  pilatesMobilityAccess: PilatesMobilityAccess;
 };
 
 export type JournalEntry = {
@@ -55,6 +69,10 @@ export const DEFAULT_PROFILE: UserProfile = {
   readinessState: "moderate",
   currentStreak: 0,
   disciplinePoints: 0,
+  heatExposureAccess: "none",
+  coldExposureAccess: "none",
+  strengthTrainingAccess: "full_gym",
+  pilatesMobilityAccess: "mat_only",
 };
 
 export const DEFAULT_JOURNAL: JournalEntry = {
