@@ -1336,6 +1336,209 @@ const CONTINUATION_SHAPES: Partial<Record<CoachRoute, string>> = {
   ].join("\n"),
 };
 
+// ---------- Gorilla Mind Daily OS — Pillar Engine, Calorie Resolver, Plan Card ----------
+
+const PILLAR_LIBRARY: Record<string, string> = {
+  hydration: "Hydration",
+  mineralised_water: "Celtic sea salt / mineralised water (when appropriate)",
+  lemon_water: "Lemon water",
+  breathwork: "Breathwork",
+  meditation: "Meditation",
+  circadian_rhythm: "Circadian rhythm",
+  morning_daylight: "Morning daylight exposure",
+  walking: "Walking",
+  strength_training: "Strength training",
+  pilates_mobility: "Core / Pilates / mobility",
+  cold_exposure: "Cold water exposure",
+  heat_exposure: "Heat exposure / sauna",
+  grounding: "Grounding",
+  nutrition: "Nutrition",
+  protein: "Protein target",
+  sleep: "Sleep regulation",
+  journaling: "Journaling",
+  affirmations: "Positive affirmations",
+  identity: "Identity work",
+  reading: "Reading / learning",
+  digital_discipline: "Digital discipline / phone control",
+};
+
+function selectPillarsForRoute(
+  route: CoachRoute,
+  message: string,
+  profile: Profile | null,
+): { ids: string[]; reasoning: string } {
+  const m = (message || "").toLowerCase();
+  // Hard-coded pillar sets per spec for the highest-value Daily OS routes.
+  switch (route) {
+    case "FULL_REBUILD_PLAN":
+    case "PROGRAM_REQUEST":
+      return {
+        ids: ["hydration","breathwork","meditation","circadian_rhythm","morning_daylight","walking","strength_training","nutrition","protein","sleep","journaling","identity","digital_discipline"],
+        reasoning: "FULL_REBUILD_PLAN — body-first rebuild: hydration, breath, meditation, daylight, walking, strength, nutrition (protein), sleep, journaling, identity, digital discipline.",
+      };
+    case "MORNING_PROTOCOL_REQUEST":
+      return {
+        ids: ["digital_discipline","hydration","mineralised_water","morning_daylight","breathwork","meditation","walking","strength_training","protein","journaling","identity","affirmations"],
+        reasoning: "MORNING_PROTOCOL_REQUEST — ordered first-hour command: phone discipline, hydration, daylight, breath, identity, movement, protein, journal.",
+      };
+    case "BREATHWORK_MEDITATION_REQUEST":
+      return {
+        ids: ["breathwork","meditation","circadian_rhythm","digital_discipline","sleep","identity","journaling"],
+        reasoning: "BREATHWORK_MEDITATION_REQUEST — nervous-system regulation pillars only.",
+      };
+    case "NUTRITION_CALORIE_REQUEST":
+      return {
+        ids: ["nutrition","protein","hydration","sleep"],
+        reasoning: "NUTRITION_CALORIE_REQUEST — nutrition + protein anchored by hydration and sleep.",
+      };
+    case "GYM_STRENGTH_PLAN":
+    case "INTERMEDIATE_FITNESS_PLAN":
+      return { ids: ["strength_training","walking","nutrition","protein","sleep","breathwork","hydration"], reasoning: "Strength-led plan pillars." };
+    case "HOME_BODYWEIGHT_PLAN":
+    case "FITNESS_ROUTINE_BUILDER":
+    case "FITNESS_PLAN_REQUEST":
+      return { ids: ["strength_training","walking","pilates_mobility","nutrition","protein","sleep","breathwork","hydration"], reasoning: "Home / starter fitness pillars." };
+    case "RUNNING_STARTER_PLAN":
+      return { ids: ["walking","strength_training","breathwork","nutrition","protein","sleep","hydration"], reasoning: "Running starter pillars." };
+    case "PILATES_CORE_PLAN":
+    case "CORE_BACK_SUPPORT_PLAN":
+      return { ids: ["pilates_mobility","walking","breathwork","sleep","hydration","protein"], reasoning: "Core / mobility-led pillars." };
+    case "GENERAL_LIFE_STUCK": {
+      const ids = ["digital_discipline","hydration","breathwork","morning_daylight","walking","strength_training","protein","journaling","identity","sleep"];
+      return { ids, reasoning: "GENERAL_LIFE_STUCK — body-first stack: digital discipline, hydration, breath, daylight, walking, strength, protein, journal, identity, sleep." };
+    }
+    case "SLEEP_WIND_DOWN":
+      return { ids: ["sleep","breathwork","digital_discipline","circadian_rhythm","journaling"], reasoning: "Sleep wind-down pillars." };
+    case "BREATHWORK":
+      return { ids: ["breathwork","sleep","identity"], reasoning: "Breathwork-focused pillars." };
+    case "MEDITATION_MINDFULNESS":
+      return { ids: ["meditation","identity","breathwork","journaling"], reasoning: "Meditation/mindfulness pillars." };
+    case "MISSED_DAY_REPAIR":
+    case "MISSED_MORNING":
+      return { ids: ["identity","morning_daylight","hydration","breathwork","walking","protein","journaling"], reasoning: "Repair pillars — no shame, body-first re-entry." };
+    case "SAFETY_CRISIS":
+      return { ids: [], reasoning: "Safety crisis — no pillar prescription, route to professional help." };
+    default: {
+      // Profile-led fallback.
+      const ids = ["hydration","breathwork","walking","protein","sleep","identity"];
+      if (profile?.processAddictionFlag || /phone|scrolling|porn|binge/.test(m)) ids.unshift("digital_discipline");
+      return { ids, reasoning: "Default pillar selection: body-first fundamentals." };
+    }
+  }
+}
+
+function resolveCalorieTarget(profile: Profile | null): {
+  calorieTargetUsed: number | null;
+  calorieSource: "profile" | "calculated" | "not_available";
+  calorieMissingFields: string[];
+  macroTargetUsed: { proteinG: number; carbsG: number; fatG: number } | null;
+} {
+  const required = ["age","sex","heightCm","weightKg","activityLevel","primaryGoal"];
+  const p = (profile ?? {}) as Record<string, unknown>;
+  const missing = required.filter((k) => {
+    if (k === "primaryGoal") return !p.primaryGoal || p.primaryGoal === "";
+    return p[k] === undefined || p[k] === null || p[k] === "";
+  });
+  if (missing.length > 0) {
+    return { calorieTargetUsed: null, calorieSource: "not_available", calorieMissingFields: missing, macroTargetUsed: null };
+  }
+  // Mifflin-St Jeor
+  const age = Number(p.age);
+  const heightCm = Number(p.heightCm);
+  const weightKg = Number(p.weightKg);
+  const sex = String(p.sex).toLowerCase();
+  const activity = String(p.activityLevel).toLowerCase();
+  const goal = String(p.primaryGoal).toLowerCase();
+  const bmr = sex.startsWith("m")
+    ? 10 * weightKg + 6.25 * heightCm - 5 * age + 5
+    : 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+  const factor =
+    activity.includes("sedent") ? 1.2 :
+    activity.includes("light") ? 1.375 :
+    activity.includes("mod") ? 1.55 :
+    activity.includes("very") || activity.includes("active") ? 1.725 : 1.4;
+  let tdee = Math.round(bmr * factor);
+  if (goal.includes("fat") || goal.includes("loss") || goal.includes("cut")) tdee -= 350;
+  else if (goal.includes("muscle") || goal.includes("bulk")) tdee += 250;
+  const proteinG = Math.round(weightKg * 2.0);
+  const fatG = Math.round((tdee * 0.25) / 9);
+  const carbsG = Math.max(0, Math.round((tdee - proteinG * 4 - fatG * 9) / 4));
+  return {
+    calorieTargetUsed: tdee,
+    calorieSource: "calculated",
+    calorieMissingFields: [],
+    macroTargetUsed: { proteinG, carbsG, fatG },
+  };
+}
+
+const PLAN_GUIDED_CARDS: Record<string, GuidedPracticeRecommendation> = {
+  box_breathing_5min: {
+    id: "box_breathing_5min",
+    title: "Box Breathing",
+    category: "breathwork",
+    durationMinutes: 5,
+    reason: "Best for morning control and state regulation before phone use.",
+    buttonLabel: "Start Box Breathing",
+  },
+  extended_exhale_3min: {
+    id: "extended_exhale_3min",
+    title: "Extended Exhale Breathing",
+    category: "breathwork",
+    durationMinutes: 3,
+    reason: "Best for downshifting the nervous system before sleep.",
+    buttonLabel: "Start Extended Exhale",
+  },
+  morning_identity_reset_5min: {
+    id: "morning_identity_reset_5min",
+    title: "Morning Identity Reset",
+    category: "meditation",
+    durationMinutes: 5,
+    reason: "Best for re-anchoring the user after missed days or low discipline.",
+    buttonLabel: "Start Morning Identity Reset",
+  },
+  morning_protocol_lock_in: {
+    id: "morning_protocol_lock_in",
+    title: "Morning Protocol Lock-In",
+    category: "morning_protocol",
+    durationMinutes: 30,
+    reason: "Best when the user needs structure, body activation and digital discipline.",
+    buttonLabel: "Start Morning Protocol",
+  },
+};
+
+function selectGuidedPracticeForPlan(route: CoachRoute, dayPart: DayPart): GuidedPracticeRecommendation | null {
+  switch (route) {
+    case "MORNING_PROTOCOL_REQUEST":
+      return PLAN_GUIDED_CARDS.morning_protocol_lock_in;
+    case "FULL_REBUILD_PLAN":
+    case "PROGRAM_REQUEST":
+      return dayPart === "EVENING" || dayPart === "LATE_NIGHT"
+        ? PLAN_GUIDED_CARDS.extended_exhale_3min
+        : PLAN_GUIDED_CARDS.box_breathing_5min;
+    case "BREATHWORK_MEDITATION_REQUEST":
+      return dayPart === "EVENING" || dayPart === "LATE_NIGHT"
+        ? PLAN_GUIDED_CARDS.extended_exhale_3min
+        : PLAN_GUIDED_CARDS.box_breathing_5min;
+    case "MISSED_DAY_REPAIR":
+    case "MISSED_MORNING":
+      return PLAN_GUIDED_CARDS.morning_identity_reset_5min;
+    default:
+      return null;
+  }
+}
+
+const EMPTY_PROGRAM_STATE: ProgramState = {
+  activePlanType: null,
+  activePlanLength: null,
+  selectedFitnessLevel: null,
+  selectedBreathwork: null,
+  selectedMeditation: null,
+  selectedMorningProtocol: null,
+  missingPersonalisationFields: [],
+  lastRecommendedGuidedPractice: null,
+  lastProgrammeRoute: null,
+};
+
 export const askCoach = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
