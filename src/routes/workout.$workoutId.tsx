@@ -64,12 +64,9 @@ function WorkoutPlayerPage() {
 
   function handleComplete() {
     if (!workout || state === "complete") return;
-    // Map workout completion onto the training practice slot so DP / streaks / daily minimum
-    // logic continues to work without introducing a second progress system.
-    const trainingPractice =
-      getPracticeById("training_bodyweight_15") ??
-      getPracticeById("training_session") ??
-      getPracticeById("mobility_10");
+    // Map workout completion onto a training-equivalent practice slot so DP / streaks /
+    // daily minimum logic continues to work without introducing a second progress system.
+    const trainingPractice = getPracticeById("mobility_recovery_10min");
     if (!trainingPractice) {
       setState("complete");
       return;
