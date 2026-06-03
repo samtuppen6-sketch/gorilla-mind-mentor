@@ -69,6 +69,10 @@ export const DEFAULT_PROFILE: UserProfile = {
   readinessState: "moderate",
   currentStreak: 0,
   disciplinePoints: 0,
+  heatExposureAccess: "none",
+  coldExposureAccess: "none",
+  strengthTrainingAccess: "full_gym",
+  pilatesMobilityAccess: "mat_only",
 };
 
 export const DEFAULT_JOURNAL: JournalEntry = {
