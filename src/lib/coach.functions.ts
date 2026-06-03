@@ -591,6 +591,38 @@ function buildContextBlock(
   } else {
     lines.push("[TODAY'S PROGRESS] none");
   }
+  lines.push("");
+  // ----- Top 21 Protocol Pillar context -----
+  lines.push("[TOP 21 PROTOCOL STATUS]");
+  const access = {
+    heatExposureAccess: profile?.heatExposureAccess ?? "none",
+    coldExposureAccess: profile?.coldExposureAccess ?? "none",
+    strengthTrainingAccess: profile?.strengthTrainingAccess ?? "none",
+    pilatesMobilityAccess: profile?.pilatesMobilityAccess ?? "none",
+  };
+  lines.push(`heatExposureAccess: ${access.heatExposureAccess}`);
+  lines.push(`coldExposureAccess: ${access.coldExposureAccess}`);
+  lines.push(`strengthTrainingAccess: ${access.strengthTrainingAccess}`);
+  lines.push(`pilatesMobilityAccess: ${access.pilatesMobilityAccess}`);
+  if (progress) {
+    lines.push(`assignedPillars: ${(progress.assignedPillars ?? []).join(", ") || "—"}`);
+    lines.push(`unavailablePillars: ${(progress.unavailablePillars ?? []).join(", ") || "none"}`);
+    lines.push(`completedPillarIdsToday: ${(progress.completedPillarIdsToday ?? []).join(", ") || "none"}`);
+    lines.push(`highPriorityPillarsCompletedToday: ${(progress.highPriorityPillarsCompletedToday ?? []).join(", ") || "none"}`);
+    lines.push(`dailyMinimumCount: ${progress.dailyMinimumCount ?? 0}`);
+    lines.push(`highPriorityMinimumCount: ${progress.highPriorityMinimumCount ?? 0}`);
+    lines.push(`protocolStreakEligible: ${progress.protocolStreakEligible ?? false}`);
+    const assignedSet = new Set(progress.assignedPillars ?? []);
+    const completedSet = new Set(progress.completedPillarIdsToday ?? []);
+    const missing = [...assignedSet].filter((id) => !completedSet.has(id));
+    lines.push(`missingAssignedPillars: ${missing.join(", ") || "none"}`);
+  }
+  lines.push("");
+  lines.push("RULES — TOP 21:");
+  lines.push("- Do NOT recommend any pillar listed in unavailablePillars.");
+  lines.push("- If user has no access for cold / heat / strength / pilates, suggest the assigned equivalent (e.g. mobility instead of strength) and do not blame the user.");
+  lines.push("- Prefer high-priority missing pillars when answering 'what should I do next?'.");
+  lines.push("- Use qualified scientific wording (may support, is associated with, can help create the conditions for, evidence suggests). Avoid guaranteed outcome claims for cold, heat, sauna, dopamine, growth hormone, BDNF, testosterone, mortality, HRV or nervous system claims.");
   lines.push("=== END CONTEXT ===");
   return lines.join("\n");
 }
