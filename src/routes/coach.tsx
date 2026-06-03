@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import {
@@ -19,7 +20,12 @@ import { Loader2, Send, Play, Clock, ChevronDown } from "lucide-react";
 import type { GuidedPracticeRec } from "@/lib/practices";
 
 
+const coachSearchSchema = z.object({
+  prefill: z.string().max(2000).optional(),
+});
+
 export const Route = createFileRoute("/coach")({
+  validateSearch: coachSearchSchema,
   head: () => ({
     meta: [
       { title: "AI Coach — Gorilla Mind" },
