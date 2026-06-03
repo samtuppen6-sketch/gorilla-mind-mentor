@@ -1641,6 +1641,60 @@ function selectGuidedPracticeForPlan(route: CoachRoute, dayPart: DayPart): Guide
   }
 }
 
+type CalorieResolution = ReturnType<typeof resolveCalorieTarget>;
+
+function buildNutritionBlock(calorie: CalorieResolution): string {
+  if (calorie.calorieSource === "not_available") {
+    return [
+      "NUTRITION SECTION — calorie data NOT AVAILABLE.",
+      "Under NUTRITION you MUST NOT invent a calorie number. State explicitly: 'I do not have enough to set a calorie target yet.'",
+      "Then ask the user for these 6 fields in a single block, exactly: age, sex, height (cm), weight (kg), activity level, primary goal.",
+      "Then give the temporary non-calorie standard: protein-first at every meal, water before caffeine, one whole-food meal locked in today, no chaotic evening eating.",
+      `Missing fields surfaced by backend: ${calorie.calorieMissingFields.join(", ") || "all required fields"}.`,
+    ].join(" ");
+  }
+  const m = calorie.macroTargetUsed!;
+  const src = calorie.calorieSource === "calculated"
+    ? "calculated from your profile via Mifflin-St Jeor"
+    : "from saved profile";
+  return `NUTRITION SECTION — calorie target available. State: 'Daily target: ${calorie.calorieTargetUsed} kcal (${src}).' Macros: protein ${m.proteinG} g, carbs ${m.carbsG} g, fat ${m.fatG} g. Rule: protein before chaos, water before caffeine, one whole-food meal locked in, no chaotic evening eating.`;
+}
+
+function buildDailyOsPlanShape(opts: {
+  kind: "FULL_REBUILD" | "PROGRAM" | "MORNING_PROTOCOL" | "BREATH_MED" | "NUTRITION";
+  calorie: CalorieResolution;
+  askOnlyMissing: string;
+  exerciseSafety: string;
+}): string {
+  const { kind, calorie, askOnlyMissing, exerciseSafety } = opts;
+  const spec = [
+    "ACTIVE ROUTE is a PLAN_BUILDING route. RESPONSE MODE is PLAN_BUILDING.",
+    "You MUST output EXACTLY these section headers, in this order, each on its own line:",
+    "HEADLINE / THE STANDARD / YOUR FIRST 24 HOURS / MORNING PROTOCOL / TRAINING PLAN / BREATHWORK / MEDITATION / NUTRITION / WHAT I NEED FROM YOU / REPLY WITH.",
+    "Obey GORILLA MIND LANGUAGE RULES and BANNED PHRASES and NUTRITION GUARDRAIL from the system instructions.",
+    "Use at least 2 phrases from the REQUIRED VOCABULARY list.",
+    "MORNING PROTOCOL must be an ordered timed sequence: water before phone, mineralised hydration if appropriate (water + pinch Celtic sea salt + lemon), morning daylight outside, 5 min breathwork, 5 min meditation or identity reset, movement, protein-first meal, one-line journal + affirmation/identity line.",
+    "TRAINING PLAN must be an explicit 7-day structure with exercises/reps/sets/rest. If equipment, injury history, or experience level are unknown, default to home bodyweight + walks AND list the missing items under WHAT I NEED FROM YOU.",
+    "BREATHWORK must name the exact practice with duration (match the GUIDED PRACTICE card if one was injected).",
+    "MEDITATION must name the exact practice with duration (match the GUIDED PRACTICE card if one was injected).",
+    buildNutritionBlock(calorie),
+  ].join("\n");
+
+  const replyChips =
+    kind === "FULL_REBUILD" || kind === "PROGRAM" ? "REPLY WITH chips: CALORIES / GYM PLAN / HOME PLAN / MORNING PROTOCOL." :
+    kind === "MORNING_PROTOCOL" ? "REPLY WITH chips: BREATHWORK / MEDITATION / TRAINING / NUTRITION." :
+    kind === "BREATH_MED" ? "REPLY WITH chips: MORNING PROTOCOL / TRAINING / CALORIES / FULL REBUILD." :
+    /* NUTRITION */ "REPLY WITH chips: CALORIES / FAT LOSS / MUSCLE / ALL-ROUND RESET.";
+
+  const focusNote =
+    kind === "MORNING_PROTOCOL" ? "Emphasise the MORNING PROTOCOL section — make it the longest. Other sections stay short but present."
+    : kind === "BREATH_MED" ? "Emphasise BREATHWORK and MEDITATION sections — give exact practices and durations for each day of the week."
+    : kind === "NUTRITION" ? "Emphasise NUTRITION section. TRAINING PLAN may be a short 7-day skeleton."
+    : "All sections balanced.";
+
+  return `${spec}\n\n${focusNote}\n\n${askOnlyMissing} ${exerciseSafety}\n\n${replyChips}`;
+}
+
 const EMPTY_PROGRAM_STATE: ProgramState = {
   activePlanType: null,
   activePlanLength: null,
