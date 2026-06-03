@@ -102,13 +102,47 @@ function WorkoutPlayerPage() {
     ];
   }, [workout]);
 
-  const [stepIdx, setStepIdx] = useState(0);
-  const [round, setRound] = useState(1);          // 1-based within current step
-  const [resting, setResting] = useState(false);  // between sets/rounds
-  const [remaining, setRemaining] = useState(0);  // seconds left in current timer (0 if untimed)
-  const [running, setRunning] = useState(false);
+  // ── Persisted progress (per workoutId, local-only) ───────────────────────────
+  // We persist step position + timer state so the user can refresh and resume.
+  // We deliberately do NOT persist `running` — sessions resume paused so the
+  // user explicitly opts back in.
+  const storageKey = `gm:workout-progress:${workoutId}`;
+  type Persisted = { stepIdx: number; round: number; resting: boolean; remaining: number };
+
+  const hydrated = useMemo<Persisted | null>(() => {
+    if (typeof window === "undefined" || steps.length === 0) return null;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return null;
+      const p = JSON.parse(raw) as Partial<Persisted>;
+      if (
+        typeof p.stepIdx !== "number" ||
+        typeof p.round !== "number" ||
+        typeof p.resting !== "boolean" ||
+        typeof p.remaining !== "number"
+      ) return null;
+      // Sanity-check against current workout shape — discard if out of range.
+      if (p.stepIdx < 0 || p.stepIdx >= steps.length) return null;
+      if (p.round < 1 || p.round > steps[p.stepIdx].rounds) return null;
+      return p as Persisted;
+    } catch {
+      return null;
+    }
+    // Hydrate once per workout — depends only on storageKey and step shape.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey, steps.length]);
+
+  const [stepIdx, setStepIdx] = useState<number>(hydrated?.stepIdx ?? 0);
+  const [round, setRound] = useState<number>(hydrated?.round ?? 1);          // 1-based within current step
+  const [resting, setResting] = useState<boolean>(hydrated?.resting ?? false); // between sets/rounds
+  const [remaining, setRemaining] = useState<number>(hydrated?.remaining ?? 0); // seconds left in current timer (0 if untimed)
+  const [running, setRunning] = useState(false);                              // resume always paused
   const [completion, setCompletion] = useState<CompletionResult | null>(null);
   const intervalRef = useRef<number | null>(null);
+
+  // Skip the very first "reset remaining on step/round/resting change" pass so
+  // a hydrated `remaining` is not immediately overwritten by step.perRoundSec.
+  const skipNextRemainingResetRef = useRef<boolean>(hydrated !== null);
 
   const currentStep: Step | null = steps[stepIdx] ?? null;
   const isLastStep = currentStep != null && stepIdx === steps.length - 1;
@@ -118,12 +152,29 @@ function WorkoutPlayerPage() {
   // Initialise remaining whenever step/round/resting changes.
   useEffect(() => {
     if (!currentStep) return;
+    if (skipNextRemainingResetRef.current) {
+      skipNextRemainingResetRef.current = false;
+      return;
+    }
     if (resting) {
       setRemaining(DEFAULT_REST_BETWEEN_SETS_SEC);
     } else {
       setRemaining(currentStep.perRoundSec);
     }
   }, [stepIdx, round, resting, currentStep]);
+
+  // Persist progress on any change. Skip while completed (we wipe the key on complete).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (finished) return;
+    try {
+      const payload: Persisted = { stepIdx, round, resting, remaining };
+      window.localStorage.setItem(storageKey, JSON.stringify(payload));
+    } catch {
+      // ignore quota / disabled storage
+    }
+  }, [storageKey, stepIdx, round, resting, remaining, finished]);
+
 
   // Countdown tick.
   useEffect(() => {
