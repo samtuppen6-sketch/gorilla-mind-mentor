@@ -103,7 +103,7 @@ function ProfilePanel() {
         style={{ pointerEvents: "auto", cursor: "pointer", position: "relative", zIndex: 50 }}
         className="block w-full rounded-lg border-2 border-gold bg-gold/20 py-3 text-xs font-bold uppercase tracking-[0.2em] text-gold hover:bg-gold/30"
       >
-        TEST SAVE PROFILE
+        Save Profile
       </button>
 
       {saved && (
