@@ -2291,6 +2291,23 @@ export const askCoach = createServerFn({ method: "POST" })
       ? "No specific message, journal, profile or program route triggered — falling back to GENERAL_COACHING."
       : null;
 
+    // ---- Onboarding/recovery debug context (read-only from profile) ----
+    const px = (profile as unknown as Record<string, unknown> | null) ?? null;
+    const asStr = (v: unknown): string | null => (typeof v === "string" && v.length > 0 ? v : null);
+    const asArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x) => typeof x === "string") as string[] : []);
+    const recoveryRouteSet = new Set<CoachRoute>(["URGE_RESET","RELAPSE_PREVENTION","POST_RELAPSE_REPAIR","RECOVERY_STRUCTURE"]);
+    const safetyRouteTriggered = routing.route === "SAFETY_SUPPORT" || routing.route === "SAFETY_CRISIS";
+    const recoveryRoute: string | null = recoveryRouteSet.has(routing.route) ? routing.route : null;
+    const triggerDetected: string | null = ((routing as unknown) as { intent?: string }).intent ?? null;
+    const relapseRiskVal = asStr(px?.["relapseRisk"]);
+    const urgeSupportShown = recoveryRoute !== null;
+    const professionalSupportSuggested =
+      safetyRouteTriggered || recoveryRoute === "RELAPSE_PREVENTION" || recoveryRoute === "URGE_RESET" ||
+      relapseRiskVal === "high" || relapseRiskVal === "active";
+    const profileCompletenessScore: number | null =
+      typeof px?.["profileCompletenessScore"] === "number" ? (px?.["profileCompletenessScore"] as number) : null;
+    const missingProfileFields: string[] = asArr(px?.["missingProfileFields"]);
+
     const debug: CoachDebug = {
       selectedRoute: routing.route,
       breathworkSubRoute,
