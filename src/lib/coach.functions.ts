@@ -912,7 +912,7 @@ function detectRealWorldIntent(message: string): { intent: string; route: CoachR
     return { intent: "EVENING_WORK", route: "EVENING_WORK_PROTOCOL", reason: "Working late / evening shutdown intent.", query: "evening shutdown protocol late work protein shower extended exhale phone away morning setup sleep" };
   }
   // FAT_LOSS / NUTRITION
-  if (/\b(lose fat|fat loss|lose weight|weight loss|cut body fat|belly fat|calories|macros|diet|meal plan|food plan)\b/.test(m)) {
+  if (/\b(lose fat|fat loss|lose weight|weight loss|cut body fat|belly fat|calories|macros|diet|meal plan|food plan|what should i eat|what to eat|eat today|food today|meals today|what food)\b/.test(m)) {
     return { intent: "FAT_LOSS", route: "FAT_LOSS_STARTER_PLAN", reason: "Fat loss / nutrition intent.", query: "fat loss nutrition calorie target protein Mifflin TDEE meal structure water before caffeine" };
   }
   // STRESS_RESET
