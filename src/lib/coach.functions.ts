@@ -1023,6 +1023,21 @@ function detectRoute(
         routePriorityReason: "profile.recovery structure bias",
       };
     }
+
+    // Injury (back pain) + home training + vague training language → CORE_BACK_SUPPORT_PLAN
+    const injuryFlag = asStr(px["injuryFlag"]).toLowerCase();
+    const trainingLocation = asStr(px["trainingLocation"]).toLowerCase();
+    const hasBackPain = /back[_ ]?pain/.test(injuryFlag);
+    if (hasBackPain && trainingLocation === "home" &&
+        /\b(what should i train( today)?|what workout( today)?|what should i do today|train today|workout today|exercise today|what to train|what to do today)\b/.test(m)) {
+      return {
+        route: "CORE_BACK_SUPPORT_PLAN",
+        reason: "Vague training language with back-pain injury profile + home training.",
+        query: "core back support safe home routine pelvic tilts dead bugs glute bridges bird dogs side plank breathing",
+        intentDetected: "CORE_BACK_SUPPORT_PLAN",
+        routePriorityReason: "profile.injury route bias",
+      };
+    }
   }
 
   // 1c. General life-stuck — must come before keyword routes that grab "tired", "not motivated", etc.
