@@ -352,7 +352,13 @@ export type ResponseMode =
   | "AFTERNOON_RESCUE"
   | "EVENING_RESET"
   | "LATE_NIGHT_SHUTDOWN"
-  | "PLAN_BUILDING";
+  | "PLAN_BUILDING"
+  | "LOW_ENERGY_MINIMUM"
+  | "EVENING_PROTOCOL"
+  | "RESET_RECOVERY"
+  | "STRESS_RESET"
+  | "PROCESS_RESET"
+  | "SLEEP_WIND_DOWN";
 
 export type CoachDebug = {
   selectedRoute: CoachRoute;
