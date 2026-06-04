@@ -2620,6 +2620,8 @@ export const askCoach = createServerFn({ method: "POST" })
         "FITNESS_ROUTINE_BUILDER", "CORE_BACK_SUPPORT_PLAN", "PILATES_CORE_PLAN",
         "LOW_ENERGY_MINIMUM_PLAN", "FAT_LOSS_STARTER_PLAN", "NUTRITION_CALORIE_REQUEST",
         "EVENING_WORK_PROTOCOL", "MISSED_DAY_REPAIR", "STRESS_RESET", "GYM_STRENGTH_PLAN",
+        "URGE_RESET", "RELAPSE_PREVENTION", "POST_RELAPSE_REPAIR",
+        "RECOVERY_STRUCTURE", "SAFETY_SUPPORT",
       ]);
       if (forcedChipRoutes.has(routing.route)) {
         quickReplies = fallbackQuickRepliesByRoute[routing.route] ?? quickReplies;
