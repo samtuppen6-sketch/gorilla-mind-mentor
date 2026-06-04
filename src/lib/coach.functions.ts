@@ -822,8 +822,47 @@ const FITNESS_ROUTES: Set<CoachRoute> = new Set([
   "FITNESS_PLAN_REQUEST", "FITNESS_ROUTINE_BUILDER", "FULL_REBUILD_PLAN",
   "CORE_BACK_SUPPORT_PLAN", "GYM_STRENGTH_PLAN", "RUNNING_STARTER_PLAN",
   "HOME_BODYWEIGHT_PLAN", "PILATES_CORE_PLAN", "LOW_ENERGY_SESSION",
-  "INTERMEDIATE_FITNESS_PLAN",
+  "INTERMEDIATE_FITNESS_PLAN", "LOW_ENERGY_MINIMUM_PLAN", "FAT_LOSS_STARTER_PLAN",
 ]);
+
+// Real-world intent detection — runs early so realistic prompts route correctly
+// before they get hoovered up by GENERAL_LIFE_STUCK or profile.sleepQuality.
+function detectRealWorldIntent(message: string): { intent: string; route: CoachRoute; reason: string; query: string } | null {
+  const m = message.toLowerCase();
+  // PROCESS_ADDICTION (phone / scrolling / wasted morning) — check first so
+  // "wasted the whole morning on my phone" stays here.
+  if (/\b(wasted (the |my )?(whole )?morning on (my )?phone|doomscroll|scrolling|phone hijack|phone in bed)\b/.test(m)) {
+    return { intent: "PROCESS_ADDICTION", route: "PROCESS_ADDICTION", reason: "Phone / scrolling / wasted-morning signal.", query: "process addiction phone scrolling urge interruption replacement morning protocol" };
+  }
+  // MISSED_DAY_REPAIR
+  if (/\b(missed yesterday|missed a day|fallen off|fell off|failed yesterday|skipped yesterday|lost my streak|back on track|broken streak)\b/.test(m)) {
+    return { intent: "MISSED_DAY", route: "MISSED_DAY_REPAIR", reason: "Missed-day / fell-off language.", query: "missed day repair broken streak no shame minimum standard restart identity anchor" };
+  }
+  // EVENING_WORK_PROTOCOL
+  if (/\b(working late tonight|work(ing)? late|late shift|finishing late|long day at work|tonight what should i do|got home late|home late|after work tonight)\b/.test(m)) {
+    return { intent: "EVENING_WORK", route: "EVENING_WORK_PROTOCOL", reason: "Working late / evening shutdown intent.", query: "evening shutdown protocol late work protein shower extended exhale phone away morning setup sleep" };
+  }
+  // FAT_LOSS / NUTRITION
+  if (/\b(lose fat|fat loss|lose weight|weight loss|cut body fat|belly fat|calories|macros|diet|meal plan|food plan)\b/.test(m)) {
+    return { intent: "FAT_LOSS", route: "FAT_LOSS_STARTER_PLAN", reason: "Fat loss / nutrition intent.", query: "fat loss nutrition calorie target protein Mifflin TDEE meal structure water before caffeine" };
+  }
+  // STRESS_RESET
+  if (/\b(stressed|head is all over the place|overwhelmed|anxious|can'?t think|wired|panicking|panic|racing thoughts)\b/.test(m)) {
+    return { intent: "STRESS", route: "STRESS_RESET", reason: "Stress / overwhelmed / racing thoughts intent.", query: "stress reset extended exhale breathwork nervous system regulate downregulate journal" };
+  }
+  // GYM_STRENGTH_PLAN
+  if (/\b(build muscle|gain muscle|lift weights|access to a gym|gym access|get stronger|hypertrophy)\b/.test(m)) {
+    return { intent: "MUSCLE_GYM", route: "GYM_STRENGTH_PLAN", reason: "Muscle / gym access intent.", query: "gym strength plan full body sets reps RIR progressive overload squat hinge press row" };
+  }
+  // LOW_ENERGY_MINIMUM_PLAN — order matters: AFTER stress / fat loss / gym so
+  // explicit goal intents win over generic "tired".
+  const explicitSleepIntent = /\b(bed|sleep|bedtime|wind ?down|can'?t sleep|late night|trying to sleep)\b/.test(m);
+  const lowEnergySignal = /\b(feel like crap|don'?t want to train|do not want to train|low energy|i'?m tired|exhausted|can'?t be bothered|no motivation|only have (10|15|20|25|30) minutes?|not feeling it|drained|flat today)\b/.test(m);
+  if (lowEnergySignal && !explicitSleepIntent) {
+    return { intent: "LOW_ENERGY", route: "LOW_ENERGY_MINIMUM_PLAN", reason: "Low-energy / tired / short-time intent without sleep cue.", query: "low energy minimum standard walk squats glute bridge plank extended exhale breathing keep the chain alive" };
+  }
+  return null;
+}
 
 function detectRoute(
   message: string,
