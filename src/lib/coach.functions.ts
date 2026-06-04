@@ -2092,7 +2092,7 @@ export const askCoach = createServerFn({ method: "POST" })
     // hydrate/light/phone-away/protein-breakfast bullets.
     const MORNING_FILLER_ALLOWED: Set<CoachRoute> = new Set([
       "MORNING_PROTOCOL_REQUEST", "FULL_REBUILD_PLAN", "PROGRAM_REQUEST",
-      "PROCESS_ADDICTION", "FAT_LOSS_STARTER_PLAN", "GYM_STRENGTH_PLAN",
+      "PROCESS_ADDICTION",
     ]);
     const allowMorningFiller =
       MORNING_FILLER_ALLOWED.has(routing.route) ||
