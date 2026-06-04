@@ -433,6 +433,13 @@ export type CoachDebug = {
   knowledgeBaseVolumesUsed: string[];
   genericFallbackUsed: boolean;
   genericFallbackReason: string | null;
+  // Real-world routing diagnostics
+  intentDetected: string | null;
+  routePriorityReason: string | null;
+  profileOverrideSuppressed: boolean;
+  profileOverrideSuppressedReason: string | null;
+  morningFillerSuppressed: boolean;
+  responseModeReason: string | null;
 };
 
 export type GuidedPracticeRecommendation = {
