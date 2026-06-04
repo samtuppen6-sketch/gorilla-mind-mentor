@@ -903,12 +903,24 @@ function detectRoute(
     };
   }
 
+  // 1b-bis. Real-world intent detection — runs BEFORE lifeStuck so prompts like
+  // "I want to lose fat but I don't know where to start" don't fall into GENERAL_LIFE_STUCK.
+  const rwi = detectRealWorldIntent(message);
+  if (rwi) {
+    return {
+      route: rwi.route, reason: rwi.reason, query: rwi.query,
+      intentDetected: rwi.intent,
+      routePriorityReason: "Explicit current user intent (priority 3) beat profile / fallback.",
+    };
+  }
+
   // 1c. General life-stuck — must come before keyword routes that grab "tired", "not motivated", etc.
   if (lifeStuckMessage) {
     return {
       route: "GENERAL_LIFE_STUCK",
       reason: "User expresses general life-stuck / unmotivated / lost. Use direct body-first, time-aware structure. No long plan.",
       query: "gorilla mind master system prompt daily operating system identity discipline minimum standard body first reset morning routine evening shutdown standards over moods one promise",
+      routePriorityReason: "GENERAL_LIFE_STUCK fallback — no explicit intent matched.",
     };
   }
 
