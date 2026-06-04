@@ -235,7 +235,12 @@ export type CoachRoute =
   | "PROGRAM_REQUEST"
   | "BREATHWORK_MEDITATION_REQUEST"
   | "MORNING_PROTOCOL_REQUEST"
-  | "NUTRITION_CALORIE_REQUEST";
+  | "NUTRITION_CALORIE_REQUEST"
+  // Real-world intent routes
+  | "LOW_ENERGY_MINIMUM_PLAN"
+  | "FAT_LOSS_STARTER_PLAN"
+  | "EVENING_WORK_PROTOCOL"
+  | "STRESS_RESET";
 
 export type ContinuationCommand =
   | "FITNESS"
