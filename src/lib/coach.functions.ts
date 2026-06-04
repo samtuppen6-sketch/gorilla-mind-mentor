@@ -1337,16 +1337,31 @@ const CONTINUATION_MAP: Record<string, { command: ContinuationCommand; route: Co
   "BEGINNER": { command: "BEGINNER", route: "FITNESS_ROUTINE_BUILDER" },
   "INTERMEDIATE": { command: "INTERMEDIATE", route: "INTERMEDIATE_FITNESS_PLAN" },
   "ADVANCED": { command: "ADVANCED", route: "INTERMEDIATE_FITNESS_PLAN" },
+  // Daily-OS continuation chips
+  "CALORIES": { command: "CALORIES", route: "NUTRITION_CALORIE_REQUEST" },
+  "NUTRITION": { command: "CALORIES", route: "NUTRITION_CALORIE_REQUEST" },
+  "GYM PLAN": { command: "GYM_PLAN", route: "GYM_STRENGTH_PLAN" },
+  "HOME PLAN": { command: "HOME_PLAN", route: "HOME_BODYWEIGHT_PLAN" },
+  "MORNING PROTOCOL": { command: "MORNING_PROTOCOL", route: "MORNING_PROTOCOL_REQUEST" },
+  "FAT LOSS": { command: "FAT_LOSS", route: "FITNESS_PLAN_REQUEST" },
+  "MUSCLE": { command: "MUSCLE", route: "INTERMEDIATE_FITNESS_PLAN" },
+  "ALL ROUND RESET": { command: "ALL_ROUND_RESET", route: "FULL_REBUILD_PLAN" },
+  "ALL-ROUND RESET": { command: "ALL_ROUND_RESET", route: "FULL_REBUILD_PLAN" },
 };
 
 function detectContinuationCommand(
   message: string,
   history: CoachHistoryTurn[],
+  priorProgramState?: ProgramState | null,
 ): { command: ContinuationCommand; route: CoachRoute } | null {
-  if (!history.length) return null;
   const norm = message.trim().toUpperCase().replace(/[.!?,]+$/g, "").replace(/\s+/g, " ");
   if (norm.length > 30) return null;
-  return CONTINUATION_MAP[norm] ?? null;
+  const hit = CONTINUATION_MAP[norm];
+  if (!hit) return null;
+  // Accept the continuation if we have either prior chat history OR an active
+  // program state carried over from the last assistant turn.
+  if (history.length === 0 && !(priorProgramState && priorProgramState.lastProgrammeRoute)) return null;
+  return hit;
 }
 
 function extractReplyOptions(assistantText: string): string[] {
