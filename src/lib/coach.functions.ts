@@ -364,7 +364,12 @@ export type ResponseMode =
   | "RESET_RECOVERY"
   | "STRESS_RESET"
   | "PROCESS_RESET"
-  | "SLEEP_WIND_DOWN";
+  | "SLEEP_WIND_DOWN"
+  | "URGE_RESET"
+  | "RELAPSE_PREVENTION"
+  | "POST_RELAPSE_REPAIR"
+  | "RECOVERY_STRUCTURE"
+  | "SAFETY_SUPPORT";
 
 export type CoachDebug = {
   selectedRoute: CoachRoute;
