@@ -95,7 +95,7 @@ function TodayPage() {
       <div className="px-5 space-y-4 pb-8">
         {!profile.onboardingComplete && (
           <Link
-            to="/onboarding"
+            to={profile.identityProfile ? "/onboarding" : "/auth"}
             className="block rounded-xl border border-gold bg-gold/10 p-4 text-center"
           >
             <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">
@@ -105,7 +105,9 @@ function TodayPage() {
               Start Your Reset
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              2 minutes. Coach builds around you after.
+              {profile.identityProfile
+                ? "2 minutes. Coach builds around you after."
+                : "Create your account, then 2 minutes of setup."}
             </p>
           </Link>
         )}

@@ -137,6 +137,18 @@ const ProfileSchema = z.object({
   coldExposureAccess: z.string().optional(),
   strengthTrainingAccess: z.string().optional(),
   pilatesMobilityAccess: z.string().optional(),
+  identityProfile: z.object({
+    userId: z.string().optional(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    fullName: z.string().optional(),
+    email: z.string().optional(),
+    phoneNumber: z.string().optional(),
+    authProvider: z.string().optional(),
+    onboardingComplete: z.boolean().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+  }).nullable().optional(),
 }).passthrough();
 
 const JournalSchema = z.object({
@@ -1343,7 +1355,9 @@ function buildContextBlock(
 
   if (profile) {
     lines.push("[USER PROFILE]");
-    lines.push(`name: ${profile.name}`);
+    const firstName = profile.identityProfile?.firstName || profile.name;
+    lines.push(`name: ${firstName}`);
+    lines.push(`firstName: ${firstName}`);
     lines.push(`identityAnchor: ${profile.identityAnchor}`);
     lines.push(`primaryGoal: ${profile.primaryGoal}`);
     lines.push(`primaryGap: ${profile.primaryGap}`);

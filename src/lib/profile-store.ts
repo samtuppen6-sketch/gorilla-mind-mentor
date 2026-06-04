@@ -141,6 +141,24 @@ export type UserProfile = {
   onboardingCompletedAt: string | null;
   hardestPartOfDay: string;
   preferredTrainingWindow: string;
+
+  // --- identityProfile (account/auth) ---
+  identityProfile: IdentityProfile | null;
+};
+
+export type AuthProvider = "google" | "apple" | "email" | "local_placeholder";
+
+export type IdentityProfile = {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  authProvider: AuthProvider;
+  onboardingComplete: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type JournalEntry = {
@@ -233,6 +251,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   onboardingCompletedAt: null,
   hardestPartOfDay: "",
   preferredTrainingWindow: "",
+  identityProfile: null,
 };
 
 export const DEFAULT_JOURNAL: JournalEntry = {

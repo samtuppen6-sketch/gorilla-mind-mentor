@@ -44,6 +44,12 @@ function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<Patch>(() => ({ ...getProfile() }));
 
+  // Gate: must have an account first
+  if (typeof window !== "undefined" && !getProfile().identityProfile) {
+    navigate({ to: "/auth" });
+  }
+
+
   const patch = (p: Patch) => setDraft((d) => ({ ...d, ...p }));
 
   const toggleArr = (key: keyof UserProfile, val: string) => {
@@ -60,8 +66,13 @@ function OnboardingPage() {
   const back = () => setStep((s) => Math.max(0, s - 1));
 
   const finish = () => {
+    const current = getProfile();
+    const now = new Date().toISOString();
+    const identityProfile = current.identityProfile
+      ? { ...current.identityProfile, onboardingComplete: true, updatedAt: now }
+      : null;
     const merged: UserProfile = {
-      ...getProfile(),
+      ...current,
       ...(draft as UserProfile),
       nutritionMode,
       relapseRisk: risk.relapseRisk,
@@ -69,9 +80,10 @@ function OnboardingPage() {
       processAddictionFlag:
         risk.addictionRiskFlag !== "none" && risk.addictionRiskFlag !== "mild"
           ? true
-          : getProfile().processAddictionFlag,
+          : current.processAddictionFlag,
       onboardingComplete: true,
-      onboardingCompletedAt: new Date().toISOString(),
+      onboardingCompletedAt: now,
+      identityProfile,
     };
     setProfile(merged);
     navigate({ to: "/coach" });
