@@ -451,6 +451,27 @@ export type CoachDebug = {
   profileOverrideSuppressedReason: string | null;
   morningFillerSuppressed: boolean;
   responseModeReason: string | null;
+  // Onboarding / recovery awareness
+  currentSituation: string[];
+  primaryStruggle: string[];
+  controlLevel: string | null;
+  supportStatus: string | null;
+  needsFromCoach: string[];
+  addictionRiskFlag: string | null;
+  compulsionTypes: string[];
+  relapseRisk: string | null;
+  preferredSupportTone: string | null;
+  nutritionMode: string | null;
+  currentEatingIssue: string | null;
+  preferredNutritionStyle: string | null;
+  wantsCaloriesMacros: string | null;
+  safetyRouteTriggered: boolean;
+  recoveryRoute: string | null;
+  triggerDetected: string | null;
+  urgeSupportShown: boolean;
+  professionalSupportSuggested: boolean;
+  profileCompletenessScore: number | null;
+  missingProfileFields: string[];
 };
 
 export type GuidedPracticeRecommendation = {
@@ -2198,7 +2219,7 @@ export const askCoach = createServerFn({ method: "POST" })
       RELAPSE_PREVENTION: ["I AM SAFE", "STILL AT RISK", "CALL SOMEONE", "URGE RESET"],
       POST_RELAPSE_REPAIR: ["REPAIR PLAN", "CALL SOMEONE", "JOURNAL", "RESET TODAY"],
       RECOVERY_STRUCTURE: ["MORNING PLAN", "URGE PLAN", "TRAINING", "EVENING RESET"],
-      SAFETY_SUPPORT: ["CALL SOMEONE", "EMERGENCY SERVICES", "GROUND ME NOW"],
+      SAFETY_SUPPORT: ["I AM SAFE", "NEED HELP", "CALL SOMEONE", "GROUND ME"],
     };
     let quickReplies: string[] = fallbackQuickRepliesByRoute[routing.route] ?? [];
 
@@ -2269,6 +2290,23 @@ export const askCoach = createServerFn({ method: "POST" })
     const genericFallbackReason = genericFallbackUsed
       ? "No specific message, journal, profile or program route triggered — falling back to GENERAL_COACHING."
       : null;
+
+    // ---- Onboarding/recovery debug context (read-only from profile) ----
+    const px = (profile as unknown as Record<string, unknown> | null) ?? null;
+    const asStr = (v: unknown): string | null => (typeof v === "string" && v.length > 0 ? v : null);
+    const asArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x) => typeof x === "string") as string[] : []);
+    const recoveryRouteSet = new Set<CoachRoute>(["URGE_RESET","RELAPSE_PREVENTION","POST_RELAPSE_REPAIR","RECOVERY_STRUCTURE"]);
+    const safetyRouteTriggered = routing.route === "SAFETY_SUPPORT" || routing.route === "SAFETY_CRISIS";
+    const recoveryRoute: string | null = recoveryRouteSet.has(routing.route) ? routing.route : null;
+    const triggerDetected: string | null = ((routing as unknown) as { intent?: string }).intent ?? null;
+    const relapseRiskVal = asStr(px?.["relapseRisk"]);
+    const urgeSupportShown = recoveryRoute !== null;
+    const professionalSupportSuggested =
+      safetyRouteTriggered || recoveryRoute === "RELAPSE_PREVENTION" || recoveryRoute === "URGE_RESET" ||
+      relapseRiskVal === "high" || relapseRiskVal === "active";
+    const profileCompletenessScore: number | null =
+      typeof px?.["profileCompletenessScore"] === "number" ? (px?.["profileCompletenessScore"] as number) : null;
+    const missingProfileFields: string[] = asArr(px?.["missingProfileFields"]);
 
     const debug: CoachDebug = {
       selectedRoute: routing.route,
@@ -2347,6 +2385,26 @@ export const askCoach = createServerFn({ method: "POST" })
       profileOverrideSuppressedReason: (routing as any).profileOverrideSuppressedReason ?? null,
       morningFillerSuppressed: morningFillerSuppressed,
       responseModeReason,
+      currentSituation: asArr(px?.["currentSituation"]),
+      primaryStruggle: asArr(px?.["primaryStruggle"]),
+      controlLevel: asStr(px?.["controlLevel"]),
+      supportStatus: asStr(px?.["supportStatus"]),
+      needsFromCoach: asArr(px?.["needsFromCoach"]),
+      addictionRiskFlag: asStr(px?.["addictionRiskFlag"]),
+      compulsionTypes: asArr(px?.["compulsionTypes"]),
+      relapseRisk: relapseRiskVal,
+      preferredSupportTone: asStr(px?.["preferredSupportTone"]),
+      nutritionMode: asStr(px?.["nutritionMode"]),
+      currentEatingIssue: asStr(px?.["currentEatingIssue"]),
+      preferredNutritionStyle: asStr(px?.["preferredNutritionStyle"]),
+      wantsCaloriesMacros: asStr(px?.["wantsCaloriesMacros"]),
+      safetyRouteTriggered,
+      recoveryRoute,
+      triggerDetected,
+      urgeSupportShown,
+      professionalSupportSuggested,
+      profileCompletenessScore,
+      missingProfileFields,
     };
 
     const programState: ProgramState = {
@@ -2551,7 +2609,43 @@ export const askCoach = createServerFn({ method: "POST" })
         })()
       : "";
 
-    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${defaultFitnessPlanInstruction}${suppressionInstruction}${duplicateAdviceInstruction}${guidedPracticeInstruction}${guidedWorkoutInstruction}`;
+    // Profile-aware soft guidance from onboarding data. Explicit user intent still wins.
+    const onboardingProfileInstruction = (() => {
+      if (!px) return "";
+      const parts: string[] = [];
+      const rr = relapseRiskVal;
+      if (rr === "high" || rr === "active") {
+        parts.push("USER PROFILE: relapseRisk is high. Lead with safety and structure. Suggest contacting their support person, sponsor, or recovery group. Do NOT prescribe intense training as the headline. Use calm, direct language — no panic, no shame.");
+      } else if (rr === "moderate") {
+        parts.push("USER PROFILE: relapseRisk is moderate. Reinforce structure and one supportive contact. Avoid generic fitness-first answers when the user is clearly destabilised.");
+      }
+      const ctypes = asArr(px["compulsionTypes"]);
+      if (ctypes.length) parts.push(`USER PROFILE: compulsionTypes=${ctypes.join(", ")}. Tailor boundary/discipline language to these patterns.`);
+      const ss = asStr(px["supportStatus"]);
+      if (ss && ss !== "none" && ss !== "prefer_not_say") parts.push(`USER PROFILE: supportStatus=${ss}. Reference contacting them when relevant.`);
+      const nm = asStr(px["nutritionMode"]);
+      if (nm === "SIMPLE_STANDARD") {
+        parts.push("USER PROFILE: nutritionMode=SIMPLE_STANDARD. Do NOT ask for calories/macros by default. Use protein-first, simple rules.");
+      } else if (nm === "PRECISION_TRACKING") {
+        const need: string[] = [];
+        if (!px["age"]) need.push("age");
+        if (!px["sex"]) need.push("sex");
+        if (!px["heightCm"]) need.push("height");
+        if (!px["weightKg"]) need.push("weight");
+        parts.push(`USER PROFILE: nutritionMode=PRECISION_TRACKING. ${need.length ? `Ask only for missing fields: ${need.join(", ")}. Do NOT invent numbers.` : "Use stored numbers; do not re-ask."}`);
+      }
+      const inj = asStr(px["injuryFlag"]);
+      if (inj && inj !== "none") parts.push(`USER PROFILE: injuryFlag=${inj}. Apply safety modifications and avoid aggressive loading.`);
+      const fl = asStr(px["fitnessLevel"]);
+      if (fl) parts.push(`USER PROFILE: fitnessLevel=${fl}.`);
+      const loc = asStr(px["trainingLocation"]);
+      if (loc) parts.push(`USER PROFILE: trainingLocation=${loc}.`);
+      const tone = asStr(px["preferredSupportTone"]);
+      if (tone) parts.push(`USER PROFILE: preferredSupportTone=${tone}. Match this tone without losing Gorilla Mind directness.`);
+      return parts.length ? `\n\n=== PROFILE-AWARE GUIDANCE (explicit user message still wins) ===\n${parts.join("\n")}\n=== END PROFILE-AWARE GUIDANCE ===` : "";
+    })();
+
+    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${defaultFitnessPlanInstruction}${suppressionInstruction}${duplicateAdviceInstruction}${guidedPracticeInstruction}${guidedWorkoutInstruction}${onboardingProfileInstruction}`;
 
     try {
       const res = await fetch("https://api.openai.com/v1/responses", {
@@ -2620,6 +2714,8 @@ export const askCoach = createServerFn({ method: "POST" })
         "FITNESS_ROUTINE_BUILDER", "CORE_BACK_SUPPORT_PLAN", "PILATES_CORE_PLAN",
         "LOW_ENERGY_MINIMUM_PLAN", "FAT_LOSS_STARTER_PLAN", "NUTRITION_CALORIE_REQUEST",
         "EVENING_WORK_PROTOCOL", "MISSED_DAY_REPAIR", "STRESS_RESET", "GYM_STRENGTH_PLAN",
+        "URGE_RESET", "RELAPSE_PREVENTION", "POST_RELAPSE_REPAIR",
+        "RECOVERY_STRUCTURE", "SAFETY_SUPPORT",
       ]);
       if (forcedChipRoutes.has(routing.route)) {
         quickReplies = fallbackQuickRepliesByRoute[routing.route] ?? quickReplies;

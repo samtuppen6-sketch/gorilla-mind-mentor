@@ -211,6 +211,26 @@ function buildFailureDebug(temporal: TemporalContext, err: unknown): CoachDebug 
     profileOverrideSuppressedReason: null,
     morningFillerSuppressed: false,
     responseModeReason: null,
+    currentSituation: [],
+    primaryStruggle: [],
+    controlLevel: null,
+    supportStatus: null,
+    needsFromCoach: [],
+    addictionRiskFlag: null,
+    compulsionTypes: [],
+    relapseRisk: null,
+    preferredSupportTone: null,
+    nutritionMode: null,
+    currentEatingIssue: null,
+    preferredNutritionStyle: null,
+    wantsCaloriesMacros: null,
+    safetyRouteTriggered: false,
+    recoveryRoute: null,
+    triggerDetected: null,
+    urgeSupportShown: false,
+    professionalSupportSuggested: false,
+    profileCompletenessScore: null,
+    missingProfileFields: [],
   };
 }
 
@@ -677,6 +697,29 @@ function DebugPanel({ debug: d, loading }: { debug: CoachDebug | null; loading: 
             <Row k="exercise plan source" v={d.exercisePlanSource ?? "—"} />
             <Row k="exercise knowledge used" v={String(d.exerciseKnowledgeUsed)} />
             <Row k="safety modification applied" v={String(d.safetyModificationApplied)} />
+          </div>
+          <div className="pt-2 border-t border-border/40">
+            <p className="text-foreground mb-1">Onboarding / Recovery:</p>
+            <Row k="current situation" v={fmtArr(d.currentSituation)} />
+            <Row k="primary struggle" v={fmtArr(d.primaryStruggle)} />
+            <Row k="control level" v={d.controlLevel ?? "—"} />
+            <Row k="support status" v={d.supportStatus ?? "—"} />
+            <Row k="needs from coach" v={fmtArr(d.needsFromCoach)} />
+            <Row k="addiction risk flag" v={d.addictionRiskFlag ?? "—"} />
+            <Row k="compulsion types" v={fmtArr(d.compulsionTypes)} />
+            <Row k="relapse risk" v={d.relapseRisk ?? "—"} />
+            <Row k="preferred support tone" v={d.preferredSupportTone ?? "—"} />
+            <Row k="nutrition mode" v={d.nutritionMode ?? "—"} />
+            <Row k="current eating issue" v={d.currentEatingIssue ?? "—"} />
+            <Row k="preferred nutrition style" v={d.preferredNutritionStyle ?? "—"} />
+            <Row k="wants calories/macros" v={d.wantsCaloriesMacros ?? "—"} />
+            <Row k="safety route triggered" v={String(d.safetyRouteTriggered)} />
+            <Row k="recovery route" v={d.recoveryRoute ?? "—"} />
+            <Row k="trigger detected" v={d.triggerDetected ?? "—"} />
+            <Row k="urge support shown" v={String(d.urgeSupportShown)} />
+            <Row k="professional support suggested" v={String(d.professionalSupportSuggested)} />
+            <Row k="profile completeness score" v={d.profileCompletenessScore == null ? "—" : `${d.profileCompletenessScore}%`} />
+            <Row k="missing profile fields" v={fmtArr(d.missingProfileFields)} />
           </div>
         </dl>
       )}

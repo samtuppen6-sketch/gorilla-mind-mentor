@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -93,6 +93,22 @@ function TodayPage() {
         sub="One clean win. No phone-first behaviour. Execute the protocol."
       />
       <div className="px-5 space-y-4 pb-8">
+        {!profile.onboardingComplete && (
+          <Link
+            to="/onboarding"
+            className="block rounded-xl border border-gold bg-gold/10 p-4 text-center"
+          >
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">
+              Get personalised
+            </p>
+            <p className="text-lg font-semibold text-gold mt-1">
+              Start Your Reset
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              2 minutes. Coach builds around you after.
+            </p>
+          </Link>
+        )}
         <Stat label="Discipline points" value={String(dpToday)} hint="Earned today" />
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Practice streak" value={`${practiceStreak}d`} hint="Any guided practice" />
