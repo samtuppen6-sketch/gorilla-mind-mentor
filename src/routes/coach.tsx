@@ -14,6 +14,7 @@ import {
   type TemporalContext,
   type CoachHistoryTurn,
   type GuidedWorkoutRecommendation,
+  type ProgramState,
 } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
 import { loadDailyProgress } from "@/lib/practice-progress";
@@ -60,6 +61,7 @@ type ThreadMessage =
       guidedWorkout: GuidedWorkoutRecommendation | null;
       quickReplies: string[];
       debug: CoachDebug;
+      programState: ProgramState | null;
       failure?: { kind: ErrorKind; title: string; description: string; lastUserMessage: string } | null;
     };
 
@@ -261,6 +263,15 @@ function CoachPage() {
       content: m.content,
     }));
 
+    // Find the most recent assistant programState to carry the active plan forward.
+    const priorProgramState: ProgramState | null = (() => {
+      for (let i = thread.length - 1; i >= 0; i--) {
+        const m = thread[i];
+        if (m.role === "assistant" && m.programState) return m.programState;
+      }
+      return null;
+    })();
+
     setThread((t) => [...t, { role: "user", content: message }]);
     setReply("");
     setComposerOpen(false);
@@ -269,7 +280,7 @@ function CoachPage() {
     try {
       const dailyProgress = loadDailyProgress();
       const res: CoachResponse = await ask({
-        data: { question: message, profile, journal, dailyProgress, temporal, history },
+        data: { question: message, profile, journal, dailyProgress, temporal, history, priorProgramState },
       });
 
       // Server function returned, but the upstream model/KB call failed —
@@ -289,6 +300,7 @@ function CoachPage() {
             guidedWorkout: res.guidedWorkout,
             quickReplies: res.quickReplies ?? [],
             debug: res.debug,
+            programState: res.programState ?? null,
             failure: { ...cls, lastUserMessage: message },
           },
         ]);
@@ -304,6 +316,7 @@ function CoachPage() {
           guidedWorkout: res.guidedWorkout,
           quickReplies: res.quickReplies ?? [],
           debug: res.debug,
+          programState: res.programState ?? null,
           failure: null,
         },
       ]);
@@ -322,6 +335,7 @@ function CoachPage() {
           guidedWorkout: null,
           quickReplies: [],
           debug: buildFailureDebug(temporal, err),
+          programState: null,
           failure: { ...cls, lastUserMessage: message },
         },
       ]);
@@ -624,10 +638,60 @@ function DebugPanel({ debug: d, loading }: { debug: CoachDebug | null; loading: 
               </ol>
             )}
           </div>
+          <div className="pt-2 border-t border-border/40">
+            <p className="text-foreground mb-1">Daily OS:</p>
+            <Row k="selected pillars" v={fmtArr(d.selectedPillars)} />
+            <Row k="pillar reasoning" v={d.pillarReasoning || "—"} />
+            <Row k="active plan type" v={d.activePlanType ?? "—"} />
+            <Row k="active plan length" v={d.activePlanLength ?? "—"} />
+            <Row k="guided practice recommendation" v={fmtObj(d.guidedPracticeRecommendation)} />
+            <Row k="calorie target used" v={d.calorieTargetUsed == null ? "—" : String(d.calorieTargetUsed)} />
+            <Row k="calorie source" v={d.calorieSource ?? "—"} />
+            <Row k="calorie missing fields" v={fmtArr(d.calorieMissingFields)} />
+            <Row k="macro target used" v={fmtObj(d.macroTargetUsed)} />
+            <Row k="programme personalisation missing" v={fmtArr(d.programmePersonalisationMissing)} />
+            <Row k="knowledge base volumes used" v={fmtArr(d.knowledgeBaseVolumesUsed)} />
+            <Row k="generic fallback used" v={String(d.genericFallbackUsed)} />
+            <Row k="generic fallback reason" v={d.genericFallbackReason ?? "—"} />
+          </div>
+          <div className="pt-2 border-t border-border/40">
+            <p className="text-foreground mb-1">Exercise engine:</p>
+            <Row k="fitness goal" v={d.fitnessGoal ?? "—"} />
+            <Row k="fitness level" v={d.fitnessLevel ?? "—"} />
+            <Row k="training location" v={d.trainingLocation ?? "—"} />
+            <Row k="equipment" v={d.equipment ?? "—"} />
+            <Row k="injury flag" v={d.injuryFlag ?? "—"} />
+            <Row k="available time" v={d.availableTime ?? "—"} />
+            <Row k="energy level" v={d.energyLevel ?? "—"} />
+            <Row k="preferred style" v={d.preferredStyle ?? "—"} />
+            <Row k="exercise route" v={d.exerciseRoute ?? "—"} />
+            <Row k="guided workout recommendation" v={fmtObj(d.guidedWorkoutRecommendation)} />
+            <Row k="exercise personalisation missing" v={fmtArr(d.exercisePersonalisationMissing)} />
+            <Row k="exercise continuation detected" v={String(d.exerciseContinuationDetected)} />
+            <Row k="exercise plan source" v={d.exercisePlanSource ?? "—"} />
+            <Row k="exercise knowledge used" v={String(d.exerciseKnowledgeUsed)} />
+            <Row k="safety modification applied" v={String(d.safetyModificationApplied)} />
+          </div>
         </dl>
       )}
     </div>
   );
+}
+
+function fmtArr(a: unknown): string {
+  if (!Array.isArray(a) || a.length === 0) return "—";
+  return a.map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join(", ");
+}
+
+function fmtObj(o: unknown): string {
+  if (o == null) return "—";
+  if (typeof o === "string") return o;
+  try {
+    const s = JSON.stringify(o);
+    return s === "{}" ? "—" : s;
+  } catch {
+    return String(o);
+  }
 }
 
 function Row({ k, v }: { k: string; v: string }) {

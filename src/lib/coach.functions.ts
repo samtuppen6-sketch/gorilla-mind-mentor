@@ -1337,16 +1337,31 @@ const CONTINUATION_MAP: Record<string, { command: ContinuationCommand; route: Co
   "BEGINNER": { command: "BEGINNER", route: "FITNESS_ROUTINE_BUILDER" },
   "INTERMEDIATE": { command: "INTERMEDIATE", route: "INTERMEDIATE_FITNESS_PLAN" },
   "ADVANCED": { command: "ADVANCED", route: "INTERMEDIATE_FITNESS_PLAN" },
+  // Daily-OS continuation chips
+  "CALORIES": { command: "CALORIES", route: "NUTRITION_CALORIE_REQUEST" },
+  "NUTRITION": { command: "CALORIES", route: "NUTRITION_CALORIE_REQUEST" },
+  "GYM PLAN": { command: "GYM_PLAN", route: "GYM_STRENGTH_PLAN" },
+  "HOME PLAN": { command: "HOME_PLAN", route: "HOME_BODYWEIGHT_PLAN" },
+  "MORNING PROTOCOL": { command: "MORNING_PROTOCOL", route: "MORNING_PROTOCOL_REQUEST" },
+  "FAT LOSS": { command: "FAT_LOSS", route: "FITNESS_PLAN_REQUEST" },
+  "MUSCLE": { command: "MUSCLE", route: "INTERMEDIATE_FITNESS_PLAN" },
+  "ALL ROUND RESET": { command: "ALL_ROUND_RESET", route: "FULL_REBUILD_PLAN" },
+  "ALL-ROUND RESET": { command: "ALL_ROUND_RESET", route: "FULL_REBUILD_PLAN" },
 };
 
 function detectContinuationCommand(
   message: string,
   history: CoachHistoryTurn[],
+  priorProgramState?: ProgramState | null,
 ): { command: ContinuationCommand; route: CoachRoute } | null {
-  if (!history.length) return null;
   const norm = message.trim().toUpperCase().replace(/[.!?,]+$/g, "").replace(/\s+/g, " ");
   if (norm.length > 30) return null;
-  return CONTINUATION_MAP[norm] ?? null;
+  const hit = CONTINUATION_MAP[norm];
+  if (!hit) return null;
+  // Accept the continuation if we have either prior chat history OR an active
+  // program state carried over from the last assistant turn.
+  if (history.length === 0 && !(priorProgramState && priorProgramState.lastProgrammeRoute)) return null;
+  return hit;
 }
 
 function extractReplyOptions(assistantText: string): string[] {
@@ -1695,6 +1710,132 @@ function buildDailyOsPlanShape(opts: {
   return `${spec}\n\n${focusNote}\n\n${askOnlyMissing} ${exerciseSafety}\n\n${replyChips}`;
 }
 
+// ---------- Default fitness plan helper ----------
+// Returns structured template text the model can use inside PLAN_BUILDING
+// responses. The shape matches the supported route templates so the model
+// produces concrete prescriptions rather than generic wellness advice.
+
+export type DefaultFitnessPlanKind =
+  | "BEGINNER_HOME"
+  | "BEGINNER_GYM"
+  | "PILATES_CORE_BACK_SUPPORT"
+  | "RUNNING_STARTER"
+  | "LOW_ENERGY"
+  | "INTERMEDIATE_MIXED";
+
+export function buildDefaultFitnessPlan(opts: {
+  level?: FitnessLevel;
+  location?: TrainingLocation;
+  goal?: FitnessGoal;
+  injuryFlag?: InjuryFlag;
+  availableTime?: AvailableTime;
+  preferredStyle?: PreferredStyle;
+}): { kind: DefaultFitnessPlanKind; text: string } {
+  const level = opts.level ?? "unknown";
+  const location = opts.location ?? "unknown";
+  const goal = opts.goal ?? "unknown";
+  const injury = opts.injuryFlag ?? "unknown";
+  const style = opts.preferredStyle ?? "unknown";
+
+  // Choose a sensible default kind based on the inputs.
+  let kind: DefaultFitnessPlanKind = "BEGINNER_HOME";
+  if (injury === "back_pain" || goal === "back_support" || style === "pilates") {
+    kind = "PILATES_CORE_BACK_SUPPORT";
+  } else if (style === "running" || goal === "running") {
+    kind = "RUNNING_STARTER";
+  } else if (opts.availableTime === "10_minutes" || opts.availableTime === "20_minutes" && level === "unknown") {
+    // Low-energy bias only when explicitly short on time.
+    if (level === "unknown") kind = "LOW_ENERGY";
+  } else if (level === "intermediate" || level === "advanced") {
+    kind = "INTERMEDIATE_MIXED";
+  } else if (level === "beginner" && location === "gym") {
+    kind = "BEGINNER_GYM";
+  } else if (location === "gym") {
+    kind = "BEGINNER_GYM";
+  } else {
+    kind = "BEGINNER_HOME";
+  }
+
+  const TEMPLATES: Record<DefaultFitnessPlanKind, string> = {
+    BEGINNER_HOME: [
+      "DEFAULT PLAN — BEGINNER_HOME (20-minute home reset)",
+      "Warm-up (3 min): march on the spot, shoulder rolls, hip openers, nasal breathing only.",
+      "Bodyweight circuit (12 min) — 3 rounds, 30–60s rest:",
+      "  • 10 bodyweight squats",
+      "  • 8 incline press-ups (hands on counter or wall)",
+      "  • 10 glute bridges",
+      "  • 10 hip hinges",
+      "  • 20-second plank",
+      "Cool-down (5 min): walk + nasal breathing 4 in / 6 out.",
+      "Weekly structure (7 days):",
+      "  Day 1: circuit  ·  Day 2: 30-min walk + mobility  ·  Day 3: circuit",
+      "  Day 4: walk + breathwork  ·  Day 5: circuit  ·  Day 6: longer walk  ·  Day 7: review.",
+    ].join("\n"),
+
+    BEGINNER_GYM: [
+      "DEFAULT PLAN — BEGINNER_GYM (full-body gym, 3x per week)",
+      "Warm-up (5–8 min): incline walk or bike, easy pace.",
+      "Main session:",
+      "  • Leg press OR goblet squat — 3 × 10 (2 reps in reserve)",
+      "  • Chest press OR press-ups — 3 × 8–10",
+      "  • Seated row OR cable row — 3 × 10",
+      "  • Hip hinge (RDL or hip-hinge pattern) — 3 × 8",
+      "  • Plank — 3 × 20–30s",
+      "Finisher: 10-minute incline walk.",
+      "Weekly structure: 3 strength days + 2 walks + 2 mobility/core days.",
+      "Rules: technique before load, leave 2 reps in reserve, no ego lifting.",
+    ].join("\n"),
+
+    PILATES_CORE_BACK_SUPPORT: [
+      "DEFAULT PLAN — PILATES_CORE_BACK_SUPPORT",
+      "Safety caveat (state explicitly): if pain is sharp, shooting, neurological, numb/weak, or worsening — recommend medical/physiotherapy review before training. Do not diagnose.",
+      "Session (20 min):",
+      "  • Nasal breathing reset — 2 min",
+      "  • Pelvic tilts — 2 × 10",
+      "  • Dead bugs — 2 × 8 per side",
+      "  • Glute bridges — 2 × 12",
+      "  • Bird dogs — 2 × 8 per side",
+      "  • Side plank from knees — 2 × 15–20s per side",
+      "  • Child's pose — 2 min",
+      "Rules: slow reps, brace lightly, stop immediately if symptoms increase.",
+    ].join("\n"),
+
+    RUNNING_STARTER: [
+      "DEFAULT PLAN — RUNNING_STARTER (walk/jog intervals)",
+      "Warm-up: 5 min brisk walk.",
+      "Main: 8 rounds — 30s light jog + 90s walk (no sprinting).",
+      "Cool-down: 5 min walk + 3 min nasal breathing.",
+      "Rules: run slower than you think, build joints before ego, walking is part of the plan.",
+      "Weekly structure: Day1 intervals · Day2 walk+mobility · Day3 intervals · Day4 rest/easy walk · Day5 intervals · Day6 long walk · Day7 review.",
+    ].join("\n"),
+
+    LOW_ENERGY: [
+      "DEFAULT PLAN — LOW_ENERGY (minimum standard day)",
+      "1. Water (500ml) before anything else.",
+      "2. 10-minute walk — nasal breathing.",
+      "3. Short circuit — 3 rounds: 10 squats, 10 glute bridges, 20-second plank.",
+      "4. Extended-exhale breathing — 3 minutes (4 in / 8 out).",
+      "Frame: 'This is not a performance day. This is a minimum standard day.'",
+    ].join("\n"),
+
+    INTERMEDIATE_MIXED: [
+      "DEFAULT PLAN — INTERMEDIATE_MIXED (7-day mixed structure)",
+      "3 strength days + 2 Zone 2 cardio days + 2 mobility/core days.",
+      "  Day 1: full-body strength",
+      "  Day 2: Zone 2 cardio (30–45 min) + core",
+      "  Day 3: upper/lower split strength",
+      "  Day 4: mobility + breathwork",
+      "  Day 5: full-body strength",
+      "  Day 6: Zone 2 conditioning or long walk",
+      "  Day 7: mobility + review",
+      "Before prescribing load percentages or advanced volume: ask the user for equipment, training history, and primary goal.",
+    ].join("\n"),
+  };
+
+  const header = `LEVEL=${level} · LOCATION=${location} · GOAL=${goal} · INJURY=${injury} · STYLE=${style}`;
+  return { kind, text: `${header}\n${TEMPLATES[kind]}` };
+}
+
 const EMPTY_PROGRAM_STATE: ProgramState = {
   activePlanType: null,
   activePlanLength: null,
@@ -1707,6 +1848,18 @@ const EMPTY_PROGRAM_STATE: ProgramState = {
   lastProgrammeRoute: null,
 };
 
+const ProgramStateSchema = z.object({
+  activePlanType: z.string().nullable(),
+  activePlanLength: z.string().nullable(),
+  selectedFitnessLevel: z.string().nullable(),
+  selectedBreathwork: z.string().nullable(),
+  selectedMeditation: z.string().nullable(),
+  selectedMorningProtocol: z.string().nullable(),
+  missingPersonalisationFields: z.array(z.string()).max(40),
+  lastRecommendedGuidedPractice: z.string().nullable(),
+  lastProgrammeRoute: z.string().nullable(),
+});
+
 export const askCoach = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
@@ -1716,6 +1869,7 @@ export const askCoach = createServerFn({ method: "POST" })
       dailyProgress: DailyProgressSchema.nullable().optional(),
       temporal: TemporalSchema.nullable().optional(),
       history: z.array(HistoryTurnSchema).max(40).optional(),
+      priorProgramState: ProgramStateSchema.nullable().optional(),
     }).parse(input),
   )
   .handler(async ({ data }): Promise<CoachResponse> => {
@@ -1778,7 +1932,8 @@ export const askCoach = createServerFn({ method: "POST" })
       const last = [...history].reverse().find((h) => h.role === "assistant");
       return last ? extractReplyOptions(last.content) : [];
     })();
-    const continuation = detectContinuationCommand(data.question, history);
+    const priorProgramState = (data.priorProgramState ?? null) as ProgramState | null;
+    const continuation = detectContinuationCommand(data.question, history, priorProgramState);
     const isSafetyCrisis = routing.route === "SAFETY_CRISIS";
     let routeOverrideApplied = false;
     let routeOverrideReason: string | null = null;
@@ -2175,7 +2330,28 @@ export const askCoach = createServerFn({ method: "POST" })
       ? `\n\nGUIDED WORKOUT SECTION: Before COACH CLOSE, add a section labelled exactly "GUIDED WORKOUT" with two short lines:\nRecommended: ${guidedWorkout.title} (${guidedWorkout.durationMinutes} min, ${guidedWorkout.category}, ${guidedWorkout.level})\nStart the guided workout inside the app.\nDo NOT invent a different workout name. Use exactly "${guidedWorkout.title}".`
       : "";
 
-    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${suppressionInstruction}${duplicateAdviceInstruction}${guidedPracticeInstruction}${guidedWorkoutInstruction}`;
+    // For PLAN_BUILDING / fitness routes, hand the model an explicit default
+    // fitness plan template derived from the user's classification.
+    const DEFAULT_FITNESS_PLAN_ROUTES = new Set<CoachRoute>([
+      "FITNESS_ROUTINE_BUILDER", "HOME_BODYWEIGHT_PLAN", "GYM_STRENGTH_PLAN",
+      "PILATES_CORE_PLAN", "CORE_BACK_SUPPORT_PLAN", "RUNNING_STARTER_PLAN",
+      "LOW_ENERGY_SESSION", "INTERMEDIATE_FITNESS_PLAN", "FULL_REBUILD_PLAN",
+    ]);
+    const defaultFitnessPlanInstruction = DEFAULT_FITNESS_PLAN_ROUTES.has(routing.route)
+      ? (() => {
+          const plan = buildDefaultFitnessPlan({
+            level: fc.fitnessLevel,
+            location: fc.trainingLocation,
+            goal: fc.fitnessGoal,
+            injuryFlag: fc.injuryFlag,
+            availableTime: fc.availableTime,
+            preferredStyle: fc.preferredStyle,
+          });
+          return `\n\nDEFAULT FITNESS PLAN TEMPLATE (kind=${plan.kind}). Use this as the backbone of TRAINING PLAN / TODAY'S SESSION / THIS WEEK. You may adapt to the user's stated constraints but do NOT replace it with generic wellness advice:\n${plan.text}`;
+        })()
+      : "";
+
+    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${defaultFitnessPlanInstruction}${suppressionInstruction}${duplicateAdviceInstruction}${guidedPracticeInstruction}${guidedWorkoutInstruction}`;
 
     try {
       const res = await fetch("https://api.openai.com/v1/responses", {
