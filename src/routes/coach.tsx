@@ -638,10 +638,60 @@ function DebugPanel({ debug: d, loading }: { debug: CoachDebug | null; loading: 
               </ol>
             )}
           </div>
+          <div className="pt-2 border-t border-border/40">
+            <p className="text-foreground mb-1">Daily OS:</p>
+            <Row k="selected pillars" v={fmtArr(d.selectedPillars)} />
+            <Row k="pillar reasoning" v={d.pillarReasoning || "—"} />
+            <Row k="active plan type" v={d.activePlanType ?? "—"} />
+            <Row k="active plan length" v={d.activePlanLength ?? "—"} />
+            <Row k="guided practice recommendation" v={fmtObj(d.guidedPracticeRecommendation)} />
+            <Row k="calorie target used" v={d.calorieTargetUsed == null ? "—" : String(d.calorieTargetUsed)} />
+            <Row k="calorie source" v={d.calorieSource ?? "—"} />
+            <Row k="calorie missing fields" v={fmtArr(d.calorieMissingFields)} />
+            <Row k="macro target used" v={fmtObj(d.macroTargetUsed)} />
+            <Row k="programme personalisation missing" v={fmtArr(d.programmePersonalisationMissing)} />
+            <Row k="knowledge base volumes used" v={fmtArr(d.knowledgeBaseVolumesUsed)} />
+            <Row k="generic fallback used" v={String(d.genericFallbackUsed)} />
+            <Row k="generic fallback reason" v={d.genericFallbackReason ?? "—"} />
+          </div>
+          <div className="pt-2 border-t border-border/40">
+            <p className="text-foreground mb-1">Exercise engine:</p>
+            <Row k="fitness goal" v={d.fitnessGoal ?? "—"} />
+            <Row k="fitness level" v={d.fitnessLevel ?? "—"} />
+            <Row k="training location" v={d.trainingLocation ?? "—"} />
+            <Row k="equipment" v={d.equipment ?? "—"} />
+            <Row k="injury flag" v={d.injuryFlag ?? "—"} />
+            <Row k="available time" v={d.availableTime ?? "—"} />
+            <Row k="energy level" v={d.energyLevel ?? "—"} />
+            <Row k="preferred style" v={d.preferredStyle ?? "—"} />
+            <Row k="exercise route" v={d.exerciseRoute ?? "—"} />
+            <Row k="guided workout recommendation" v={fmtObj(d.guidedWorkoutRecommendation)} />
+            <Row k="exercise personalisation missing" v={fmtArr(d.exercisePersonalisationMissing)} />
+            <Row k="exercise continuation detected" v={String(d.exerciseContinuationDetected)} />
+            <Row k="exercise plan source" v={d.exercisePlanSource ?? "—"} />
+            <Row k="exercise knowledge used" v={String(d.exerciseKnowledgeUsed)} />
+            <Row k="safety modification applied" v={String(d.safetyModificationApplied)} />
+          </div>
         </dl>
       )}
     </div>
   );
+}
+
+function fmtArr(a: unknown): string {
+  if (!Array.isArray(a) || a.length === 0) return "—";
+  return a.map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join(", ");
+}
+
+function fmtObj(o: unknown): string {
+  if (o == null) return "—";
+  if (typeof o === "string") return o;
+  try {
+    const s = JSON.stringify(o);
+    return s === "{}" ? "—" : s;
+  } catch {
+    return String(o);
+  }
 }
 
 function Row({ k, v }: { k: string; v: string }) {
