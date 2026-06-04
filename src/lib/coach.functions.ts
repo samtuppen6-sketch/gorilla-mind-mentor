@@ -1983,10 +1983,61 @@ export const askCoach = createServerFn({ method: "POST" })
     const PLAN_BUILDING_ROUTES = new Set<CoachRoute>([
       "FULL_REBUILD_PLAN", "PROGRAM_REQUEST", "MORNING_PROTOCOL_REQUEST",
       "BREATHWORK_MEDITATION_REQUEST", "NUTRITION_CALORIE_REQUEST",
+      "FAT_LOSS_STARTER_PLAN", "GYM_STRENGTH_PLAN",
     ]);
+    let responseModeReason: string =
+      `Default from dayPart=${temporal.dayPart} (${responseMode}).`;
     if (!isSafetyCrisis && (continuation || PLAN_BUILDING_ROUTES.has(routing.route))) {
       responseMode = "PLAN_BUILDING";
+      responseModeReason = `Route ${routing.route} forces PLAN_BUILDING.`;
     }
+
+    // Route-specific response mode mapping — overrides dayPart default so we
+    // do not inject MORNING_ACTIVATION boilerplate into stress / evening /
+    // low-energy / missed-day responses.
+    const msgLower = data.question.toLowerCase();
+    const userSaidMorning = /\b(this morning|morning|wasted (the )?morning|woke up)\b/.test(msgLower);
+    const ROUTE_RESPONSE_MODE: Partial<Record<CoachRoute, ResponseMode>> = {
+      LOW_ENERGY_MINIMUM_PLAN: "LOW_ENERGY_MINIMUM",
+      LOW_ENERGY_SESSION: "LOW_ENERGY_MINIMUM",
+      FAT_LOSS_STARTER_PLAN: "PLAN_BUILDING",
+      NUTRITION_CALORIE_REQUEST: "PLAN_BUILDING",
+      GYM_STRENGTH_PLAN: "PLAN_BUILDING",
+      EVENING_WORK_PROTOCOL: "EVENING_PROTOCOL",
+      MISSED_DAY_REPAIR: "RESET_RECOVERY",
+      STRESS_RESET: "STRESS_RESET",
+      SLEEP_WIND_DOWN: afterShutdown || temporal.dayPart === "LATE_NIGHT" ? "LATE_NIGHT_SHUTDOWN" : "SLEEP_WIND_DOWN",
+    };
+    if (!isSafetyCrisis && !continuation && ROUTE_RESPONSE_MODE[routing.route]) {
+      responseMode = ROUTE_RESPONSE_MODE[routing.route]!;
+      responseModeReason = `Route ${routing.route} mapped to ${responseMode}.`;
+    }
+    // PROCESS_ADDICTION: only morning activation if dayPart morning or user said morning.
+    if (!isSafetyCrisis && !continuation && routing.route === "PROCESS_ADDICTION") {
+      if (temporal.dayPart === "MORNING" || userSaidMorning) {
+        responseMode = "MORNING_ACTIVATION";
+        responseModeReason = "PROCESS_ADDICTION + morning context → MORNING_ACTIVATION.";
+      } else {
+        responseMode = "PROCESS_RESET";
+        responseModeReason = "PROCESS_ADDICTION outside morning → PROCESS_RESET.";
+      }
+    }
+    // BREATHWORK with downregulate sub-route → STRESS_RESET mode.
+    if (!isSafetyCrisis && !continuation && routing.route === "BREATHWORK" && breathworkSubRoute === "DOWNREGULATE") {
+      responseMode = "STRESS_RESET";
+      responseModeReason = "BREATHWORK/DOWNREGULATE → STRESS_RESET mode.";
+    }
+
+    // Morning-filler suppression: which routes are NOT allowed to inject
+    // hydrate/light/phone-away/protein-breakfast bullets.
+    const MORNING_FILLER_ALLOWED: Set<CoachRoute> = new Set([
+      "MORNING_PROTOCOL_REQUEST", "FULL_REBUILD_PLAN", "PROGRAM_REQUEST",
+      "PROCESS_ADDICTION", "FAT_LOSS_STARTER_PLAN", "GYM_STRENGTH_PLAN",
+    ]);
+    const allowMorningFiller =
+      MORNING_FILLER_ALLOWED.has(routing.route) ||
+      (routing.route === "GENERAL_LIFE_STUCK" && temporal.dayPart === "MORNING");
+    const morningFillerSuppressed = !allowMorningFiller;
 
     const guidedPractice = routing.route === "SAFETY_CRISIS"
       ? null
