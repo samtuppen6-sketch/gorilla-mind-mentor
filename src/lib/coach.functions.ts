@@ -2103,6 +2103,11 @@ export const askCoach = createServerFn({ method: "POST" })
       MISSED_DAY_REPAIR: "RESET_RECOVERY",
       STRESS_RESET: "STRESS_RESET",
       SLEEP_WIND_DOWN: afterShutdown || temporal.dayPart === "LATE_NIGHT" ? "LATE_NIGHT_SHUTDOWN" : "SLEEP_WIND_DOWN",
+      URGE_RESET: "URGE_RESET",
+      RELAPSE_PREVENTION: "RELAPSE_PREVENTION",
+      POST_RELAPSE_REPAIR: "POST_RELAPSE_REPAIR",
+      RECOVERY_STRUCTURE: "RECOVERY_STRUCTURE",
+      SAFETY_SUPPORT: "SAFETY_SUPPORT",
     };
     if (!isSafetyCrisis && !continuation && ROUTE_RESPONSE_MODE[routing.route]) {
       responseMode = ROUTE_RESPONSE_MODE[routing.route]!;
