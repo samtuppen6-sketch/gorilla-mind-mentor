@@ -1722,6 +1722,18 @@ const EMPTY_PROGRAM_STATE: ProgramState = {
   lastProgrammeRoute: null,
 };
 
+const ProgramStateSchema = z.object({
+  activePlanType: z.string().nullable(),
+  activePlanLength: z.string().nullable(),
+  selectedFitnessLevel: z.string().nullable(),
+  selectedBreathwork: z.string().nullable(),
+  selectedMeditation: z.string().nullable(),
+  selectedMorningProtocol: z.string().nullable(),
+  missingPersonalisationFields: z.array(z.string()).max(40),
+  lastRecommendedGuidedPractice: z.string().nullable(),
+  lastProgrammeRoute: z.string().nullable(),
+});
+
 export const askCoach = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
@@ -1731,6 +1743,7 @@ export const askCoach = createServerFn({ method: "POST" })
       dailyProgress: DailyProgressSchema.nullable().optional(),
       temporal: TemporalSchema.nullable().optional(),
       history: z.array(HistoryTurnSchema).max(40).optional(),
+      priorProgramState: ProgramStateSchema.nullable().optional(),
     }).parse(input),
   )
   .handler(async ({ data }): Promise<CoachResponse> => {
