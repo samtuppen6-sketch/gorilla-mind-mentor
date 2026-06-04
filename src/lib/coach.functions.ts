@@ -648,7 +648,11 @@ function detectProgramRoute(message: string): { route: CoachRoute; reason: strin
 
 function detectFitnessRoute(message: string, fc: FitnessClassification): { route: CoachRoute; reason: string; query: string } | null {
   const m = message.toLowerCase();
-  const exerciseIntent = /\b(exercise|workout|train|training|fit|fitness|routine|plan|lift|run|running|pilates|gym|cardio|movement)\b/.test(m);
+  // Explicit injury / back / core / pilates / mobility intent — must beat
+  // profile-derived routes like SLEEP_WIND_DOWN even when standard fitness
+  // verbs are absent.
+  const backCoreIntent = fc.injuryFlag === "back_pain" || /\b(bad back|back pain|lower back|sciatica|spine|strengthen.*(core|back)|core (strength|from home|support)|mobility for back|back support|pilates)\b/.test(m);
+  const exerciseIntent = backCoreIntent || /\b(exercise|workout|train|training|fit|fitness|routine|plan|lift|run|running|pilates|gym|cardio|movement)\b/.test(m);
   if (!exerciseIntent) return null;
 
   // Full rebuild signal: fitness + meditation + breathwork together
@@ -660,10 +664,10 @@ function detectFitnessRoute(message: string, fc: FitnessClassification): { route
     };
   }
   // Bad back / core
-  if (fc.injuryFlag === "back_pain" || /\b(bad back|back pain|core|strengthen.*core|strengthen.*back)\b/.test(m)) {
+  if (backCoreIntent) {
     return {
       route: "CORE_BACK_SUPPORT_PLAN",
-      reason: "Back pain / core support intent — low-impact Pilates-style core routine, no aggressive loading.",
+      reason: "Back pain / core support intent — low-impact Pilates-style core routine, no aggressive loading. Overrides profile-derived sleep/evening routes.",
       query: "core back support pilates dead bug glute bridge bird dog side plank pelvic tilt safe lower back rehabilitation",
     };
   }
