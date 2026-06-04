@@ -240,7 +240,13 @@ export type CoachRoute =
   | "LOW_ENERGY_MINIMUM_PLAN"
   | "FAT_LOSS_STARTER_PLAN"
   | "EVENING_WORK_PROTOCOL"
-  | "STRESS_RESET";
+  | "STRESS_RESET"
+  // Recovery-aware routes (Onboarding + Profile Engine)
+  | "URGE_RESET"
+  | "RELAPSE_PREVENTION"
+  | "POST_RELAPSE_REPAIR"
+  | "RECOVERY_STRUCTURE"
+  | "SAFETY_SUPPORT";
 
 export type ContinuationCommand =
   | "FITNESS"
@@ -358,7 +364,12 @@ export type ResponseMode =
   | "RESET_RECOVERY"
   | "STRESS_RESET"
   | "PROCESS_RESET"
-  | "SLEEP_WIND_DOWN";
+  | "SLEEP_WIND_DOWN"
+  | "URGE_RESET"
+  | "RELAPSE_PREVENTION"
+  | "POST_RELAPSE_REPAIR"
+  | "RECOVERY_STRUCTURE"
+  | "SAFETY_SUPPORT";
 
 export type CoachDebug = {
   selectedRoute: CoachRoute;
@@ -830,6 +841,30 @@ const FITNESS_ROUTES: Set<CoachRoute> = new Set([
 // before they get hoovered up by GENERAL_LIFE_STUCK or profile.sleepQuality.
 function detectRealWorldIntent(message: string): { intent: string; route: CoachRoute; reason: string; query: string } | null {
   const m = message.toLowerCase();
+
+  // ---- Recovery-aware checks (added by Onboarding + Profile Engine) ----
+  // These use distinct keywords ("urge", "relapsed", etc.) and do NOT
+  // overlap with existing routes. Inserted at the top of RWI, AFTER
+  // SAFETY_CRISIS (handled upstream in detectRoute) but BEFORE the
+  // legacy PROCESS_ADDICTION check.
+
+  // POST_RELAPSE_REPAIR — past-tense relapse / messed up.
+  if (/\b(i relapsed|i drank|i used (last|again|yesterday)|i gambled|i binged|i messed up|i failed (last night|yesterday|again))\b/.test(m)) {
+    return { intent: "POST_RELAPSE", route: "POST_RELAPSE_REPAIR", reason: "Past-tense relapse / repair moment.", query: "post relapse repair no shame return to standard recovery support contact small action" };
+  }
+  // RELAPSE_PREVENTION — worried / close to / not safe / about to.
+  if (/\b(worried i('| wi)?ll relapse|going to relapse|about to (drink|use|gamble|binge)|close to (drinking|using|gambling|relapse)|not safe around (my )?triggers?|slipping (badly|hard))\b/.test(m)) {
+    return { intent: "RELAPSE_PREVENTION", route: "RELAPSE_PREVENTION", reason: "Danger window / relapse risk.", query: "relapse prevention danger window remove trigger contact support delay urge ten minute rule" };
+  }
+  // URGE_RESET — present-tense urge / craving.
+  if (/\b(i have an urge|i'?m having an urge|i want to (drink|use|gamble|scroll|binge)|i'?m triggered|i feel triggered|craving (right now|hard))\b/.test(m)) {
+    return { intent: "URGE_RESET", route: "URGE_RESET", reason: "Active urge / craving.", query: "urge reset delay distance breathwork extended exhale contact support ten minute rule" };
+  }
+  // RECOVERY_STRUCTURE — explicit recovery structure ask.
+  if (/\b(i'?m in recovery|i need (a )?(daily )?structure|rebuild discipline|recovery (plan|structure|routine))\b/.test(m)) {
+    return { intent: "RECOVERY_STRUCTURE", route: "RECOVERY_STRUCTURE", reason: "Recovery structure ask.", query: "recovery structure morning daylight breathwork walk protein journal phone away sleep support" };
+  }
+
   // PROCESS_ADDICTION (phone / scrolling / wasted morning) — check first so
   // "wasted the whole morning on my phone" stays here.
   if (/\b(wasted (the |my )?(whole )?morning on (my )?phone|doomscroll|scrolling|phone hijack|phone in bed)\b/.test(m)) {
@@ -2068,6 +2103,11 @@ export const askCoach = createServerFn({ method: "POST" })
       MISSED_DAY_REPAIR: "RESET_RECOVERY",
       STRESS_RESET: "STRESS_RESET",
       SLEEP_WIND_DOWN: afterShutdown || temporal.dayPart === "LATE_NIGHT" ? "LATE_NIGHT_SHUTDOWN" : "SLEEP_WIND_DOWN",
+      URGE_RESET: "URGE_RESET",
+      RELAPSE_PREVENTION: "RELAPSE_PREVENTION",
+      POST_RELAPSE_REPAIR: "POST_RELAPSE_REPAIR",
+      RECOVERY_STRUCTURE: "RECOVERY_STRUCTURE",
+      SAFETY_SUPPORT: "SAFETY_SUPPORT",
     };
     if (!isSafetyCrisis && !continuation && ROUTE_RESPONSE_MODE[routing.route]) {
       responseMode = ROUTE_RESPONSE_MODE[routing.route]!;
@@ -2154,6 +2194,11 @@ export const askCoach = createServerFn({ method: "POST" })
       NUTRITION_CALORIE_REQUEST: ["CALORIES", "FOOD PLAN", "TRAINING PLAN", "MORNING PROTOCOL"],
       EVENING_WORK_PROTOCOL: ["FOOD", "BREATHWORK", "MORNING SETUP", "RESET TOMORROW"],
       STRESS_RESET: ["BREATHWORK", "JOURNAL", "WALK", "TALK ME DOWN"],
+      URGE_RESET: ["I AM SAFE", "STILL STRUGGLING", "CALL SOMEONE", "RESET PLAN"],
+      RELAPSE_PREVENTION: ["I AM SAFE", "STILL AT RISK", "CALL SOMEONE", "URGE RESET"],
+      POST_RELAPSE_REPAIR: ["REPAIR PLAN", "CALL SOMEONE", "JOURNAL", "RESET TODAY"],
+      RECOVERY_STRUCTURE: ["MORNING PLAN", "URGE PLAN", "TRAINING", "EVENING RESET"],
+      SAFETY_SUPPORT: ["CALL SOMEONE", "EMERGENCY SERVICES", "GROUND ME NOW"],
     };
     let quickReplies: string[] = fallbackQuickRepliesByRoute[routing.route] ?? [];
 
@@ -2423,6 +2468,11 @@ export const askCoach = createServerFn({ method: "POST" })
       EVENING_WORK_PROTOCOL: `ACTIVE ROUTE EVENING_WORK_PROTOCOL. Do NOT include MORNING LOCK-IN or morning protocol bullets. Use EXACTLY these section labels in this order: HEADLINE / THE STANDARD / TONIGHT'S PROTOCOL / REPLY WITH. HEADLINE: "Tonight is about damage control." THE STANDARD: "You are not building your whole life tonight. You are protecting tomorrow." TONIGHT'S PROTOCOL (numbered): 1) Eat simple protein if you have not eaten. 2) Shower. 3) 3 minutes extended exhale breathing. 4) Phone away from bed. 5) Set clothes and water for morning. 6) Sleep. REPLY WITH: FOOD / BREATHWORK / MORNING SETUP / RESET TOMORROW.`,
       STRESS_RESET: `ACTIVE ROUTE STRESS_RESET. Do NOT include MORNING LOCK-IN. Use EXACTLY these section labels in this order: HEADLINE / DO THIS NOW / REPLY WITH. HEADLINE: "Regulate first. Think second." DO THIS NOW (numbered): 1) Sit down. 2) Inhale through the nose for 4. 3) Exhale slowly for 6–8. 4) Repeat for 3 minutes. 5) Write one line: "What is the next controllable action?" REPLY WITH: BREATHWORK / JOURNAL / WALK / TALK ME DOWN.`,
       MISSED_DAY_REPAIR: `ACTIVE ROUTE MISSED_DAY_REPAIR. Do NOT shame the user. Do NOT include MORNING LOCK-IN. Use EXACTLY these section labels in this order: HEADLINE / THE STANDARD / RESET TODAY / REPLY WITH. HEADLINE: "One missed day is not a collapse." THE STANDARD: "You do not punish the miss. You repair the pattern." RESET TODAY (numbered): 1) Water. 2) 5 minutes breathwork. 3) 20 minutes movement. 4) Protein-first meal. 5) One-line journal: "I am back under command." REPLY WITH: RESET TODAY / MINIMUM SESSION / JOURNAL.`,
+      URGE_RESET: `ACTIVE ROUTE URGE_RESET. Do NOT diagnose. Do NOT include MORNING LOCK-IN. Use EXACTLY: HEADLINE / DO THIS NOW / COACH CLOSE / REPLY WITH. HEADLINE: "Delay the urge. Do not negotiate with it." DO THIS NOW (numbered): 1) Put distance between you and the trigger. 2) Change location. 3) Drink water. 4) Breathe: inhale 4, exhale 6–8 for 3 minutes. 5) Text or call one trusted person. 6) Wait 10 minutes before making any decision. COACH CLOSE: "An urge is not an order. It is a wave. You do not have to obey it." REPLY WITH: I AM SAFE / STILL STRUGGLING / CALL SOMEONE / RESET PLAN. Suggest contacting professional or sponsor/recovery support if risk is moderate or high. Do not prescribe intense training.`,
+      RELAPSE_PREVENTION: `ACTIVE ROUTE RELAPSE_PREVENTION. Do NOT diagnose. Do NOT include MORNING LOCK-IN. Use EXACTLY: HEADLINE / DO THIS NOW / COACH CLOSE / REPLY WITH. HEADLINE: "This is a danger window. We act now." DO THIS NOW (numbered): 1) Remove access to the trigger if possible. 2) Do not isolate. 3) Contact one trusted person. 4) Move your body for 5 minutes. 5) Eat something simple if you have not eaten. 6) Start a 10-minute delay. COACH CLOSE: "You are not weak for having the thought. The win is what you do next." REPLY WITH: I AM SAFE / STILL AT RISK / CALL SOMEONE / URGE RESET. Make clear the coach is not a replacement for emergency or professional support.`,
+      POST_RELAPSE_REPAIR: `ACTIVE ROUTE POST_RELAPSE_REPAIR. Do NOT shame. Do NOT use labels like "addict" or "failure". Use EXACTLY: HEADLINE / THE STANDARD / DO THIS NOW / COACH CLOSE / REPLY WITH. HEADLINE: "This is a repair moment, not an identity collapse." THE STANDARD: "No shame spiral. No hiding. No pretending. Repair the pattern now." DO THIS NOW (numbered): 1) Get physically safe. 2) Remove the trigger. 3) Drink water. 4) Contact a trusted person or support. 5) Write one line: "What happened before the relapse?" 6) Do one small recovery action today. COACH CLOSE: "You are not starting from zero. You are returning to the standard." REPLY WITH: REPAIR PLAN / CALL SOMEONE / JOURNAL / RESET TODAY.`,
+      RECOVERY_STRUCTURE: `ACTIVE ROUTE RECOVERY_STRUCTURE. Use EXACTLY: HEADLINE / TODAY'S STANDARD / COACH CLOSE / REPLY WITH. HEADLINE: "Recovery needs structure, not motivation." TODAY'S STANDARD (numbered): 1) Water before phone. 2) Morning daylight. 3) 5 minutes breathwork. 4) 20 minutes walking or training. 5) Protein-first meal. 6) One honest journal line. 7) Contact one supportive person if needed. 8) Phone away before bed. COACH CLOSE: "The body leads. The mind follows. Structure protects recovery." REPLY WITH: MORNING PLAN / URGE PLAN / TRAINING / EVENING RESET.`,
+      SAFETY_SUPPORT: `ACTIVE ROUTE SAFETY_SUPPORT. The coach is NOT a replacement for emergency services, medical care, detox support, therapy, or crisis lines. State this clearly. If the user is in immediate danger or describes withdrawal / overdose risk / suicidal thoughts, direct them to contact local emergency services NOW. Use a short, calm, non-clinical message. Give ONE small grounding action only (e.g. slow nasal breathing for one minute, or call a trusted person). Do NOT prescribe training. REPLY WITH: CALL SOMEONE / EMERGENCY SERVICES / GROUND ME NOW.`,
     };
     const fitnessShape = fitnessShapesByRoute[routing.route];
 
