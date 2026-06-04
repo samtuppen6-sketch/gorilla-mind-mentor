@@ -841,6 +841,30 @@ const FITNESS_ROUTES: Set<CoachRoute> = new Set([
 // before they get hoovered up by GENERAL_LIFE_STUCK or profile.sleepQuality.
 function detectRealWorldIntent(message: string): { intent: string; route: CoachRoute; reason: string; query: string } | null {
   const m = message.toLowerCase();
+
+  // ---- Recovery-aware checks (added by Onboarding + Profile Engine) ----
+  // These use distinct keywords ("urge", "relapsed", etc.) and do NOT
+  // overlap with existing routes. Inserted at the top of RWI, AFTER
+  // SAFETY_CRISIS (handled upstream in detectRoute) but BEFORE the
+  // legacy PROCESS_ADDICTION check.
+
+  // POST_RELAPSE_REPAIR — past-tense relapse / messed up.
+  if (/\b(i relapsed|i drank|i used (last|again|yesterday)|i gambled|i binged|i messed up|i failed (last night|yesterday|again))\b/.test(m)) {
+    return { intent: "POST_RELAPSE", route: "POST_RELAPSE_REPAIR", reason: "Past-tense relapse / repair moment.", query: "post relapse repair no shame return to standard recovery support contact small action" };
+  }
+  // RELAPSE_PREVENTION — worried / close to / not safe / about to.
+  if (/\b(worried i('| wi)?ll relapse|going to relapse|about to (drink|use|gamble|binge)|close to (drinking|using|gambling|relapse)|not safe around (my )?triggers?|slipping (badly|hard))\b/.test(m)) {
+    return { intent: "RELAPSE_PREVENTION", route: "RELAPSE_PREVENTION", reason: "Danger window / relapse risk.", query: "relapse prevention danger window remove trigger contact support delay urge ten minute rule" };
+  }
+  // URGE_RESET — present-tense urge / craving.
+  if (/\b(i have an urge|i'?m having an urge|i want to (drink|use|gamble|scroll|binge)|i'?m triggered|i feel triggered|craving (right now|hard))\b/.test(m)) {
+    return { intent: "URGE_RESET", route: "URGE_RESET", reason: "Active urge / craving.", query: "urge reset delay distance breathwork extended exhale contact support ten minute rule" };
+  }
+  // RECOVERY_STRUCTURE — explicit recovery structure ask.
+  if (/\b(i'?m in recovery|i need (a )?(daily )?structure|rebuild discipline|recovery (plan|structure|routine))\b/.test(m)) {
+    return { intent: "RECOVERY_STRUCTURE", route: "RECOVERY_STRUCTURE", reason: "Recovery structure ask.", query: "recovery structure morning daylight breathwork walk protein journal phone away sleep support" };
+  }
+
   // PROCESS_ADDICTION (phone / scrolling / wasted morning) — check first so
   // "wasted the whole morning on my phone" stays here.
   if (/\b(wasted (the |my )?(whole )?morning on (my )?phone|doomscroll|scrolling|phone hijack|phone in bed)\b/.test(m)) {
