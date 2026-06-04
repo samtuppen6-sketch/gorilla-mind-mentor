@@ -2012,11 +2012,11 @@ export const askCoach = createServerFn({ method: "POST" })
       FITNESS_PLAN_REQUEST: ["HOME", "GYM", "RUNNING", "PILATES"],
       FITNESS_ROUTINE_BUILDER: ["HOME", "GYM", "RUNNING", "PILATES"],
       FULL_REBUILD_PLAN: ["HOME", "GYM", "RUNNING", "PILATES"],
-      CORE_BACK_SUPPORT_PLAN: ["HOME", "PILATES", "BUILD MY PLAN"],
+      CORE_BACK_SUPPORT_PLAN: ["BACK PLAN", "PILATES", "WALKING", "FULL RESET"],
       GYM_STRENGTH_PLAN: ["BEGINNER", "INTERMEDIATE", "LOW ENERGY", "BUILD MY PLAN"],
       RUNNING_STARTER_PLAN: ["BEGINNER", "INTERMEDIATE", "BUILD MY PLAN"],
       HOME_BODYWEIGHT_PLAN: ["BEGINNER", "INTERMEDIATE", "LOW ENERGY", "BUILD MY PLAN"],
-      PILATES_CORE_PLAN: ["BEGINNER", "INTERMEDIATE", "BUILD MY PLAN"],
+      PILATES_CORE_PLAN: ["BACK PLAN", "PILATES", "WALKING", "FULL RESET"],
       LOW_ENERGY_SESSION: ["HOME", "BUILD MY PLAN"],
       INTERMEDIATE_FITNESS_PLAN: ["GYM", "HOME", "BUILD MY PLAN"],
     };
@@ -2418,15 +2418,23 @@ export const askCoach = createServerFn({ method: "POST" })
       // Derive quick-reply chips from THIS answer's REPLY WITH section so they
       // always align with what the coach asked for. Fall back to route defaults.
       const parsedReplies = extractReplyOptions(answer);
-      // For FITNESS_ROUTINE_BUILDER, always force the fallback chips
-      // (HOME / GYM / RUNNING / PILATES) — the model often substitutes
-      // its own REPLY WITH labels which breaks the continuation flow.
-      if (routing.route === "FITNESS_ROUTINE_BUILDER") {
-        quickReplies = ["HOME", "GYM", "RUNNING", "PILATES"];
+      // For these routes, always force the fallback chips — the model often
+      // substitutes its own REPLY WITH labels which breaks continuation flow.
+      const forcedChipRoutes = new Set(["FITNESS_ROUTINE_BUILDER", "CORE_BACK_SUPPORT_PLAN", "PILATES_CORE_PLAN"]);
+      if (forcedChipRoutes.has(routing.route)) {
+        quickReplies = fallbackQuickRepliesByRoute[routing.route] ?? quickReplies;
       } else if (parsedReplies.length > 0) {
         quickReplies = parsedReplies;
       }
       debug.quickRepliesShown = quickReplies.length > 0;
+
+      // Enforce verbatim safety caveat when a back-pain / safety modification applies.
+      const SAFETY_CAVEAT = "If you have sharp pain, numbness, weakness, shooting pain, recent injury, or worsening symptoms, get medical or physio advice before training.";
+      if ((safetyModificationApplied || fc.injuryFlag === "back_pain") && answer && !answer.includes(SAFETY_CAVEAT)) {
+        // Strip any paraphrased variant the model may have emitted, then prepend the exact sentence.
+        answer = answer.replace(/If you (?:have|experience|feel)[^.\n]*(?:pain|numbness|symptoms)[^.\n]*\.\s*/gi, "");
+        answer = `${SAFETY_CAVEAT}\n\n${answer.trim()}`;
+      }
 
       return { answer: answer || "(empty response)", debug, guidedPractice: effectiveGuidedPractice, guidedWorkout, quickReplies, programState };
     } catch (err) {
