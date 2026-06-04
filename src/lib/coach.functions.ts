@@ -1806,7 +1806,8 @@ export const askCoach = createServerFn({ method: "POST" })
       const last = [...history].reverse().find((h) => h.role === "assistant");
       return last ? extractReplyOptions(last.content) : [];
     })();
-    const continuation = detectContinuationCommand(data.question, history);
+    const priorProgramState = (data.priorProgramState ?? null) as ProgramState | null;
+    const continuation = detectContinuationCommand(data.question, history, priorProgramState);
     const isSafetyCrisis = routing.route === "SAFETY_CRISIS";
     let routeOverrideApplied = false;
     let routeOverrideReason: string | null = null;
