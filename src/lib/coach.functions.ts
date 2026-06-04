@@ -869,11 +869,11 @@ function detectRoute(
   profile: Profile | null,
   journal: Journal | null,
   temporal: TemporalContext | null,
-): { route: CoachRoute; reason: string; query: string; breathworkSubRoute?: BreathworkSubRoute; timeBasedRouteReason?: string | null } {
+): { route: CoachRoute; reason: string; query: string; breathworkSubRoute?: BreathworkSubRoute; timeBasedRouteReason?: string | null; intentDetected?: string | null; routePriorityReason?: string | null; profileOverrideSuppressed?: boolean; profileOverrideSuppressedReason?: string | null } {
   const text = `${message.toLowerCase()} ${journal?.journalText?.toLowerCase() ?? ""}`;
   const flags = journal?.patternFlags ?? [];
   const flagSet = new Set(flags.map((f) => f.toLowerCase()));
-  const poorSleepMessage = /\b(slept badly|slept poorly|bad sleep|poor sleep|little sleep|no sleep|sleep deprived|rough sleep|terrible sleep|exhausted|wiped|tired)\b/i.test(message);
+  const poorSleepMessage = /\b(slept badly|slept poorly|bad sleep|poor sleep|little sleep|no sleep|sleep deprived|rough sleep|terrible sleep)\b/i.test(message);
   const trainingMessage = /\b(train|training|trained|gym|lift|lifting|workout|session|squat|bench|deadlift|press|run|cardio)\b/i.test(message);
   const hardTrainingMessage = /\b(train hard|training hard|go hard|push hard|lift heavy|heavy session|max out|pr attempt|personal record|all out|smash.*workout)\b/i.test(message);
   const wantsMovementMessage = /\b(move|moving|movement|want to move|need to move|walk|walking|stretch)\b/i.test(message);
