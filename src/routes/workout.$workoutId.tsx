@@ -684,7 +684,7 @@ function WorkoutRecap({
         </p>
         <p className="text-xs text-foreground">{streakLine}</p>
         <p className="text-[11px] text-muted-foreground">
-          Daily action: <span className="text-foreground">{dailyActionLabel(completion.dailyActionUpdated)}</span>
+          Daily action: <span className="text-foreground">{workoutDailyActionLabel(workoutTitle) ?? dailyActionLabel(completion.dailyActionUpdated)}</span>
         </p>
       </div>
 
