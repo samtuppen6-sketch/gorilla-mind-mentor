@@ -2566,7 +2566,11 @@ export const askCoach = createServerFn({ method: "POST" })
       const parsedReplies = extractReplyOptions(answer);
       // For these routes, always force the fallback chips — the model often
       // substitutes its own REPLY WITH labels which breaks continuation flow.
-      const forcedChipRoutes = new Set(["FITNESS_ROUTINE_BUILDER", "CORE_BACK_SUPPORT_PLAN", "PILATES_CORE_PLAN"]);
+      const forcedChipRoutes = new Set<CoachRoute>([
+        "FITNESS_ROUTINE_BUILDER", "CORE_BACK_SUPPORT_PLAN", "PILATES_CORE_PLAN",
+        "LOW_ENERGY_MINIMUM_PLAN", "FAT_LOSS_STARTER_PLAN", "NUTRITION_CALORIE_REQUEST",
+        "EVENING_WORK_PROTOCOL", "MISSED_DAY_REPAIR", "STRESS_RESET", "GYM_STRENGTH_PLAN",
+      ]);
       if (forcedChipRoutes.has(routing.route)) {
         quickReplies = fallbackQuickRepliesByRoute[routing.route] ?? quickReplies;
       } else if (parsedReplies.length > 0) {
@@ -2580,6 +2584,18 @@ export const askCoach = createServerFn({ method: "POST" })
         // Strip any paraphrased variant the model may have emitted, then prepend the exact sentence.
         answer = answer.replace(/If you (?:have|experience|feel)[^.\n]*(?:pain|numbness|symptoms)[^.\n]*\.\s*/gi, "");
         answer = `${SAFETY_CAVEAT}\n\n${answer.trim()}`;
+      }
+
+      // Render normalisation: strip JSX/JSON newline artefacts the model
+      // occasionally leaks into prose (e.g. `{"n"}`, `{"\n"}`, literal `\n`).
+      if (answer) {
+        answer = answer
+          .replace(/\{\s*["']\\?n["']\s*\}/g, "\n") // {"n"} / {'n'} / {"\n"}
+          .replace(/\{\s*"\\n"\s*\}/g, "\n")
+          .replace(/\\n/g, "\n")
+          .replace(/[ \t]+\n/g, "\n")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
       }
 
       return { answer: answer || "(empty response)", debug, guidedPractice: effectiveGuidedPractice, guidedWorkout, quickReplies, programState };
