@@ -2330,7 +2330,28 @@ export const askCoach = createServerFn({ method: "POST" })
       ? `\n\nGUIDED WORKOUT SECTION: Before COACH CLOSE, add a section labelled exactly "GUIDED WORKOUT" with two short lines:\nRecommended: ${guidedWorkout.title} (${guidedWorkout.durationMinutes} min, ${guidedWorkout.category}, ${guidedWorkout.level})\nStart the guided workout inside the app.\nDo NOT invent a different workout name. Use exactly "${guidedWorkout.title}".`
       : "";
 
-    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${suppressionInstruction}${duplicateAdviceInstruction}${guidedPracticeInstruction}${guidedWorkoutInstruction}`;
+    // For PLAN_BUILDING / fitness routes, hand the model an explicit default
+    // fitness plan template derived from the user's classification.
+    const DEFAULT_FITNESS_PLAN_ROUTES = new Set<CoachRoute>([
+      "FITNESS_ROUTINE_BUILDER", "HOME_BODYWEIGHT_PLAN", "GYM_STRENGTH_PLAN",
+      "PILATES_CORE_PLAN", "CORE_BACK_SUPPORT_PLAN", "RUNNING_STARTER_PLAN",
+      "LOW_ENERGY_SESSION", "INTERMEDIATE_FITNESS_PLAN", "FULL_REBUILD_PLAN",
+    ]);
+    const defaultFitnessPlanInstruction = DEFAULT_FITNESS_PLAN_ROUTES.has(routing.route)
+      ? (() => {
+          const plan = buildDefaultFitnessPlan({
+            level: fc.fitnessLevel,
+            location: fc.trainingLocation,
+            goal: fc.fitnessGoal,
+            injuryFlag: fc.injuryFlag,
+            availableTime: fc.availableTime,
+            preferredStyle: fc.preferredStyle,
+          });
+          return `\n\nDEFAULT FITNESS PLAN TEMPLATE (kind=${plan.kind}). Use this as the backbone of TRAINING PLAN / TODAY'S SESSION / THIS WEEK. You may adapt to the user's stated constraints but do NOT replace it with generic wellness advice:\n${plan.text}`;
+        })()
+      : "";
+
+    const instructions = `${SYSTEM_INSTRUCTIONS}\n\nRESPONSE MODE: ${responseMode}. dayPart=${temporal.dayPart}. localTime=${temporal.localTime}.\n\n${routeInstruction}${defaultFitnessPlanInstruction}${suppressionInstruction}${duplicateAdviceInstruction}${guidedPracticeInstruction}${guidedWorkoutInstruction}`;
 
     try {
       const res = await fetch("https://api.openai.com/v1/responses", {
