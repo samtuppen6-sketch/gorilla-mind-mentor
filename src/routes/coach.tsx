@@ -14,6 +14,7 @@ import {
   type TemporalContext,
   type CoachHistoryTurn,
   type GuidedWorkoutRecommendation,
+  type ProgramState,
 } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
 import { loadDailyProgress } from "@/lib/practice-progress";
