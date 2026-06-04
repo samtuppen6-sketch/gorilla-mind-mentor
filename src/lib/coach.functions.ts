@@ -240,7 +240,13 @@ export type CoachRoute =
   | "LOW_ENERGY_MINIMUM_PLAN"
   | "FAT_LOSS_STARTER_PLAN"
   | "EVENING_WORK_PROTOCOL"
-  | "STRESS_RESET";
+  | "STRESS_RESET"
+  // Recovery-aware routes (Onboarding + Profile Engine)
+  | "URGE_RESET"
+  | "RELAPSE_PREVENTION"
+  | "POST_RELAPSE_REPAIR"
+  | "RECOVERY_STRUCTURE"
+  | "SAFETY_SUPPORT";
 
 export type ContinuationCommand =
   | "FITNESS"
