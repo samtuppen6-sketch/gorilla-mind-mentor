@@ -780,11 +780,12 @@ function buildWorkoutForRoute(route: CoachRoute, fc: FitnessClassification): Gui
         buttonLabel: "Start Run-Walk",
       };
     case "LOW_ENERGY_SESSION":
+    case "LOW_ENERGY_MINIMUM_PLAN":
       return {
-        id: "low_energy_minimum_15", title: "Minimum Standard Session",
+        id: "low_energy_minimum_15", title: "Low Energy Minimum",
         category: "low_energy", durationMinutes: 15, level: "beginner",
-        reason: "Best for keeping the standard on a low-energy day without overreaching.",
-        buttonLabel: "Start Minimum Standard",
+        reason: "Best for tired, low-motivation days when the user needs to keep the standard alive without forcing a full session.",
+        buttonLabel: "Start Minimum Session",
       };
     case "INTERMEDIATE_FITNESS_PLAN":
       return {
