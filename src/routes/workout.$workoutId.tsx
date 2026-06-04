@@ -627,6 +627,21 @@ function coachCloseFor(category: string, stepsCompleted: number, totalSteps: num
   }
 }
 
+const WORKOUT_DAILY_ACTION_LABELS: Record<string, string> = {
+  "Beginner Home Reset": "Home strength completed",
+  "Core & Back Support": "Core support completed",
+  "Full-Body Gym Standard": "Gym strength completed",
+  "Intermediate Full-Body": "Gym strength completed",
+  "Run-Walk Foundation": "Run-walk completed",
+  "Box Breathing": "Breathwork completed",
+  "Morning Protocol Lock-In": "Morning protocol completed",
+  "Minimum Standard Session": "Home strength completed",
+};
+
+function workoutDailyActionLabel(workoutTitle: string): string | null {
+  return WORKOUT_DAILY_ACTION_LABELS[workoutTitle] ?? null;
+}
+
 function WorkoutRecap({
   workoutTitle,
   workoutCategory,
@@ -684,7 +699,7 @@ function WorkoutRecap({
         </p>
         <p className="text-xs text-foreground">{streakLine}</p>
         <p className="text-[11px] text-muted-foreground">
-          Daily action: <span className="text-foreground">{dailyActionLabel(completion.dailyActionUpdated)}</span>
+          Daily action: <span className="text-foreground">{workoutDailyActionLabel(workoutTitle) ?? dailyActionLabel(completion.dailyActionUpdated)}</span>
         </p>
       </div>
 
