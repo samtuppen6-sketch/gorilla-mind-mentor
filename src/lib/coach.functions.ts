@@ -2414,7 +2414,12 @@ export const askCoach = createServerFn({ method: "POST" })
       // Derive quick-reply chips from THIS answer's REPLY WITH section so they
       // always align with what the coach asked for. Fall back to route defaults.
       const parsedReplies = extractReplyOptions(answer);
-      if (parsedReplies.length > 0) {
+      // For FITNESS_ROUTINE_BUILDER, always force the fallback chips
+      // (HOME / GYM / RUNNING / PILATES) — the model often substitutes
+      // its own REPLY WITH labels which breaks the continuation flow.
+      if (routing.route === "FITNESS_ROUTINE_BUILDER") {
+        quickReplies = ["HOME", "GYM", "RUNNING", "PILATES"];
+      } else if (parsedReplies.length > 0) {
         quickReplies = parsedReplies;
       }
       debug.quickRepliesShown = quickReplies.length > 0;
