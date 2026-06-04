@@ -2428,6 +2428,14 @@ export const askCoach = createServerFn({ method: "POST" })
       }
       debug.quickRepliesShown = quickReplies.length > 0;
 
+      // Enforce verbatim safety caveat when a back-pain / safety modification applies.
+      const SAFETY_CAVEAT = "If you have sharp pain, numbness, weakness, shooting pain, recent injury, or worsening symptoms, get medical or physio advice before training.";
+      if ((safetyModificationApplied || fc.injuryFlag === "back_pain") && answer && !answer.includes(SAFETY_CAVEAT)) {
+        // Strip any paraphrased variant the model may have emitted, then prepend the exact sentence.
+        answer = answer.replace(/If you (?:have|experience|feel)[^.\n]*(?:pain|numbness|symptoms)[^.\n]*\.\s*/gi, "");
+        answer = `${SAFETY_CAVEAT}\n\n${answer.trim()}`;
+      }
+
       return { answer: answer || "(empty response)", debug, guidedPractice: effectiveGuidedPractice, guidedWorkout, quickReplies, programState };
     } catch (err) {
       debug.apiError = err instanceof Error ? err.message : String(err);
