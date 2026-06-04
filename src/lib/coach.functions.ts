@@ -2169,7 +2169,7 @@ export const askCoach = createServerFn({ method: "POST" })
       ? (routing.route === "GYM_STRENGTH_PLAN" ? "TEMPLATE_GYM_FULL_BODY"
         : routing.route === "RUNNING_STARTER_PLAN" ? "TEMPLATE_RUN_WALK"
         : routing.route === "PILATES_CORE_PLAN" || routing.route === "CORE_BACK_SUPPORT_PLAN" ? "TEMPLATE_PILATES_CORE"
-        : routing.route === "LOW_ENERGY_SESSION" ? "TEMPLATE_LOW_ENERGY"
+        : routing.route === "LOW_ENERGY_SESSION" || routing.route === "LOW_ENERGY_MINIMUM_PLAN" ? "TEMPLATE_LOW_ENERGY"
         : routing.route === "INTERMEDIATE_FITNESS_PLAN" ? "TEMPLATE_INTERMEDIATE_FULL_BODY"
         : routing.route === "FULL_REBUILD_PLAN" ? "TEMPLATE_FULL_REBUILD"
         : "TEMPLATE_HOME_BODYWEIGHT")
