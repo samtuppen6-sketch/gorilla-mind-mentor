@@ -137,6 +137,18 @@ const ProfileSchema = z.object({
   coldExposureAccess: z.string().optional(),
   strengthTrainingAccess: z.string().optional(),
   pilatesMobilityAccess: z.string().optional(),
+  identityProfile: z.object({
+    userId: z.string().optional(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    fullName: z.string().optional(),
+    email: z.string().optional(),
+    phoneNumber: z.string().optional(),
+    authProvider: z.string().optional(),
+    onboardingComplete: z.boolean().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+  }).nullable().optional(),
 }).passthrough();
 
 const JournalSchema = z.object({
