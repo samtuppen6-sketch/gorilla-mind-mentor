@@ -2179,6 +2179,12 @@ export const askCoach = createServerFn({ method: "POST" })
       knowledgeBaseVolumesUsed,
       genericFallbackUsed,
       genericFallbackReason,
+      intentDetected: (routing as any).intentDetected ?? null,
+      routePriorityReason: (routing as any).routePriorityReason ?? null,
+      profileOverrideSuppressed: (routing as any).profileOverrideSuppressed ?? false,
+      profileOverrideSuppressedReason: (routing as any).profileOverrideSuppressedReason ?? null,
+      morningFillerSuppressed: morningFillerSuppressed,
+      responseModeReason,
     };
 
     const programState: ProgramState = {
