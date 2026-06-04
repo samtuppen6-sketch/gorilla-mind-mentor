@@ -2198,7 +2198,7 @@ export const askCoach = createServerFn({ method: "POST" })
       RELAPSE_PREVENTION: ["I AM SAFE", "STILL AT RISK", "CALL SOMEONE", "URGE RESET"],
       POST_RELAPSE_REPAIR: ["REPAIR PLAN", "CALL SOMEONE", "JOURNAL", "RESET TODAY"],
       RECOVERY_STRUCTURE: ["MORNING PLAN", "URGE PLAN", "TRAINING", "EVENING RESET"],
-      SAFETY_SUPPORT: ["CALL SOMEONE", "EMERGENCY SERVICES", "GROUND ME NOW"],
+      SAFETY_SUPPORT: ["I AM SAFE", "NEED HELP", "CALL SOMEONE", "GROUND ME"],
     };
     let quickReplies: string[] = fallbackQuickRepliesByRoute[routing.route] ?? [];
 
