@@ -205,6 +205,12 @@ function buildFailureDebug(temporal: TemporalContext, err: unknown): CoachDebug 
     knowledgeBaseVolumesUsed: [],
     genericFallbackUsed: false,
     genericFallbackReason: null,
+    intentDetected: null,
+    routePriorityReason: null,
+    profileOverrideSuppressed: false,
+    profileOverrideSuppressedReason: null,
+    morningFillerSuppressed: false,
+    responseModeReason: null,
   };
 }
 

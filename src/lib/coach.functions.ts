@@ -235,7 +235,12 @@ export type CoachRoute =
   | "PROGRAM_REQUEST"
   | "BREATHWORK_MEDITATION_REQUEST"
   | "MORNING_PROTOCOL_REQUEST"
-  | "NUTRITION_CALORIE_REQUEST";
+  | "NUTRITION_CALORIE_REQUEST"
+  // Real-world intent routes
+  | "LOW_ENERGY_MINIMUM_PLAN"
+  | "FAT_LOSS_STARTER_PLAN"
+  | "EVENING_WORK_PROTOCOL"
+  | "STRESS_RESET";
 
 export type ContinuationCommand =
   | "FITNESS"
@@ -347,7 +352,13 @@ export type ResponseMode =
   | "AFTERNOON_RESCUE"
   | "EVENING_RESET"
   | "LATE_NIGHT_SHUTDOWN"
-  | "PLAN_BUILDING";
+  | "PLAN_BUILDING"
+  | "LOW_ENERGY_MINIMUM"
+  | "EVENING_PROTOCOL"
+  | "RESET_RECOVERY"
+  | "STRESS_RESET"
+  | "PROCESS_RESET"
+  | "SLEEP_WIND_DOWN";
 
 export type CoachDebug = {
   selectedRoute: CoachRoute;
@@ -422,6 +433,13 @@ export type CoachDebug = {
   knowledgeBaseVolumesUsed: string[];
   genericFallbackUsed: boolean;
   genericFallbackReason: string | null;
+  // Real-world routing diagnostics
+  intentDetected: string | null;
+  routePriorityReason: string | null;
+  profileOverrideSuppressed: boolean;
+  profileOverrideSuppressedReason: string | null;
+  morningFillerSuppressed: boolean;
+  responseModeReason: string | null;
 };
 
 export type GuidedPracticeRecommendation = {
@@ -804,19 +822,58 @@ const FITNESS_ROUTES: Set<CoachRoute> = new Set([
   "FITNESS_PLAN_REQUEST", "FITNESS_ROUTINE_BUILDER", "FULL_REBUILD_PLAN",
   "CORE_BACK_SUPPORT_PLAN", "GYM_STRENGTH_PLAN", "RUNNING_STARTER_PLAN",
   "HOME_BODYWEIGHT_PLAN", "PILATES_CORE_PLAN", "LOW_ENERGY_SESSION",
-  "INTERMEDIATE_FITNESS_PLAN",
+  "INTERMEDIATE_FITNESS_PLAN", "LOW_ENERGY_MINIMUM_PLAN", "FAT_LOSS_STARTER_PLAN",
 ]);
+
+// Real-world intent detection — runs early so realistic prompts route correctly
+// before they get hoovered up by GENERAL_LIFE_STUCK or profile.sleepQuality.
+function detectRealWorldIntent(message: string): { intent: string; route: CoachRoute; reason: string; query: string } | null {
+  const m = message.toLowerCase();
+  // PROCESS_ADDICTION (phone / scrolling / wasted morning) — check first so
+  // "wasted the whole morning on my phone" stays here.
+  if (/\b(wasted (the |my )?(whole )?morning on (my )?phone|doomscroll|scrolling|phone hijack|phone in bed)\b/.test(m)) {
+    return { intent: "PROCESS_ADDICTION", route: "PROCESS_ADDICTION", reason: "Phone / scrolling / wasted-morning signal.", query: "process addiction phone scrolling urge interruption replacement morning protocol" };
+  }
+  // MISSED_DAY_REPAIR
+  if (/\b(missed yesterday|missed a day|fallen off|fell off|failed yesterday|skipped yesterday|lost my streak|back on track|broken streak)\b/.test(m)) {
+    return { intent: "MISSED_DAY", route: "MISSED_DAY_REPAIR", reason: "Missed-day / fell-off language.", query: "missed day repair broken streak no shame minimum standard restart identity anchor" };
+  }
+  // EVENING_WORK_PROTOCOL
+  if (/\b(working late tonight|work(ing)? late|late shift|finishing late|long day at work|tonight what should i do|got home late|home late|after work tonight)\b/.test(m)) {
+    return { intent: "EVENING_WORK", route: "EVENING_WORK_PROTOCOL", reason: "Working late / evening shutdown intent.", query: "evening shutdown protocol late work protein shower extended exhale phone away morning setup sleep" };
+  }
+  // FAT_LOSS / NUTRITION
+  if (/\b(lose fat|fat loss|lose weight|weight loss|cut body fat|belly fat|calories|macros|diet|meal plan|food plan)\b/.test(m)) {
+    return { intent: "FAT_LOSS", route: "FAT_LOSS_STARTER_PLAN", reason: "Fat loss / nutrition intent.", query: "fat loss nutrition calorie target protein Mifflin TDEE meal structure water before caffeine" };
+  }
+  // STRESS_RESET
+  if (/\b(stressed|head is all over the place|overwhelmed|anxious|can'?t think|wired|panicking|panic|racing thoughts)\b/.test(m)) {
+    return { intent: "STRESS", route: "STRESS_RESET", reason: "Stress / overwhelmed / racing thoughts intent.", query: "stress reset extended exhale breathwork nervous system regulate downregulate journal" };
+  }
+  // GYM_STRENGTH_PLAN
+  if (/\b(build muscle|gain muscle|lift weights|access to a gym|gym access|get stronger|hypertrophy)\b/.test(m)) {
+    return { intent: "MUSCLE_GYM", route: "GYM_STRENGTH_PLAN", reason: "Muscle / gym access intent.", query: "gym strength plan full body sets reps RIR progressive overload squat hinge press row" };
+  }
+  // LOW_ENERGY_MINIMUM_PLAN — order matters: AFTER stress / fat loss / gym so
+  // explicit goal intents win over generic "tired".
+  const explicitSleepIntent = /\b(bed|sleep|bedtime|wind ?down|can'?t sleep|late night|trying to sleep)\b/.test(m);
+  const lowEnergySignal = /\b(feel like crap|don'?t want to train|do not want to train|low energy|i'?m tired|exhausted|can'?t be bothered|no motivation|only have (10|15|20|25|30) minutes?|not feeling it|drained|flat today)\b/.test(m);
+  if (lowEnergySignal && !explicitSleepIntent) {
+    return { intent: "LOW_ENERGY", route: "LOW_ENERGY_MINIMUM_PLAN", reason: "Low-energy / tired / short-time intent without sleep cue.", query: "low energy minimum standard walk squats glute bridge plank extended exhale breathing keep the chain alive" };
+  }
+  return null;
+}
 
 function detectRoute(
   message: string,
   profile: Profile | null,
   journal: Journal | null,
   temporal: TemporalContext | null,
-): { route: CoachRoute; reason: string; query: string; breathworkSubRoute?: BreathworkSubRoute; timeBasedRouteReason?: string | null } {
+): { route: CoachRoute; reason: string; query: string; breathworkSubRoute?: BreathworkSubRoute; timeBasedRouteReason?: string | null; intentDetected?: string | null; routePriorityReason?: string | null; profileOverrideSuppressed?: boolean; profileOverrideSuppressedReason?: string | null } {
   const text = `${message.toLowerCase()} ${journal?.journalText?.toLowerCase() ?? ""}`;
   const flags = journal?.patternFlags ?? [];
   const flagSet = new Set(flags.map((f) => f.toLowerCase()));
-  const poorSleepMessage = /\b(slept badly|slept poorly|bad sleep|poor sleep|little sleep|no sleep|sleep deprived|rough sleep|terrible sleep|exhausted|wiped|tired)\b/i.test(message);
+  const poorSleepMessage = /\b(slept badly|slept poorly|bad sleep|poor sleep|little sleep|no sleep|sleep deprived|rough sleep|terrible sleep)\b/i.test(message);
   const trainingMessage = /\b(train|training|trained|gym|lift|lifting|workout|session|squat|bench|deadlift|press|run|cardio)\b/i.test(message);
   const hardTrainingMessage = /\b(train hard|training hard|go hard|push hard|lift heavy|heavy session|max out|pr attempt|personal record|all out|smash.*workout)\b/i.test(message);
   const wantsMovementMessage = /\b(move|moving|movement|want to move|need to move|walk|walking|stretch)\b/i.test(message);
@@ -846,12 +903,24 @@ function detectRoute(
     };
   }
 
+  // 1b-bis. Real-world intent detection — runs BEFORE lifeStuck so prompts like
+  // "I want to lose fat but I don't know where to start" don't fall into GENERAL_LIFE_STUCK.
+  const rwi = detectRealWorldIntent(message);
+  if (rwi) {
+    return {
+      route: rwi.route, reason: rwi.reason, query: rwi.query,
+      intentDetected: rwi.intent,
+      routePriorityReason: "Explicit current user intent (priority 3) beat profile / fallback.",
+    };
+  }
+
   // 1c. General life-stuck — must come before keyword routes that grab "tired", "not motivated", etc.
   if (lifeStuckMessage) {
     return {
       route: "GENERAL_LIFE_STUCK",
       reason: "User expresses general life-stuck / unmotivated / lost. Use direct body-first, time-aware structure. No long plan.",
       query: "gorilla mind master system prompt daily operating system identity discipline minimum standard body first reset morning routine evening shutdown standards over moods one promise",
+      routePriorityReason: "GENERAL_LIFE_STUCK fallback — no explicit intent matched.",
     };
   }
 
@@ -1120,12 +1189,21 @@ function detectRoute(
     };
   }
 
-  if (profile?.sleepQuality === "poor" || profile?.sleepQuality === "inconsistent") {
+  // Profile sleepQuality override — only fires if user did NOT give an explicit
+  // non-sleep intent. Real-world intent detection earlier already returned for
+  // those, so by the time we reach here it's safe; still gate on explicit sleep
+  // wording in the message to avoid overriding ambiguous prompts.
+  if ((profile?.sleepQuality === "poor" || profile?.sleepQuality === "inconsistent")
+      && /\b(sleep|bed|bedtime|wind ?down|insomnia)\b/i.test(message)) {
     return {
       route: "SLEEP_WIND_DOWN",
-      reason: `Profile sleepQuality is ${profile.sleepQuality}.`,
+      reason: `Profile sleepQuality is ${profile.sleepQuality} and message mentions sleep.`,
       query: "sleep architecture wind down sleep onset poor sleep evening protocol phone boundary calming breathwork",
     };
+  }
+  if (profile?.sleepQuality === "poor" || profile?.sleepQuality === "inconsistent") {
+    // Suppressed: profile said poor sleep but user did not mention sleep.
+    // Fall through to next handler; surface in debug via routePriorityReason.
   }
 
   if (profile && /identity/i.test(profile.primaryGap)) {
@@ -1965,10 +2043,61 @@ export const askCoach = createServerFn({ method: "POST" })
     const PLAN_BUILDING_ROUTES = new Set<CoachRoute>([
       "FULL_REBUILD_PLAN", "PROGRAM_REQUEST", "MORNING_PROTOCOL_REQUEST",
       "BREATHWORK_MEDITATION_REQUEST", "NUTRITION_CALORIE_REQUEST",
+      "FAT_LOSS_STARTER_PLAN", "GYM_STRENGTH_PLAN",
     ]);
+    let responseModeReason: string =
+      `Default from dayPart=${temporal.dayPart} (${responseMode}).`;
     if (!isSafetyCrisis && (continuation || PLAN_BUILDING_ROUTES.has(routing.route))) {
       responseMode = "PLAN_BUILDING";
+      responseModeReason = `Route ${routing.route} forces PLAN_BUILDING.`;
     }
+
+    // Route-specific response mode mapping — overrides dayPart default so we
+    // do not inject MORNING_ACTIVATION boilerplate into stress / evening /
+    // low-energy / missed-day responses.
+    const msgLower = data.question.toLowerCase();
+    const userSaidMorning = /\b(this morning|morning|wasted (the )?morning|woke up)\b/.test(msgLower);
+    const ROUTE_RESPONSE_MODE: Partial<Record<CoachRoute, ResponseMode>> = {
+      LOW_ENERGY_MINIMUM_PLAN: "LOW_ENERGY_MINIMUM",
+      LOW_ENERGY_SESSION: "LOW_ENERGY_MINIMUM",
+      FAT_LOSS_STARTER_PLAN: "PLAN_BUILDING",
+      NUTRITION_CALORIE_REQUEST: "PLAN_BUILDING",
+      GYM_STRENGTH_PLAN: "PLAN_BUILDING",
+      EVENING_WORK_PROTOCOL: "EVENING_PROTOCOL",
+      MISSED_DAY_REPAIR: "RESET_RECOVERY",
+      STRESS_RESET: "STRESS_RESET",
+      SLEEP_WIND_DOWN: afterShutdown || temporal.dayPart === "LATE_NIGHT" ? "LATE_NIGHT_SHUTDOWN" : "SLEEP_WIND_DOWN",
+    };
+    if (!isSafetyCrisis && !continuation && ROUTE_RESPONSE_MODE[routing.route]) {
+      responseMode = ROUTE_RESPONSE_MODE[routing.route]!;
+      responseModeReason = `Route ${routing.route} mapped to ${responseMode}.`;
+    }
+    // PROCESS_ADDICTION: only morning activation if dayPart morning or user said morning.
+    if (!isSafetyCrisis && !continuation && routing.route === "PROCESS_ADDICTION") {
+      if (temporal.dayPart === "MORNING" || userSaidMorning) {
+        responseMode = "MORNING_ACTIVATION";
+        responseModeReason = "PROCESS_ADDICTION + morning context → MORNING_ACTIVATION.";
+      } else {
+        responseMode = "PROCESS_RESET";
+        responseModeReason = "PROCESS_ADDICTION outside morning → PROCESS_RESET.";
+      }
+    }
+    // BREATHWORK with downregulate sub-route → STRESS_RESET mode.
+    if (!isSafetyCrisis && !continuation && routing.route === "BREATHWORK" && breathworkSubRoute === "DOWNREGULATE") {
+      responseMode = "STRESS_RESET";
+      responseModeReason = "BREATHWORK/DOWNREGULATE → STRESS_RESET mode.";
+    }
+
+    // Morning-filler suppression: which routes are NOT allowed to inject
+    // hydrate/light/phone-away/protein-breakfast bullets.
+    const MORNING_FILLER_ALLOWED: Set<CoachRoute> = new Set([
+      "MORNING_PROTOCOL_REQUEST", "FULL_REBUILD_PLAN", "PROGRAM_REQUEST",
+      "PROCESS_ADDICTION", "FAT_LOSS_STARTER_PLAN", "GYM_STRENGTH_PLAN",
+    ]);
+    const allowMorningFiller =
+      MORNING_FILLER_ALLOWED.has(routing.route) ||
+      (routing.route === "GENERAL_LIFE_STUCK" && temporal.dayPart === "MORNING");
+    const morningFillerSuppressed = !allowMorningFiller;
 
     const guidedPractice = routing.route === "SAFETY_CRISIS"
       ? null
@@ -2161,6 +2290,12 @@ export const askCoach = createServerFn({ method: "POST" })
       knowledgeBaseVolumesUsed,
       genericFallbackUsed,
       genericFallbackReason,
+      intentDetected: (routing as any).intentDetected ?? null,
+      routePriorityReason: (routing as any).routePriorityReason ?? null,
+      profileOverrideSuppressed: (routing as any).profileOverrideSuppressed ?? false,
+      profileOverrideSuppressedReason: (routing as any).profileOverrideSuppressedReason ?? null,
+      morningFillerSuppressed: morningFillerSuppressed,
+      responseModeReason,
     };
 
     const programState: ProgramState = {
