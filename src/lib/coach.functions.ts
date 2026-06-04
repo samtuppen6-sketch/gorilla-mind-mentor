@@ -780,11 +780,12 @@ function buildWorkoutForRoute(route: CoachRoute, fc: FitnessClassification): Gui
         buttonLabel: "Start Run-Walk",
       };
     case "LOW_ENERGY_SESSION":
+    case "LOW_ENERGY_MINIMUM_PLAN":
       return {
-        id: "low_energy_minimum_15", title: "Minimum Standard Session",
+        id: "low_energy_minimum_15", title: "Low Energy Minimum",
         category: "low_energy", durationMinutes: 15, level: "beginner",
-        reason: "Best for keeping the standard on a low-energy day without overreaching.",
-        buttonLabel: "Start Minimum Standard",
+        reason: "Best for tired, low-motivation days when the user needs to keep the standard alive without forcing a full session.",
+        buttonLabel: "Start Minimum Session",
       };
     case "INTERMEDIATE_FITNESS_PLAN":
       return {
@@ -2092,7 +2093,7 @@ export const askCoach = createServerFn({ method: "POST" })
     // hydrate/light/phone-away/protein-breakfast bullets.
     const MORNING_FILLER_ALLOWED: Set<CoachRoute> = new Set([
       "MORNING_PROTOCOL_REQUEST", "FULL_REBUILD_PLAN", "PROGRAM_REQUEST",
-      "PROCESS_ADDICTION", "FAT_LOSS_STARTER_PLAN", "GYM_STRENGTH_PLAN",
+      "PROCESS_ADDICTION",
     ]);
     const allowMorningFiller =
       MORNING_FILLER_ALLOWED.has(routing.route) ||
@@ -2129,7 +2130,7 @@ export const askCoach = createServerFn({ method: "POST" })
       GENERAL_TRANSFORMATION_REQUEST: ["20-DAY", "60-DAY", "90-DAY", "START TONIGHT"],
       EVENING_REVIEW: ["BUILD TOMORROW", "WIND DOWN NOW", "MORNING PLAN"],
       SLEEP_WIND_DOWN: ["BREATHWORK", "PHONE DOWN", "MORNING PLAN"],
-      MISSED_DAY_REPAIR: ["RESET", "MINIMUM STANDARD", "BUILD MY PLAN"],
+      MISSED_DAY_REPAIR: ["RESET TODAY", "MINIMUM SESSION", "JOURNAL"],
       MISSED_MORNING: ["MORNING", "BUILD MY PLAN"],
       CONTINUATION_BOTH_PLAN: ["BUILD MY PLAN"],
       CONTINUATION_BUILD_MY_PLAN: ["FITNESS", "JOB", "BOTH"],
@@ -2146,8 +2147,13 @@ export const askCoach = createServerFn({ method: "POST" })
       RUNNING_STARTER_PLAN: ["BEGINNER", "INTERMEDIATE", "BUILD MY PLAN"],
       HOME_BODYWEIGHT_PLAN: ["BEGINNER", "INTERMEDIATE", "LOW ENERGY", "BUILD MY PLAN"],
       PILATES_CORE_PLAN: ["BACK PLAN", "PILATES", "WALKING", "FULL RESET"],
-      LOW_ENERGY_SESSION: ["HOME", "BUILD MY PLAN"],
+      LOW_ENERGY_SESSION: ["LOW ENERGY", "FULL SESSION", "WALK", "BREATHWORK"],
       INTERMEDIATE_FITNESS_PLAN: ["GYM", "HOME", "BUILD MY PLAN"],
+      LOW_ENERGY_MINIMUM_PLAN: ["LOW ENERGY", "FULL SESSION", "WALK", "BREATHWORK"],
+      FAT_LOSS_STARTER_PLAN: ["CALORIES", "FOOD PLAN", "TRAINING PLAN", "MORNING PROTOCOL"],
+      NUTRITION_CALORIE_REQUEST: ["CALORIES", "FOOD PLAN", "TRAINING PLAN", "MORNING PROTOCOL"],
+      EVENING_WORK_PROTOCOL: ["FOOD", "BREATHWORK", "MORNING SETUP", "RESET TOMORROW"],
+      STRESS_RESET: ["BREATHWORK", "JOURNAL", "WALK", "TALK ME DOWN"],
     };
     let quickReplies: string[] = fallbackQuickRepliesByRoute[routing.route] ?? [];
 
@@ -2163,7 +2169,7 @@ export const askCoach = createServerFn({ method: "POST" })
       ? (routing.route === "GYM_STRENGTH_PLAN" ? "TEMPLATE_GYM_FULL_BODY"
         : routing.route === "RUNNING_STARTER_PLAN" ? "TEMPLATE_RUN_WALK"
         : routing.route === "PILATES_CORE_PLAN" || routing.route === "CORE_BACK_SUPPORT_PLAN" ? "TEMPLATE_PILATES_CORE"
-        : routing.route === "LOW_ENERGY_SESSION" ? "TEMPLATE_LOW_ENERGY"
+        : routing.route === "LOW_ENERGY_SESSION" || routing.route === "LOW_ENERGY_MINIMUM_PLAN" ? "TEMPLATE_LOW_ENERGY"
         : routing.route === "INTERMEDIATE_FITNESS_PLAN" ? "TEMPLATE_INTERMEDIATE_FULL_BODY"
         : routing.route === "FULL_REBUILD_PLAN" ? "TEMPLATE_FULL_REBUILD"
         : "TEMPLATE_HOME_BODYWEIGHT")
@@ -2400,7 +2406,7 @@ export const askCoach = createServerFn({ method: "POST" })
     const fitnessShapesByRoute: Partial<Record<CoachRoute, string>> = {
       FITNESS_ROUTINE_BUILDER: `ACTIVE ROUTE FITNESS_ROUTINE_BUILDER. Beginner-safe starter. Prescribe the 20-minute beginner bodyweight reset: 5-minute walk/march warm-up; 3 rounds of 10 bodyweight squats, 8 incline press-ups, 10 hip hinges, 20-second plank, 30s rest; 3-minute nasal breathing cool-down. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH must include: HOME, GYM, RUNNING, or PILATES.`,
       HOME_BODYWEIGHT_PLAN: `ACTIVE ROUTE HOME_BODYWEIGHT_PLAN. Use the BEGINNER HOME FITNESS PLAN template: 5-min walk/march warm-up; 3 rounds of 10 bodyweight squats, 8 incline press-ups, 10 glute bridges, 10 hip hinges, 20-second plank, 30–60s rest; 3-min nasal breathing + gentle stretch cool-down. Weekly: Day1 circuit, Day2 walk+mobility, Day3 circuit, Day4 walk+breathwork, Day5 circuit, Day6 longer walk, Day7 review. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / LOW ENERGY / BUILD MY PLAN.`,
-      GYM_STRENGTH_PLAN: `ACTIVE ROUTE GYM_STRENGTH_PLAN. Use the GYM STRENGTH PLAN template. Warm-up: 5–8 min incline walk/bike. Full-body: leg press or goblet squat 3x10; chest press or press-ups 3x8–10; seated/cable row 3x10; RDL or hip hinge 3x8; plank 3x20–30s. Finish: 10-min incline walk + 3-min extended exhale breathing. Weekly: 3 full-body strength + 2 walks + 2 mobility/core. Rules: 2 reps in reserve, no ego lifting, technique before load. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / LOW ENERGY / BUILD MY PLAN.`,
+      GYM_STRENGTH_PLAN: `ACTIVE ROUTE GYM_STRENGTH_PLAN. RESPONSE MODE PLAN_BUILDING. Do NOT include MORNING LOCK-IN or morning protocol bullets — go straight to the strength template. Use exactly these section labels in this order: HEADLINE / THE STANDARD / TODAY'S SESSION / THIS WEEK / RULES / WHAT I NEED FROM YOU / REPLY WITH. TODAY'S SESSION (full-body, ~45 min): Warm-up 5–8 min incline walk or bike. Goblet squat or leg press 3x10. Chest press or press-ups 3x8–10. Seated or cable row 3x10. RDL or hip hinge 3x8. Plank 3x20–30s. Finish: 10-min incline walk + 3-min extended exhale breathing. THIS WEEK: 3 full-body strength + 2 walks + 2 mobility/core. RULES (must list verbatim): 2 reps in reserve. Progressive overload — add weight or reps each week. Technique before load. No ego lifting. ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / LOW ENERGY / BUILD MY PLAN.`,
       PILATES_CORE_PLAN: `ACTIVE ROUTE PILATES_CORE_PLAN. Use the PILATES / CORE template. 2-min nasal breathing reset; pelvic tilts 2x10; dead bugs 2x8/side; glute bridges 2x12; bird dogs 2x8/side; side plank from knees 2x15–20s/side; child's pose 2 min. No pain chasing, slow reps, brace lightly, stop if symptoms increase. Weekly: Day1 core control, Day2 walk, Day3 pilates/core, Day4 mobility+breathwork, Day5 core control, Day6 longer walk, Day7 recovery review. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / BUILD MY PLAN.`,
       CORE_BACK_SUPPORT_PLAN: `ACTIVE ROUTE CORE_BACK_SUPPORT_PLAN. Safety first: if pain is sharp, neurological, numb/weak, shooting, or worsening — recommend medical/physio review before training, do not diagnose. Prescribe the safe core/back-support routine: 2-min nasal breathing; pelvic tilts 2x10; dead bugs 2x8/side; glute bridges 2x12; bird dogs 2x8/side; side plank from knees 2x15–20s/side; child's pose 2 min. No heavy lifting, no aggressive sit-ups. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: HOME / PILATES / BUILD MY PLAN.`,
       RUNNING_STARTER_PLAN: `ACTIVE ROUTE RUNNING_STARTER_PLAN. Use the RUNNING STARTER template. 5-min brisk walk; 8 rounds of 30s light jog + 90s walk; 5-min cool-down walk; 3-min nasal breathing. Rules: run slower than you think, no sprinting, build joints before ego, walking is part of the plan. Weekly: Day1 intervals, Day2 walk+mobility, Day3 intervals, Day4 rest or easy walk, Day5 intervals, Day6 long walk, Day7 review. ${morningLockIn}\n\n${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: BEGINNER / INTERMEDIATE / BUILD MY PLAN.`,
@@ -2412,6 +2418,11 @@ export const askCoach = createServerFn({ method: "POST" })
       BREATHWORK_MEDITATION_REQUEST: buildDailyOsPlanShape({ kind: "BREATH_MED", calorie, askOnlyMissing, exerciseSafety }),
       NUTRITION_CALORIE_REQUEST: buildDailyOsPlanShape({ kind: "NUTRITION", calorie, askOnlyMissing, exerciseSafety }),
       FITNESS_PLAN_REQUEST: `ACTIVE ROUTE FITNESS_PLAN_REQUEST. Same shape as FITNESS_ROUTINE_BUILDER. ${exerciseFormatRule} ${askOnlyMissing} ${exerciseSafety} REPLY WITH chips: HOME / GYM / RUNNING / PILATES.`,
+      LOW_ENERGY_MINIMUM_PLAN: `ACTIVE ROUTE LOW_ENERGY_MINIMUM_PLAN. Do NOT include MORNING LOCK-IN. Use EXACTLY these section labels in this order: HEADLINE / THE STANDARD / DO THIS NOW / COACH CLOSE / REPLY WITH. HEADLINE: "Minimum standard. No negotiation." THE STANDARD: "This is not a performance day. This is a keep-the-chain-alive day." DO THIS NOW (numbered): 1) Water. 2) 10-minute walk. 3) 2 rounds: 10 squats, 10 glute bridges, 20-second plank. 4) 3 minutes extended exhale breathing. COACH CLOSE: "You do not need to feel ready. You need to keep the standard alive." REPLY WITH: LOW ENERGY / FULL SESSION / WALK / BREATHWORK. ${exerciseSafety}`,
+      FAT_LOSS_STARTER_PLAN: `ACTIVE ROUTE FAT_LOSS_STARTER_PLAN. RESPONSE MODE PLAN_BUILDING. Use EXACTLY these section labels in this order: HEADLINE / THE STANDARD / DO THIS TODAY / WHAT I NEED FROM YOU / REPLY WITH. HEADLINE: "Fat loss starts with control, not chaos." THE STANDARD: "We are not guessing calories. We build the minimum standard first, then calculate properly." DO THIS TODAY (numbered): 1) Water before caffeine. 2) Protein with first meal. 3) 20–30 minutes movement. 4) One proper whole-food meal. 5) No chaotic evening eating. WHAT I NEED FROM YOU: "Send: age, sex, height cm, weight kg, activity level, primary goal." REPLY WITH: CALORIES / FOOD PLAN / TRAINING PLAN / MORNING PROTOCOL. ${exerciseSafety}`,
+      EVENING_WORK_PROTOCOL: `ACTIVE ROUTE EVENING_WORK_PROTOCOL. Do NOT include MORNING LOCK-IN or morning protocol bullets. Use EXACTLY these section labels in this order: HEADLINE / THE STANDARD / TONIGHT'S PROTOCOL / REPLY WITH. HEADLINE: "Tonight is about damage control." THE STANDARD: "You are not building your whole life tonight. You are protecting tomorrow." TONIGHT'S PROTOCOL (numbered): 1) Eat simple protein if you have not eaten. 2) Shower. 3) 3 minutes extended exhale breathing. 4) Phone away from bed. 5) Set clothes and water for morning. 6) Sleep. REPLY WITH: FOOD / BREATHWORK / MORNING SETUP / RESET TOMORROW.`,
+      STRESS_RESET: `ACTIVE ROUTE STRESS_RESET. Do NOT include MORNING LOCK-IN. Use EXACTLY these section labels in this order: HEADLINE / DO THIS NOW / REPLY WITH. HEADLINE: "Regulate first. Think second." DO THIS NOW (numbered): 1) Sit down. 2) Inhale through the nose for 4. 3) Exhale slowly for 6–8. 4) Repeat for 3 minutes. 5) Write one line: "What is the next controllable action?" REPLY WITH: BREATHWORK / JOURNAL / WALK / TALK ME DOWN.`,
+      MISSED_DAY_REPAIR: `ACTIVE ROUTE MISSED_DAY_REPAIR. Do NOT shame the user. Do NOT include MORNING LOCK-IN. Use EXACTLY these section labels in this order: HEADLINE / THE STANDARD / RESET TODAY / REPLY WITH. HEADLINE: "One missed day is not a collapse." THE STANDARD: "You do not punish the miss. You repair the pattern." RESET TODAY (numbered): 1) Water. 2) 5 minutes breathwork. 3) 20 minutes movement. 4) Protein-first meal. 5) One-line journal: "I am back under command." REPLY WITH: RESET TODAY / MINIMUM SESSION / JOURNAL.`,
     };
     const fitnessShape = fitnessShapesByRoute[routing.route];
 
@@ -2555,7 +2566,11 @@ export const askCoach = createServerFn({ method: "POST" })
       const parsedReplies = extractReplyOptions(answer);
       // For these routes, always force the fallback chips — the model often
       // substitutes its own REPLY WITH labels which breaks continuation flow.
-      const forcedChipRoutes = new Set(["FITNESS_ROUTINE_BUILDER", "CORE_BACK_SUPPORT_PLAN", "PILATES_CORE_PLAN"]);
+      const forcedChipRoutes = new Set<CoachRoute>([
+        "FITNESS_ROUTINE_BUILDER", "CORE_BACK_SUPPORT_PLAN", "PILATES_CORE_PLAN",
+        "LOW_ENERGY_MINIMUM_PLAN", "FAT_LOSS_STARTER_PLAN", "NUTRITION_CALORIE_REQUEST",
+        "EVENING_WORK_PROTOCOL", "MISSED_DAY_REPAIR", "STRESS_RESET", "GYM_STRENGTH_PLAN",
+      ]);
       if (forcedChipRoutes.has(routing.route)) {
         quickReplies = fallbackQuickRepliesByRoute[routing.route] ?? quickReplies;
       } else if (parsedReplies.length > 0) {
@@ -2569,6 +2584,18 @@ export const askCoach = createServerFn({ method: "POST" })
         // Strip any paraphrased variant the model may have emitted, then prepend the exact sentence.
         answer = answer.replace(/If you (?:have|experience|feel)[^.\n]*(?:pain|numbness|symptoms)[^.\n]*\.\s*/gi, "");
         answer = `${SAFETY_CAVEAT}\n\n${answer.trim()}`;
+      }
+
+      // Render normalisation: strip JSX/JSON newline artefacts the model
+      // occasionally leaks into prose (e.g. `{"n"}`, `{"\n"}`, literal `\n`).
+      if (answer) {
+        answer = answer
+          .replace(/\{\s*["']\\?n["']\s*\}/g, "\n") // {"n"} / {'n'} / {"\n"}
+          .replace(/\{\s*"\\n"\s*\}/g, "\n")
+          .replace(/\\n/g, "\n")
+          .replace(/[ \t]+\n/g, "\n")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
       }
 
       return { answer: answer || "(empty response)", debug, guidedPractice: effectiveGuidedPractice, guidedWorkout, quickReplies, programState };
