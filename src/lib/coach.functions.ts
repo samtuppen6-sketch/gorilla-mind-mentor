@@ -912,7 +912,7 @@ function detectRealWorldIntent(message: string): { intent: string; route: CoachR
     return { intent: "EVENING_WORK", route: "EVENING_WORK_PROTOCOL", reason: "Working late / evening shutdown intent.", query: "evening shutdown protocol late work protein shower extended exhale phone away morning setup sleep" };
   }
   // FAT_LOSS / NUTRITION
-  if (/\b(lose fat|fat loss|lose weight|weight loss|cut body fat|belly fat|calories|macros|diet|meal plan|food plan)\b/.test(m)) {
+  if (/\b(lose fat|fat loss|lose weight|weight loss|cut body fat|belly fat|calories|macros|diet|meal plan|food plan|what should i eat|what to eat|eat today|food today|meals today|what food)\b/.test(m)) {
     return { intent: "FAT_LOSS", route: "FAT_LOSS_STARTER_PLAN", reason: "Fat loss / nutrition intent.", query: "fat loss nutrition calorie target protein Mifflin TDEE meal structure water before caffeine" };
   }
   // STRESS_RESET
@@ -981,6 +981,48 @@ function detectRoute(
       intentDetected: rwi.intent,
       routePriorityReason: "Explicit current user intent (priority 3) beat profile / fallback.",
     };
+  }
+
+  // 1b-ter. Profile-aware bias for vague messages — only triggers when no RWI
+  // matched. Does NOT override SAFETY_CRISIS, transformation requests, or RWI
+  // routes (all handled above). Additive, conservative.
+  {
+    const m = message.toLowerCase();
+    const px = (profile as unknown as Record<string, unknown>) ?? {};
+    const asStr = (v: unknown) => (typeof v === "string" ? v : "");
+    const asArr = (v: unknown): string[] => Array.isArray(v) ? v.filter((x) => typeof x === "string") as string[] : [];
+    const relapseRisk = asStr(px["relapseRisk"]).toLowerCase();
+    const mainGoal = asStr(px["mainGoal"]).toLowerCase();
+    const currentSituation = asArr(px["currentSituation"]).map((s) => s.toLowerCase());
+    const needsFromCoach = asArr(px["needsFromCoach"]).map((s) => s.toLowerCase());
+
+    // High relapse risk + vague struggle language → RELAPSE_PREVENTION
+    if ((relapseRisk === "high" || relapseRisk === "active") &&
+        /\b(struggling tonight|i'?m struggling|struggling|hard night|bad night|losing it|can'?t tonight|not coping|close to slipping|feeling weak|dangerous night)\b/.test(m)) {
+      return {
+        route: "RELAPSE_PREVENTION",
+        reason: "Vague struggle language with high/active relapseRisk profile.",
+        query: "relapse prevention danger window remove trigger contact support delay urge ten minute rule",
+        intentDetected: "RELAPSE_PREVENTION",
+        routePriorityReason: "profile.relapseRisk bias",
+      };
+    }
+
+    // Recovery profile + vague planning language → RECOVERY_STRUCTURE
+    const isRecoveryProfile =
+      mainGoal === "recovery" ||
+      currentSituation.some((s) => s.includes("in recovery")) ||
+      needsFromCoach.some((s) => s.includes("daily structure"));
+    if (isRecoveryProfile &&
+        /\b(what should i do|what should i do today|give me a plan|i need structure|help me today|today|plan my day)\b/.test(m)) {
+      return {
+        route: "RECOVERY_STRUCTURE",
+        reason: "Vague planning language with recovery profile.",
+        query: "recovery structure morning daylight breathwork walk protein journal phone away sleep support",
+        intentDetected: "RECOVERY_STRUCTURE",
+        routePriorityReason: "profile.recovery structure bias",
+      };
+    }
   }
 
   // 1c. General life-stuck — must come before keyword routes that grab "tired", "not motivated", etc.
