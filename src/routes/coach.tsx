@@ -263,6 +263,15 @@ function CoachPage() {
       content: m.content,
     }));
 
+    // Find the most recent assistant programState to carry the active plan forward.
+    const priorProgramState: ProgramState | null = (() => {
+      for (let i = thread.length - 1; i >= 0; i--) {
+        const m = thread[i];
+        if (m.role === "assistant" && m.programState) return m.programState;
+      }
+      return null;
+    })();
+
     setThread((t) => [...t, { role: "user", content: message }]);
     setReply("");
     setComposerOpen(false);
@@ -271,7 +280,7 @@ function CoachPage() {
     try {
       const dailyProgress = loadDailyProgress();
       const res: CoachResponse = await ask({
-        data: { question: message, profile, journal, dailyProgress, temporal, history },
+        data: { question: message, profile, journal, dailyProgress, temporal, history, priorProgramState },
       });
 
       // Server function returned, but the upstream model/KB call failed —
@@ -291,6 +300,7 @@ function CoachPage() {
             guidedWorkout: res.guidedWorkout,
             quickReplies: res.quickReplies ?? [],
             debug: res.debug,
+            programState: res.programState ?? null,
             failure: { ...cls, lastUserMessage: message },
           },
         ]);
@@ -306,6 +316,7 @@ function CoachPage() {
           guidedWorkout: res.guidedWorkout,
           quickReplies: res.quickReplies ?? [],
           debug: res.debug,
+          programState: res.programState ?? null,
           failure: null,
         },
       ]);
@@ -324,6 +335,7 @@ function CoachPage() {
           guidedWorkout: null,
           quickReplies: [],
           debug: buildFailureDebug(temporal, err),
+          programState: null,
           failure: { ...cls, lastUserMessage: message },
         },
       ]);
