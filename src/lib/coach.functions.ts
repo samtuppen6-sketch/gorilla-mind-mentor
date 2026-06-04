@@ -451,6 +451,27 @@ export type CoachDebug = {
   profileOverrideSuppressedReason: string | null;
   morningFillerSuppressed: boolean;
   responseModeReason: string | null;
+  // Onboarding / recovery awareness
+  currentSituation: string[];
+  primaryStruggle: string[];
+  controlLevel: string | null;
+  supportStatus: string | null;
+  needsFromCoach: string[];
+  addictionRiskFlag: string | null;
+  compulsionTypes: string[];
+  relapseRisk: string | null;
+  preferredSupportTone: string | null;
+  nutritionMode: string | null;
+  currentEatingIssue: string | null;
+  preferredNutritionStyle: string | null;
+  wantsCaloriesMacros: string | null;
+  safetyRouteTriggered: boolean;
+  recoveryRoute: string | null;
+  triggerDetected: string | null;
+  urgeSupportShown: boolean;
+  professionalSupportSuggested: boolean;
+  profileCompletenessScore: number | null;
+  missingProfileFields: string[];
 };
 
 export type GuidedPracticeRecommendation = {
