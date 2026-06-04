@@ -1189,12 +1189,21 @@ function detectRoute(
     };
   }
 
-  if (profile?.sleepQuality === "poor" || profile?.sleepQuality === "inconsistent") {
+  // Profile sleepQuality override — only fires if user did NOT give an explicit
+  // non-sleep intent. Real-world intent detection earlier already returned for
+  // those, so by the time we reach here it's safe; still gate on explicit sleep
+  // wording in the message to avoid overriding ambiguous prompts.
+  if ((profile?.sleepQuality === "poor" || profile?.sleepQuality === "inconsistent")
+      && /\b(sleep|bed|bedtime|wind ?down|insomnia)\b/i.test(message)) {
     return {
       route: "SLEEP_WIND_DOWN",
-      reason: `Profile sleepQuality is ${profile.sleepQuality}.`,
+      reason: `Profile sleepQuality is ${profile.sleepQuality} and message mentions sleep.`,
       query: "sleep architecture wind down sleep onset poor sleep evening protocol phone boundary calming breathwork",
     };
+  }
+  if (profile?.sleepQuality === "poor" || profile?.sleepQuality === "inconsistent") {
+    // Suppressed: profile said poor sleep but user did not mention sleep.
+    // Fall through to next handler; surface in debug via routePriorityReason.
   }
 
   if (profile && /identity/i.test(profile.primaryGap)) {
