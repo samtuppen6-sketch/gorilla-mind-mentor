@@ -61,6 +61,7 @@ type ThreadMessage =
       guidedWorkout: GuidedWorkoutRecommendation | null;
       quickReplies: string[];
       debug: CoachDebug;
+      programState: ProgramState | null;
       failure?: { kind: ErrorKind; title: string; description: string; lastUserMessage: string } | null;
     };
 
