@@ -44,6 +44,12 @@ function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<Patch>(() => ({ ...getProfile() }));
 
+  // Gate: must have an account first
+  if (typeof window !== "undefined" && !getProfile().identityProfile) {
+    navigate({ to: "/auth" });
+  }
+
+
   const patch = (p: Patch) => setDraft((d) => ({ ...d, ...p }));
 
   const toggleArr = (key: keyof UserProfile, val: string) => {
