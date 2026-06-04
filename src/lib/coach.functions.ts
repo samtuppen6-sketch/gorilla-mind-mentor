@@ -1343,7 +1343,9 @@ function buildContextBlock(
 
   if (profile) {
     lines.push("[USER PROFILE]");
-    lines.push(`name: ${profile.name}`);
+    const firstName = profile.identityProfile?.firstName || profile.name;
+    lines.push(`name: ${firstName}`);
+    lines.push(`firstName: ${firstName}`);
     lines.push(`identityAnchor: ${profile.identityAnchor}`);
     lines.push(`primaryGoal: ${profile.primaryGoal}`);
     lines.push(`primaryGap: ${profile.primaryGap}`);
