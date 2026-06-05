@@ -48,6 +48,9 @@ function PracticePlayerPage() {
   const debugMode = useDebugMode();
 
   const practice = getPracticeById(practiceId);
+  const audioAsset =
+    (practice?.audioAssetId ? getAudioAssetById(practice.audioAssetId) : undefined) ??
+    (practice ? getAudioAssetForPractice(practice.id) : undefined);
   const [state, setState] = useState<PlayerState>("idle");
   const [completion, setCompletion] = useState<CompletionResult | null>(null);
 
@@ -89,11 +92,27 @@ function PracticePlayerPage() {
           <span>Source: {source}</span>
         </div>
 
-        {/* Media placeholders */}
-        <div className="rounded-xl border border-dashed border-border bg-card/40 p-5 text-center">
-          <Music className="w-5 h-5 mx-auto text-gold-muted mb-2" />
-          <p className="text-xs text-muted-foreground">Audio coming soon</p>
-        </div>
+        {/* Safety note (audio-level, shown before player) */}
+        {audioAsset?.safetyNote && (
+          <div className="rounded-xl border border-gold/40 bg-gold/5 p-4 text-xs text-foreground inline-flex items-start gap-2">
+            <ShieldAlert className="w-4 h-4 text-gold-muted shrink-0 mt-0.5" />
+            <span>{audioAsset.safetyNote}</span>
+          </div>
+        )}
+
+        {/* Guided audio */}
+        {audioAsset ? (
+          <GuidedAudioPlayer asset={audioAsset} />
+        ) : (
+          <div className="rounded-xl border border-dashed border-border bg-card/40 p-5 space-y-1">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Guided audio placeholder</p>
+            <p className="text-xs text-muted-foreground">
+              This session is ready for an MP3 file. Follow the on-screen steps for now.
+            </p>
+          </div>
+        )}
+
+        {/* Visual guide placeholder */}
         <div className="rounded-xl border border-dashed border-border bg-card/40 p-5 text-center">
           <Video className="w-5 h-5 mx-auto text-gold-muted mb-2" />
           <p className="text-xs text-muted-foreground">Visual guide coming soon</p>
