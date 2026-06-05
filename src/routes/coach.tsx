@@ -17,6 +17,7 @@ import {
   type ProgramState,
 } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
+import { useDebugMode } from "@/lib/debug-mode";
 import { loadDailyProgress } from "@/lib/practice-progress";
 import { Loader2, Send, Play, Clock, ChevronDown, AlertTriangle, RotateCcw } from "lucide-react";
 import type { GuidedPracticeRec } from "@/lib/practices";
