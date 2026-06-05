@@ -10,7 +10,7 @@ import {
   type CompletionResult,
   type PracticeSource,
 } from "@/lib/practice-progress";
-import { getPracticeById } from "@/lib/practices";
+
 import {
   ArrowLeft, Play, Pause, Check, Clock, Dumbbell, ShieldAlert,
   SkipForward, SkipBack, RotateCcw, Flame, Trophy, MessageCircle, Home, Repeat,
