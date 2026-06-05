@@ -16,7 +16,8 @@ import {
   type GuidedWorkoutRecommendation,
   type ProgramState,
 } from "@/lib/coach.functions";
-import { useProfile, useJournal } from "@/lib/profile-store";
+import { useProfile, useJournal, getUserEntryRoute } from "@/lib/profile-store";
+import { useNavigate } from "@tanstack/react-router";
 import { useDebugMode } from "@/lib/debug-mode";
 import { loadDailyProgress } from "@/lib/practice-progress";
 import { Loader2, Send, Play, Clock, ChevronDown, AlertTriangle, RotateCcw } from "lucide-react";
