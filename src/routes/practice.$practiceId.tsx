@@ -283,6 +283,7 @@ function PracticePlayerPage() {
           />
           <DRow k="localStorage keys written" v={completion ? completion.keysWritten.join(", ") : "—"} />
         </div>
+        )}
       </div>
     </>
   );
