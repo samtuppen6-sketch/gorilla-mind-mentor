@@ -91,6 +91,7 @@ function WorkoutPlayerPage() {
   const search = useSearch({ from: "/workout/$workoutId" });
   const source: PracticeSource = search.source ?? "library";
   const linkedCoachRoute = search.route ?? null;
+  const debugMode = useDebugMode();
 
   const workout = getWorkoutById(workoutId);
 
