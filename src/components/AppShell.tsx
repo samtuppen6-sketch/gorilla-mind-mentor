@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Home, ListChecks, MessageSquare, BookOpen, User } from "lucide-react";
+import { useDebugMode } from "@/lib/debug-mode";
 
 const tabs = [
   { to: "/", label: "Today", icon: Home },
