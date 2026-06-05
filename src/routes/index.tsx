@@ -48,12 +48,23 @@ type ProfileExtras = {
 function TodayPage() {
   const profile = useProfile();
   const debugMode = useDebugMode();
+  const navigate = useNavigate();
   const profileExtras = profile as typeof profile & ProfileExtras;
   const [progress, setProgress] = useState<DailyProgress | null>(null);
   const [log, setLog] = useState<PracticeLogEntry[]>([]);
   const [progressLoaded, setProgressLoaded] = useState(false);
   const [logLoaded, setLogLoaded] = useState(false);
   const [showTop21, setShowTop21] = useState(true);
+
+  // First-open gate: if there is no account yet, route to /auth; if account
+  // but onboarding incomplete, route to /onboarding. Completed users see the
+  // Today dashboard as before. Runs post-mount to avoid SSR hydration jank.
+  useEffect(() => {
+    const dest = getUserEntryRoute(profile);
+    if (dest === "/auth") navigate({ to: "/auth" });
+    else if (dest === "/onboarding") navigate({ to: "/onboarding" });
+  }, [profile.identityProfile, profile.onboardingComplete, navigate]);
+
 
   useEffect(() => {
     if (typeof window === "undefined") return;
