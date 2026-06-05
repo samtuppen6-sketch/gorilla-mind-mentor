@@ -634,7 +634,7 @@ const WORKOUT_DAILY_ACTION_LABELS: Record<string, string> = {
   "Run-Walk Foundation": "Run-walk completed",
   "Box Breathing": "Breathwork completed",
   "Morning Protocol Lock-In": "Morning protocol completed",
-  "Minimum Standard Session": "Home strength completed",
+  "Minimum Standard Session": "Minimum standard completed",
 };
 
 function workoutDailyActionLabel(workoutTitle: string): string | null {
