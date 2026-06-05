@@ -293,6 +293,7 @@ function TodayPage() {
           />
           <DRow k="practiceLog entries today" v={String(todaysLog.length)} />
         </div>
+        )}
       </div>
     </>
   );
