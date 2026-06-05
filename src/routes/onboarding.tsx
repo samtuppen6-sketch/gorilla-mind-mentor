@@ -71,9 +71,112 @@ function OnboardingPage() {
     const identityProfile = current.identityProfile
       ? { ...current.identityProfile, onboardingComplete: true, updatedAt: now }
       : null;
+
+    // ---- Safe defaults & derivations for fields not collected by the wizard.
+    // Keeps onboarding short while satisfying coach profile expectations.
+    const struggles = (draft.primaryStruggle ?? []) as string[];
+
+    // Derive preferredTraining from mainGoal + trainingLocation if not set.
+    const derivedPreferredTraining: UserProfile["preferredTraining"] = (() => {
+      if (draft.preferredTraining) return draft.preferredTraining;
+      const goal = draft.mainGoal ?? "";
+      const loc = draft.trainingLocation ?? "";
+      if (goal === "muscle") return loc === "home" ? "bodyweight" : "weights";
+      if (goal === "fat_loss") return loc === "home" ? "bodyweight" : "weights";
+      if (goal === "fitness") return loc === "outdoors" ? "running" : "mixed";
+      if (goal === "recovery") return "mobility";
+      if (draft.injuryFlag === "back_pain" || draft.injuryFlag === "mobility_limited") return "pilates_core";
+      return "mixed";
+    })();
+
+    // Derive equipment from trainingLocation if not set.
+    const derivedEquipment: UserProfile["equipment"] =
+      draft.equipment && draft.equipment !== ""
+        ? draft.equipment
+        : draft.trainingLocation === "gym"
+          ? "full_gym"
+          : draft.trainingLocation === "home"
+            ? "none"
+            : "unknown";
+
+    // Derive compulsionTypes from primaryStruggle.
+    const compulsionMap: Array<[RegExp, UserProfile["compulsionTypes"][number]]> = [
+      [/phone|social/i, "phone_social"],
+      [/alcohol/i, "alcohol"],
+      [/substance|drug/i, "substances"],
+      [/gambl/i, "gambling"],
+      [/porn|sexual/i, "porn_sexual"],
+      [/binge/i, "food_binge"],
+      [/sugar|takeaway/i, "sugar_takeaways"],
+    ];
+    const derivedCompulsions = Array.from(
+      new Set(
+        struggles
+          .flatMap((s) => compulsionMap.filter(([rx]) => rx.test(s)).map(([, k]) => k))
+      ),
+    );
+
+    // Derive biggestBarrier from primaryStruggle if not set.
+    const derivedBarrier: UserProfile["biggestBarrier"] = (() => {
+      if (draft.biggestBarrier) return draft.biggestBarrier;
+      const first = struggles[0] ?? "";
+      if (/phone|social/i.test(first)) return "phone";
+      if (/alcohol|substance|gambl|porn|binge|sugar/i.test(first)) return "addiction_compulsion";
+      if (/sleep/i.test(first)) return "sleep";
+      if (/stress/i.test(first)) return "stress";
+      if (/discipline/i.test(first)) return "discipline";
+      if (draft.injuryFlag && draft.injuryFlag !== "none") return "injury";
+      return "routine";
+    })();
+
+    // Timezone via browser if not set.
+    const derivedTimezone =
+      draft.timezone && draft.timezone !== ""
+        ? draft.timezone
+        : (() => {
+            try { return Intl.DateTimeFormat().resolvedOptions().timeZone ?? ""; }
+            catch { return ""; }
+          })();
+
     const merged: UserProfile = {
       ...current,
       ...(draft as UserProfile),
+
+      // basicProfile safe defaults (calorie/macros precision fields stay null
+      // unless user opted into PRECISION_TRACKING and entered them elsewhere).
+      age: draft.age ?? null,
+      sex: draft.sex ?? "",
+      heightCm: draft.heightCm ?? null,
+      weightKg: draft.weightKg ?? null,
+      country: draft.country ?? "",
+      timezone: derivedTimezone,
+
+      // goals
+      secondaryGoals: draft.secondaryGoals ?? [],
+      motivationReason: draft.motivationReason ?? "",
+
+      // fitnessProfile
+      preferredTraining: derivedPreferredTraining,
+      equipment: derivedEquipment,
+      injuryNotes: draft.injuryNotes ?? "",
+
+      // nutritionProfile
+      dietPreference: draft.dietPreference ?? "no_preference",
+      mealsPerDay: draft.mealsPerDay ?? 3,
+      allergiesRestrictions: draft.allergiesRestrictions ?? "",
+
+      // recoveryRiskProfile
+      compulsionTypes:
+        (draft.compulsionTypes && draft.compulsionTypes.length > 0)
+          ? draft.compulsionTypes
+          : derivedCompulsions,
+
+      // mindsetProfile
+      stressLevel: draft.stressLevel && draft.stressLevel !== "" ? draft.stressLevel : "moderate",
+      confidenceLevel: draft.confidenceLevel && draft.confidenceLevel !== "" ? draft.confidenceLevel : "medium",
+      biggestBarrier: derivedBarrier,
+
+      // derived + meta
       nutritionMode,
       relapseRisk: risk.relapseRisk,
       addictionRiskFlag: risk.addictionRiskFlag,
