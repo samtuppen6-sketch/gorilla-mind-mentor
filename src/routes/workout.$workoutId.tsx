@@ -292,10 +292,9 @@ function WorkoutPlayerPage() {
 
   function handleComplete() {
     if (!workout || completion) return;
-    const trainingPractice = getPracticeById("mobility_recovery_10min");
-    if (!trainingPractice) return;
+    const syntheticPractice = workoutToSyntheticPractice(workout, linkedCoachRoute);
     const result = completePracticeSession({
-      practice: trainingPractice,
+      practice: syntheticPractice,
       source,
       linkedCoachRoute,
     });
