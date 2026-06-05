@@ -10,6 +10,7 @@ import {
   type CompletionResult,
   type PracticeSource,
 } from "@/lib/practice-progress";
+import { useDebugMode } from "@/lib/debug-mode";
 import { ArrowLeft, Play, Pause, Check, Clock, Music, Video, ShieldAlert, CalendarCheck } from "lucide-react";
 
 const searchSchema = z.object({
@@ -39,6 +40,7 @@ function PracticePlayerPage() {
   const search = useSearch({ from: "/practice/$practiceId" });
   const source: PracticeSource = search.source ?? "library";
   const linkedCoachRoute = search.route ?? null;
+  const debugMode = useDebugMode();
 
   const practice = getPracticeById(practiceId);
   const [state, setState] = useState<PlayerState>("idle");
@@ -239,6 +241,7 @@ function PracticePlayerPage() {
         )}
 
         {/* Debug panel */}
+        {debugMode && (
         <div className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-[11px] font-mono space-y-1">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Practice debug</p>
           <DRow k="practiceId" v={practice.id} />
@@ -280,6 +283,7 @@ function PracticePlayerPage() {
           />
           <DRow k="localStorage keys written" v={completion ? completion.keysWritten.join(", ") : "—"} />
         </div>
+        )}
       </div>
     </>
   );

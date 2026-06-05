@@ -12,6 +12,7 @@ import {
   DAILY_PROGRESS_KEY,
 } from "@/lib/practice-progress";
 import { useProfile } from "@/lib/profile-store";
+import { useDebugMode } from "@/lib/debug-mode";
 import {
   PROTOCOL_PILLAR_REGISTRY,
   computePillarStates,
@@ -46,6 +47,7 @@ type ProfileExtras = {
 
 function TodayPage() {
   const profile = useProfile();
+  const debugMode = useDebugMode();
   const profileExtras = profile as typeof profile & ProfileExtras;
   const [progress, setProgress] = useState<DailyProgress | null>(null);
   const [log, setLog] = useState<PracticeLogEntry[]>([]);
@@ -235,6 +237,7 @@ function TodayPage() {
         )}
 
         {/* Debug panel */}
+        {debugMode && (
         <div className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-[11px] font-mono space-y-1">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">
             Today debug
@@ -290,6 +293,7 @@ function TodayPage() {
           />
           <DRow k="practiceLog entries today" v={String(todaysLog.length)} />
         </div>
+        )}
       </div>
     </>
   );

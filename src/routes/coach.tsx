@@ -17,6 +17,7 @@ import {
   type ProgramState,
 } from "@/lib/coach.functions";
 import { useProfile, useJournal } from "@/lib/profile-store";
+import { useDebugMode } from "@/lib/debug-mode";
 import { loadDailyProgress } from "@/lib/practice-progress";
 import { Loader2, Send, Play, Clock, ChevronDown, AlertTriangle, RotateCcw } from "lucide-react";
 import type { GuidedPracticeRec } from "@/lib/practices";
@@ -238,6 +239,7 @@ function CoachPage() {
   const ask = useServerFn(askCoach);
   const profile = useProfile();
   const journal = useJournal();
+  const debugMode = useDebugMode();
   const search = useSearch({ from: "/coach" });
   const [seed, setSeed] = useState(search.prefill ?? SEED);
   const [reply, setReply] = useState("");
@@ -502,7 +504,7 @@ function CoachPage() {
           </div>
         )}
 
-        <DebugPanel debug={lastAssistant?.debug ?? null} loading={loading} />
+        {debugMode && <DebugPanel debug={lastAssistant?.debug ?? null} loading={loading} />}
       </div>
 
       {/* Collapsible bottom composer */}

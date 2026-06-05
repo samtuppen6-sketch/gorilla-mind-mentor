@@ -9,6 +9,7 @@ import {
   setProfile,
   type UserProfile,
 } from "@/lib/profile-store";
+import { useDebugMode } from "@/lib/debug-mode";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -593,6 +594,7 @@ function Summary({
   risk: string;
   completeness: number;
 }) {
+  const debugMode = useDebugMode();
   const firstProtocol =
     risk === "high" || risk === "active"
       ? "Recovery Structure: morning daylight + breathwork + walk + one supportive contact + honest journal."
@@ -615,7 +617,7 @@ function Summary({
       <Row k="Injury flag" v={draft.injuryFlag || "—"} />
       <Row k="Nutrition mode" v={nutritionMode} />
       <Row k="Coach tone" v={draft.preferredSupportTone || "—"} />
-      <Row k="Profile complete" v={`${completeness}%`} />
+      {debugMode && <Row k="Profile complete" v={`${completeness}%`} />}
       <div className="mt-3 pt-3 border-t border-border/50">
         <p className="text-[10px] uppercase tracking-[0.25em] text-gold-muted">First protocol</p>
         <p className="mt-1 text-foreground">{firstProtocol}</p>

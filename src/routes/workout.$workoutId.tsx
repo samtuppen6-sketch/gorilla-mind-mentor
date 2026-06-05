@@ -10,6 +10,7 @@ import {
   type CompletionResult,
   type PracticeSource,
 } from "@/lib/practice-progress";
+import { useDebugMode } from "@/lib/debug-mode";
 
 import {
   ArrowLeft, Play, Pause, Check, Clock, Dumbbell, ShieldAlert,
@@ -90,6 +91,7 @@ function WorkoutPlayerPage() {
   const search = useSearch({ from: "/workout/$workoutId" });
   const source: PracticeSource = search.source ?? "library";
   const linkedCoachRoute = search.route ?? null;
+  const debugMode = useDebugMode();
 
   const workout = getWorkoutById(workoutId);
 
@@ -539,6 +541,7 @@ function WorkoutPlayerPage() {
         )}
 
 
+        {debugMode && (
         <div className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-[11px] font-mono space-y-1">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Workout debug</p>
           <DRow k="workoutId" v={workout.id} />
@@ -559,6 +562,7 @@ function WorkoutPlayerPage() {
           <DRow k="linkedCoachRoute" v={linkedCoachRoute ?? "—"} />
           <DRow k="completion saved" v={String(!!completion)} />
         </div>
+        )}
       </div>
     </>
   );
