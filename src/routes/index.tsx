@@ -12,6 +12,7 @@ import {
   DAILY_PROGRESS_KEY,
 } from "@/lib/practice-progress";
 import { useProfile } from "@/lib/profile-store";
+import { useDebugMode } from "@/lib/debug-mode";
 import {
   PROTOCOL_PILLAR_REGISTRY,
   computePillarStates,
