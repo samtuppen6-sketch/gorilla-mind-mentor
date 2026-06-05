@@ -594,6 +594,7 @@ function Summary({
   risk: string;
   completeness: number;
 }) {
+  const debugMode = useDebugMode();
   const firstProtocol =
     risk === "high" || risk === "active"
       ? "Recovery Structure: morning daylight + breathwork + walk + one supportive contact + honest journal."
