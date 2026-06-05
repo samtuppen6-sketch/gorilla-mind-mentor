@@ -171,8 +171,8 @@ function OnboardingPage() {
           : derivedCompulsions,
 
       // mindsetProfile
-      stressLevel: draft.stressLevel && draft.stressLevel !== "" ? draft.stressLevel : "moderate",
-      confidenceLevel: draft.confidenceLevel && draft.confidenceLevel !== "" ? draft.confidenceLevel : "medium",
+      stressLevel: draft.stressLevel ? draft.stressLevel : "moderate",
+      confidenceLevel: draft.confidenceLevel ? draft.confidenceLevel : "medium",
       biggestBarrier: derivedBarrier,
 
       // derived + meta
