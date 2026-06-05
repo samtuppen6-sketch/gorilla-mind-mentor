@@ -241,8 +241,16 @@ function CoachPage() {
   const profile = useProfile();
   const journal = useJournal();
   const debugMode = useDebugMode();
+  const navigate = useNavigate();
   const search = useSearch({ from: "/coach" });
   const [seed, setSeed] = useState(search.prefill ?? SEED);
+
+  // Auth/onboarding gate: send unauthenticated or pre-onboarding users away.
+  useEffect(() => {
+    const dest = getUserEntryRoute(profile);
+    if (dest !== "/coach") navigate({ to: dest });
+  }, [profile.identityProfile, profile.onboardingComplete, navigate]);
+
   const [reply, setReply] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
