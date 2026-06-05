@@ -144,6 +144,40 @@ export type UserProfile = {
 
   // --- identityProfile (account/auth) ---
   identityProfile: IdentityProfile | null;
+
+  // --- notificationProfile (placeholder for future push notifications) ---
+  notificationProfile: NotificationProfile;
+  reminderPreferences: ReminderPreferences;
+};
+
+export type NotificationProfile = {
+  pushEnabled: boolean;
+  pushToken: string | null;
+  devicePlatform: "ios" | "android" | "web" | null;
+  notificationPermission: "granted" | "denied" | "default" | "unknown";
+};
+
+export type ReminderPreferences = {
+  morningProtocol: boolean;
+  eveningShutdown: boolean;
+  streakProtection: boolean;
+  urgeSupport: boolean;
+  workoutReminder: boolean;
+};
+
+export const DEFAULT_NOTIFICATION_PROFILE: NotificationProfile = {
+  pushEnabled: false,
+  pushToken: null,
+  devicePlatform: null,
+  notificationPermission: "unknown",
+};
+
+export const DEFAULT_REMINDER_PREFERENCES: ReminderPreferences = {
+  morningProtocol: true,
+  eveningShutdown: true,
+  streakProtection: true,
+  urgeSupport: false,
+  workoutReminder: true,
 };
 
 export type AuthProvider = "google" | "apple" | "email" | "local_placeholder";
