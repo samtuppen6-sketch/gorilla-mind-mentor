@@ -562,6 +562,7 @@ function WorkoutPlayerPage() {
           <DRow k="linkedCoachRoute" v={linkedCoachRoute ?? "—"} />
           <DRow k="completion saved" v={String(!!completion)} />
         </div>
+        )}
       </div>
     </>
   );
