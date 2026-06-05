@@ -47,6 +47,7 @@ type ProfileExtras = {
 
 function TodayPage() {
   const profile = useProfile();
+  const debugMode = useDebugMode();
   const profileExtras = profile as typeof profile & ProfileExtras;
   const [progress, setProgress] = useState<DailyProgress | null>(null);
   const [log, setLog] = useState<PracticeLogEntry[]>([]);
