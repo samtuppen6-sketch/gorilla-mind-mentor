@@ -144,6 +144,40 @@ export type UserProfile = {
 
   // --- identityProfile (account/auth) ---
   identityProfile: IdentityProfile | null;
+
+  // --- notificationProfile (placeholder for future push notifications) ---
+  notificationProfile: NotificationProfile;
+  reminderPreferences: ReminderPreferences;
+};
+
+export type NotificationProfile = {
+  pushEnabled: boolean;
+  pushToken: string | null;
+  devicePlatform: "ios" | "android" | "web" | null;
+  notificationPermission: "granted" | "denied" | "default" | "unknown";
+};
+
+export type ReminderPreferences = {
+  morningProtocol: boolean;
+  eveningShutdown: boolean;
+  streakProtection: boolean;
+  urgeSupport: boolean;
+  workoutReminder: boolean;
+};
+
+export const DEFAULT_NOTIFICATION_PROFILE: NotificationProfile = {
+  pushEnabled: false,
+  pushToken: null,
+  devicePlatform: null,
+  notificationPermission: "unknown",
+};
+
+export const DEFAULT_REMINDER_PREFERENCES: ReminderPreferences = {
+  morningProtocol: true,
+  eveningShutdown: true,
+  streakProtection: true,
+  urgeSupport: false,
+  workoutReminder: true,
 };
 
 export type AuthProvider = "google" | "apple" | "email" | "local_placeholder";
@@ -252,6 +286,8 @@ export const DEFAULT_PROFILE: UserProfile = {
   hardestPartOfDay: "",
   preferredTrainingWindow: "",
   identityProfile: null,
+  notificationProfile: DEFAULT_NOTIFICATION_PROFILE,
+  reminderPreferences: DEFAULT_REMINDER_PREFERENCES,
 };
 
 export const DEFAULT_JOURNAL: JournalEntry = {
@@ -323,6 +359,43 @@ export function setJournal(j: JournalEntry | null) {
     journalCache = null;
     journalCacheRaw = null;
   }
+  emit();
+}
+
+// ============================================================================
+// Auth / Onboarding gate
+// ============================================================================
+//
+// Single source of truth for routing a user into the app on first open or
+// after refresh. Wired into:
+//   - landing CTA on "/"
+//   - /coach mount guard
+//   - /onboarding mount guard
+//
+// Decision rules:
+//   - no identityProfile          → "/auth"
+//   - identity but not onboarded  → "/onboarding"
+//   - identity + onboarded        → "/coach"
+//
+// This shape is intentionally simple so the same call can later swap the
+// localStorage-backed identity for a Supabase session without changing the
+// callers.
+export type EntryRoute = "/auth" | "/onboarding" | "/coach";
+export function getUserEntryRoute(profile: Pick<UserProfile, "identityProfile" | "onboardingComplete">): EntryRoute {
+  if (!profile.identityProfile) return "/auth";
+  if (!profile.onboardingComplete) return "/onboarding";
+  return "/coach";
+}
+
+// Dev-only reset. Hidden behind the debug-mode toggle in the UI.
+export function clearProfile() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(PROFILE_KEY);
+  localStorage.removeItem(JOURNAL_KEY);
+  profileCache = DEFAULT_PROFILE;
+  profileCacheRaw = null;
+  journalCache = null;
+  journalCacheRaw = null;
   emit();
 }
 

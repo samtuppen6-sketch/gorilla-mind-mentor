@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -11,7 +11,7 @@ import {
   PRACTICE_LOG_KEY,
   DAILY_PROGRESS_KEY,
 } from "@/lib/practice-progress";
-import { useProfile } from "@/lib/profile-store";
+import { useProfile, getUserEntryRoute } from "@/lib/profile-store";
 import { useDebugMode } from "@/lib/debug-mode";
 import {
   PROTOCOL_PILLAR_REGISTRY,
@@ -48,12 +48,23 @@ type ProfileExtras = {
 function TodayPage() {
   const profile = useProfile();
   const debugMode = useDebugMode();
+  const navigate = useNavigate();
   const profileExtras = profile as typeof profile & ProfileExtras;
   const [progress, setProgress] = useState<DailyProgress | null>(null);
   const [log, setLog] = useState<PracticeLogEntry[]>([]);
   const [progressLoaded, setProgressLoaded] = useState(false);
   const [logLoaded, setLogLoaded] = useState(false);
   const [showTop21, setShowTop21] = useState(true);
+
+  // First-open gate: if there is no account yet, route to /auth; if account
+  // but onboarding incomplete, route to /onboarding. Completed users see the
+  // Today dashboard as before. Runs post-mount to avoid SSR hydration jank.
+  useEffect(() => {
+    const dest = getUserEntryRoute(profile);
+    if (dest === "/auth") navigate({ to: "/auth" });
+    else if (dest === "/onboarding") navigate({ to: "/onboarding" });
+  }, [profile.identityProfile, profile.onboardingComplete, navigate]);
+
 
   useEffect(() => {
     if (typeof window === "undefined") return;

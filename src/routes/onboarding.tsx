@@ -1,12 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import {
   computeProfileCompleteness,
   deriveNutritionMode,
   deriveRelapseRisk,
   getProfile,
+  getUserEntryRoute,
   setProfile,
+  useProfile,
   type UserProfile,
 } from "@/lib/profile-store";
 import { useDebugMode } from "@/lib/debug-mode";
@@ -42,13 +44,18 @@ const STEPS = [
 
 function OnboardingPage() {
   const navigate = useNavigate();
+  const profile = useProfile();
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<Patch>(() => ({ ...getProfile() }));
 
-  // Gate: must have an account first
-  if (typeof window !== "undefined" && !getProfile().identityProfile) {
-    navigate({ to: "/auth" });
-  }
+  // Auth/onboarding gate: must have identity. If already onboarded, bounce
+  // to /coach. Runs post-mount so we don't navigate during render.
+  useEffect(() => {
+    const dest = getUserEntryRoute(profile);
+    if (dest !== "/onboarding") navigate({ to: dest });
+  }, [profile.identityProfile, profile.onboardingComplete, navigate]);
+
+
 
 
   const patch = (p: Patch) => setDraft((d) => ({ ...d, ...p }));
