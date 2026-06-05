@@ -90,14 +90,13 @@ function OnboardingPage() {
     })();
 
     // Derive equipment from trainingLocation if not set.
-    const derivedEquipment: UserProfile["equipment"] =
-      draft.equipment && draft.equipment !== ""
-        ? draft.equipment
-        : draft.trainingLocation === "gym"
-          ? "full_gym"
-          : draft.trainingLocation === "home"
-            ? "none"
-            : "unknown";
+    const derivedEquipment: UserProfile["equipment"] = draft.equipment
+      ? draft.equipment
+      : draft.trainingLocation === "gym"
+        ? "full_gym"
+        : draft.trainingLocation === "home"
+          ? "none"
+          : "unknown";
 
     // Derive compulsionTypes from primaryStruggle.
     const compulsionMap: Array<[RegExp, UserProfile["compulsionTypes"][number]]> = [
