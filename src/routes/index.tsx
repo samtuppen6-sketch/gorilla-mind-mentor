@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -11,7 +11,7 @@ import {
   PRACTICE_LOG_KEY,
   DAILY_PROGRESS_KEY,
 } from "@/lib/practice-progress";
-import { useProfile } from "@/lib/profile-store";
+import { useProfile, getUserEntryRoute } from "@/lib/profile-store";
 import { useDebugMode } from "@/lib/debug-mode";
 import {
   PROTOCOL_PILLAR_REGISTRY,
