@@ -10,6 +10,7 @@ import {
   type CompletionResult,
   type PracticeSource,
 } from "@/lib/practice-progress";
+import { useDebugMode } from "@/lib/debug-mode";
 
 import {
   ArrowLeft, Play, Pause, Check, Clock, Dumbbell, ShieldAlert,
