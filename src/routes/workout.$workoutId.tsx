@@ -641,6 +641,60 @@ function workoutDailyActionLabel(workoutTitle: string): string | null {
   return WORKOUT_DAILY_ACTION_LABELS[workoutTitle] ?? null;
 }
 
+// Map a Workout (from src/lib/workouts.ts) to a synthetic GuidedPractice so
+// completePracticeSession() logs the ACTUAL workout id/title/category — not a
+// hardcoded mobility practice. Fixes the bug where every completed workout
+// was stored as `mobility_recovery_10min`.
+type WorkoutForCompletion = NonNullable<ReturnType<typeof getWorkoutById>>;
+
+function workoutToSyntheticPractice(
+  w: WorkoutForCompletion,
+  linkedCoachRoute: string | null,
+): import("@/lib/practices").GuidedPractice {
+  const map: Record<
+    WorkoutForCompletion["category"],
+    {
+      category: import("@/lib/practices").PracticeCategory;
+      dailyActionKey: import("@/lib/practices").RegistryDailyActionKey;
+    }
+  > = {
+    home_bodyweight: { category: "Training", dailyActionKey: "trainingCompleted" },
+    gym_strength:    { category: "Training", dailyActionKey: "trainingCompleted" },
+    pilates_core:    { category: "Pilates",  dailyActionKey: "pilatesCompleted" },
+    running:         { category: "Training", dailyActionKey: "trainingCompleted" },
+    mobility:        { category: "Mobility", dailyActionKey: "mobilityCompleted" },
+    low_energy:      { category: "Training", dailyActionKey: "trainingCompleted" },
+  };
+  const m = map[w.category];
+  return {
+    id: w.id,
+    title: w.title,
+    category: m.category,
+    route: linkedCoachRoute ?? "WORKOUT",
+    routes: linkedCoachRoute ? [linkedCoachRoute] : [],
+    subRoute: w.category,
+    durationMinutes: w.durationMinutes,
+    intensity: w.level === "beginner" ? "low" : w.level === "advanced" ? "high" : "moderate",
+    disciplinePoints: 30,
+    dailyActionKey: m.dailyActionKey,
+    recommendedWhen: [],
+    avoidWhen: [],
+    safetyNotes: w.safetyNotes,
+    placeholderAudioUrl: "placeholder://audio-coming-soon",
+    placeholderVisualUrl: "placeholder://visual-coming-soon",
+    practicePath: `/workout/${w.id}`,
+    completionRules: {
+      blockDuplicatePerDay: true,
+      countsTowardDailyMinimum: true,
+      requiresUserConfirmation: false,
+      wearableHooks: { samsungHealth: false, whoop: false, appleHealth: false },
+    },
+    description: w.summary,
+    instructionText: w.summary,
+    primaryButtonLabel: "Start Session",
+  };
+}
+
 function WorkoutRecap({
   workoutTitle,
   workoutCategory,
