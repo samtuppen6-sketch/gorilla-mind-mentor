@@ -40,6 +40,7 @@ function PracticePlayerPage() {
   const search = useSearch({ from: "/practice/$practiceId" });
   const source: PracticeSource = search.source ?? "library";
   const linkedCoachRoute = search.route ?? null;
+  const debugMode = useDebugMode();
 
   const practice = getPracticeById(practiceId);
   const [state, setState] = useState<PlayerState>("idle");
