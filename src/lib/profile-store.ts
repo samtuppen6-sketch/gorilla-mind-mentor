@@ -283,9 +283,13 @@ export const DEFAULT_PROFILE: UserProfile = {
 
   onboardingComplete: false,
   onboardingCompletedAt: null,
+  onboardingComplete: false,
+  onboardingCompletedAt: null,
   hardestPartOfDay: "",
   preferredTrainingWindow: "",
   identityProfile: null,
+  notificationProfile: DEFAULT_NOTIFICATION_PROFILE,
+  reminderPreferences: DEFAULT_REMINDER_PREFERENCES,
 };
 
 export const DEFAULT_JOURNAL: JournalEntry = {
