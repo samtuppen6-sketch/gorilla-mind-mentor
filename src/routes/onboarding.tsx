@@ -1,12 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import {
   computeProfileCompleteness,
   deriveNutritionMode,
   deriveRelapseRisk,
   getProfile,
+  getUserEntryRoute,
   setProfile,
+  useProfile,
   type UserProfile,
 } from "@/lib/profile-store";
 import { useDebugMode } from "@/lib/debug-mode";
