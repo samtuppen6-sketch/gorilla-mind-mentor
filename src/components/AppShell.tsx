@@ -1,7 +1,8 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Home, ListChecks, MessageSquare, BookOpen, User } from "lucide-react";
 import { useDebugMode } from "@/lib/debug-mode";
+import { clearProfile } from "@/lib/profile-store";
 
 const tabs = [
   { to: "/", label: "Today", icon: Home },
@@ -14,11 +15,27 @@ const tabs = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { location } = useRouterState();
   const debugMode = useDebugMode();
+  const navigate = useNavigate();
+
+  const devReset = () => {
+    if (!confirm("Dev reset: clear profile and sign out?")) return;
+    clearProfile();
+    navigate({ to: "/auth" });
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col max-w-md mx-auto relative">
       {debugMode && (
-        <div className="fixed top-2 right-2 z-50 rounded-full bg-gold/20 border border-gold/60 px-2 py-0.5 text-[9px] uppercase tracking-[0.25em] text-gold font-mono">
-          Debug mode
+        <div className="fixed top-2 right-2 z-50 flex items-center gap-2">
+          <button
+            onClick={devReset}
+            className="rounded-full bg-background border border-gold/60 px-2 py-0.5 text-[9px] uppercase tracking-[0.25em] text-gold font-mono"
+          >
+            Dev reset
+          </button>
+          <span className="rounded-full bg-gold/20 border border-gold/60 px-2 py-0.5 text-[9px] uppercase tracking-[0.25em] text-gold font-mono">
+            Debug mode
+          </span>
         </div>
       )}
       <header className="px-5 pt-6 pb-3 flex items-center justify-between border-b border-border">
