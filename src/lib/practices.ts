@@ -208,6 +208,7 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     placeholderVisualUrl: PLACEHOLDER_VISUAL,
     practicePath: path("breathwork_wind_down_5min"),
     completionRules: TIMED_RULES,
+    audioAssetId: "sleep_downshift_5min_audio",
     description:
       "Calming, low-stimulation nasal breathing to close the day and prepare the system for sleep.",
     instructionText:
@@ -270,6 +271,7 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     placeholderVisualUrl: PLACEHOLDER_VISUAL,
     practicePath: path("meditation_grounding_5min"),
     completionRules: TIMED_RULES,
+    audioAssetId: "grounding_reset_5min_audio",
     description:
       "A short grounding meditation to come back into the body when stressed, overwhelmed, or emotionally activated.",
     instructionText:
@@ -301,6 +303,7 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     placeholderVisualUrl: PLACEHOLDER_VISUAL,
     practicePath: path("meditation_urge_surfing_5min"),
     completionRules: TIMED_RULES,
+    audioAssetId: "urge_reset_10min_audio",
     description:
       "Ride the urge without acting on it. Used for cravings, scrolling urges, food urges, or relapse risk.",
     instructionText:
@@ -364,6 +367,7 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     placeholderVisualUrl: PLACEHOLDER_VISUAL,
     practicePath: path("journal_checkin_3min"),
     completionRules: TIMED_RULES,
+    audioAssetId: "relapse_repair_7min_audio",
     description:
       "A short, honest check-in against one standard. No story, no spin — just the operator log.",
     instructionText:
@@ -468,6 +472,7 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     placeholderVisualUrl: PLACEHOLDER_VISUAL,
     practicePath: path("box_breathing_5min"),
     completionRules: TIMED_RULES,
+    audioAssetId: "box_breathing_5min_audio",
     description: "Morning control protocol: 4 in / 4 hold / 4 out / 4 hold. Five rounds. Phone stays down.",
     instructionText: "Seated. Spine tall. Phone away.\n\nInhale 4 seconds.\nHold 4 seconds.\nExhale 4 seconds.\nHold 4 seconds.\n\n5 rounds. Use it in the morning before phone or caffeine.",
     primaryButtonLabel: "Start Box Breathing",
@@ -490,6 +495,7 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     placeholderVisualUrl: PLACEHOLDER_VISUAL,
     practicePath: path("extended_exhale_3min"),
     completionRules: TIMED_RULES,
+    audioAssetId: "extended_exhale_3min_audio",
     description: "Downshift the nervous system before sleep. Nasal in 4, slow exhale 6–8.",
     instructionText: "Lights low. Phone down.\n\nInhale through the nose for 4 seconds.\nExhale slowly through the nose for 6–8 seconds.\n\nRepeat for 3 minutes. No breath holds.",
     primaryButtonLabel: "Start Extended Exhale",
@@ -512,6 +518,7 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     placeholderVisualUrl: PLACEHOLDER_VISUAL,
     practicePath: path("morning_identity_reset_5min"),
     completionRules: TIMED_RULES,
+    audioAssetId: "morning_identity_reset_5min_audio",
     description: "Re-anchor the operator after missed days. Phone down. Identity first.",
     instructionText: "Seated. Phone face-down.\n\n1 min — slow nasal breathing.\n1 min — state your identity anchor silently.\n1 min — name today's one non-negotiable.\n2 min — quiet breath.",
     primaryButtonLabel: "Start Morning Identity Reset",
@@ -534,6 +541,7 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     placeholderVisualUrl: PLACEHOLDER_VISUAL,
     practicePath: path("morning_protocol_lock_in"),
     completionRules: TIMED_RULES,
+    audioAssetId: "morning_protocol_lock_in_audio",
     description: "The full morning lock-in: water, daylight, breath, identity, movement, protein, one journal line.",
     instructionText: "1. Water before phone.\n2. Mineralised water if appropriate (water + pinch Celtic sea salt + lemon).\n3. Morning daylight outside.\n4. Box Breathing — 5 minutes.\n5. Morning Identity Reset — 5 minutes.\n6. 20-minute walk or training session.\n7. Protein-first breakfast.\n8. One-line journal: 'What is the standard today?'",
     primaryButtonLabel: "Start Morning Protocol",
