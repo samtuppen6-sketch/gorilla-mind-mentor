@@ -238,6 +238,7 @@ function CoachPage() {
   const ask = useServerFn(askCoach);
   const profile = useProfile();
   const journal = useJournal();
+  const debugMode = useDebugMode();
   const search = useSearch({ from: "/coach" });
   const [seed, setSeed] = useState(search.prefill ?? SEED);
   const [reply, setReply] = useState("");
