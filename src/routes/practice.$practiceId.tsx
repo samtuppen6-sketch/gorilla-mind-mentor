@@ -3,7 +3,12 @@ import { useState } from "react";
 import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
+import { GuidedAudioPlayer } from "@/components/GuidedAudioPlayer";
 import { getPracticeById } from "@/lib/practices";
+import {
+  getAudioAssetById,
+  getAudioAssetForPractice,
+} from "@/lib/audio-assets";
 import {
   completePracticeSession,
   dailyActionLabel,
@@ -11,7 +16,7 @@ import {
   type PracticeSource,
 } from "@/lib/practice-progress";
 import { useDebugMode } from "@/lib/debug-mode";
-import { ArrowLeft, Play, Pause, Check, Clock, Music, Video, ShieldAlert, CalendarCheck } from "lucide-react";
+import { ArrowLeft, Play, Pause, Check, Clock, Video, ShieldAlert, CalendarCheck } from "lucide-react";
 
 const searchSchema = z.object({
   source: z.enum(["coach", "library", "protocol"]).optional(),
