@@ -9,6 +9,7 @@ import {
   setProfile,
   type UserProfile,
 } from "@/lib/profile-store";
+import { useDebugMode } from "@/lib/debug-mode";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
