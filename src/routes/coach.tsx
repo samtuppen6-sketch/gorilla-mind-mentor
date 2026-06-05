@@ -502,7 +502,7 @@ function CoachPage() {
           </div>
         )}
 
-        <DebugPanel debug={lastAssistant?.debug ?? null} loading={loading} />
+        {debugMode && <DebugPanel debug={lastAssistant?.debug ?? null} loading={loading} />}
       </div>
 
       {/* Collapsible bottom composer */}
