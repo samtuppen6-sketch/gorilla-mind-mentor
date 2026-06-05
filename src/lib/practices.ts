@@ -79,6 +79,11 @@ export type GuidedPractice = {
   practicePath: string; // route used by the Practice Player
   completionRules: PracticeCompletionRules;
 
+  // Optional link to the central guided-audio registry. When set, the
+  // Practice Player resolves the MP3 via src/lib/audio-assets.ts. When
+  // absent, the player falls back to linkedPracticeIds on the audio registry.
+  audioAssetId?: string;
+
   // Presentation fields used by the Practice Player ------------------------
   description: string;
   instructionText: string;
