@@ -16,7 +16,7 @@ import {
   type PracticeSource,
 } from "@/lib/practice-progress";
 import { useDebugMode } from "@/lib/debug-mode";
-import { ArrowLeft, Play, Pause, Check, Clock, Video, ShieldAlert, CalendarCheck } from "lucide-react";
+import { ArrowLeft, Play, Check, Clock, ShieldAlert, CalendarCheck } from "lucide-react";
 
 const searchSchema = z.object({
   source: z.enum(["coach", "library", "protocol"]).optional(),
@@ -38,8 +38,6 @@ export const Route = createFileRoute("/practice/$practiceId")({
   ),
 });
 
-type PlayerState = "idle" | "playing" | "paused" | "complete";
-
 function PracticePlayerPage() {
   const { practiceId } = useParams({ from: "/practice/$practiceId" });
   const search = useSearch({ from: "/practice/$practiceId" });
@@ -51,7 +49,8 @@ function PracticePlayerPage() {
   const audioAsset =
     (practice?.audioAssetId ? getAudioAssetById(practice.audioAssetId) : undefined) ??
     (practice ? getAudioAssetForPractice(practice.id) : undefined);
-  const [state, setState] = useState<PlayerState>("idle");
+
+  const [started, setStarted] = useState(false);
   const [completion, setCompletion] = useState<CompletionResult | null>(null);
 
   if (!practice) {
@@ -71,28 +70,32 @@ function PracticePlayerPage() {
     );
   }
 
+  function handleStart() {
+    setStarted(true);
+  }
+
   function handleComplete() {
-    if (!practice || state === "complete") return;
+    if (!practice || !started || completion) return;
     const result = completePracticeSession({ practice, source, linkedCoachRoute });
     setCompletion(result);
-    setState("complete");
   }
+
+  const canComplete = started && !completion;
 
   return (
     <>
       <SectionHeader eyebrow={practice.category} title={practice.title} sub={practice.description} />
       <div className="px-5 space-y-4 pb-8">
+        {/* Minimal meta row — premium, no raw technical labels */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" />
-            {practice.durationMinutes} min
+            {practice.durationMinutes > 0 ? `${practice.durationMinutes} min` : "Self-paced"}
           </span>
-          <span>Intensity: {practice.intensity}</span>
-          <span>Sub-route: {practice.subRoute}</span>
-          <span>Source: {source}</span>
+          <span className="capitalize">Intensity: {practice.intensity}</span>
         </div>
 
-        {/* Safety note (audio-level, shown before player) */}
+        {/* Safety note (audio-level, shown above player) */}
         {audioAsset?.safetyNote && (
           <div className="rounded-xl border border-gold/40 bg-gold/5 p-4 text-xs text-foreground inline-flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 text-gold-muted shrink-0 mt-0.5" />
@@ -100,32 +103,26 @@ function PracticePlayerPage() {
           </div>
         )}
 
-        {/* Guided audio */}
+        {/* Guided audio — or quiet placeholder card. No dead-end "coming soon" copy. */}
         {audioAsset ? (
-          <GuidedAudioPlayer asset={audioAsset} />
+          <GuidedAudioPlayer asset={audioAsset} started={started} />
         ) : (
-          <div className="rounded-xl border border-dashed border-border bg-card/40 p-5 space-y-1">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Guided audio placeholder</p>
-            <p className="text-xs text-muted-foreground">
-              This session is ready for an MP3 file. Follow the on-screen steps for now.
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-1">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Guided session</p>
+            <p className="text-sm text-foreground">
+              Follow the steps below at your own pace.
             </p>
           </div>
         )}
 
-        {/* Visual guide placeholder */}
-        <div className="rounded-xl border border-dashed border-border bg-card/40 p-5 text-center">
-          <Video className="w-5 h-5 mx-auto text-gold-muted mb-2" />
-          <p className="text-xs text-muted-foreground">Visual guide coming soon</p>
-        </div>
-
         {/* Instructions */}
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Instructions</p>
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Steps</p>
           <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{practice.instructionText}</p>
         </div>
 
         {/* Use when */}
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Use when</p>
           <ul className="text-sm text-foreground space-y-1">
             {practice.recommendedWhen.map((u: string) => (
@@ -136,7 +133,7 @@ function PracticePlayerPage() {
 
         {/* Avoid when */}
         {practice.avoidWhen.length > 0 && (
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5">
             <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Avoid when</p>
             <ul className="text-sm text-foreground space-y-1">
               {practice.avoidWhen.map((u: string) => (
@@ -148,7 +145,7 @@ function PracticePlayerPage() {
 
         {/* Safety notes */}
         {practice.safetyNotes.length > 0 && (
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5">
             <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2 inline-flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5" />
               Safety
@@ -161,51 +158,35 @@ function PracticePlayerPage() {
           </div>
         )}
 
-        {/* Player status */}
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Player status</p>
-          <p className="text-sm text-foreground">
-            {state === "idle" && "Ready"}
-            {state === "playing" && "Playing…"}
-            {state === "paused" && "Paused"}
-            {state === "complete" && "Complete ✓"}
-          </p>
-        </div>
-
-        {/* Controls */}
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => setState("playing")}
-            disabled={state === "playing" || state === "complete"}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-gold py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-          >
-            <Play className="w-4 h-4" />
-            Start
-          </button>
-          <button
-            type="button"
-            onClick={() => setState("paused")}
-            disabled={state !== "playing"}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card py-3 text-sm font-semibold text-foreground disabled:opacity-50"
-          >
-            <Pause className="w-4 h-4" />
-            Pause
-          </button>
-          <button
-            type="button"
-            onClick={handleComplete}
-            disabled={state === "complete"}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gold/40 bg-card py-3 text-sm font-semibold text-foreground disabled:opacity-50"
-          >
-            <Check className="w-4 h-4" />
-            Complete
-          </button>
-        </div>
+        {/* Single premium CTA: Start → Complete */}
+        {!completion && (
+          <div className="space-y-2 pt-1">
+            {!started ? (
+              <button
+                type="button"
+                onClick={handleStart}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gold py-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/10"
+              >
+                <Play className="w-4 h-4" />
+                Start Session
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleComplete}
+                disabled={!canComplete}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gold py-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/10 disabled:opacity-50"
+              >
+                <Check className="w-4 h-4" />
+                Complete Session
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Success banner */}
         {completion && (
-          <div className="rounded-xl border border-gold/60 bg-gold/10 p-5 space-y-3">
+          <div className="rounded-2xl border border-gold/60 bg-gold/10 p-5 space-y-3">
             <p className="text-sm font-bold text-gold inline-flex items-center gap-2">
               <Check className="w-4 h-4" />
               Practice complete
@@ -264,49 +245,51 @@ function PracticePlayerPage() {
           </Link>
         )}
 
-        {/* Debug panel */}
+        {/* Debug panel (dev-only) */}
         {debugMode && (
-        <div className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-[11px] font-mono space-y-1">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Practice debug</p>
-          <DRow k="practiceId" v={practice.id} />
-          <DRow k="category" v={practice.category} />
-          <DRow k="route" v={practice.route} />
-          <DRow k="subRoute" v={practice.subRoute ?? "—"} />
-          <DRow k="dailyActionKey" v={practice.dailyActionKey} />
-          <DRow k="source" v={source} />
-          <DRow k="linkedCoachRoute" v={linkedCoachRoute ?? "—"} />
-          <DRow k="completion saved" v={String(!!completion)} />
-          <DRow k="duplicate today" v={completion ? String(completion.duplicate) : "—"} />
-          <DRow k="DP awarded" v={completion ? `+${completion.pointsAwarded}` : "—"} />
-          <DRow k="daily action updated" v={completion ? (completion.dailyActionUpdated ?? "none") : "—"} />
-          <DRow k="daily progress updated" v={completion ? "true" : "false"} />
-          <DRow k="practice streak updated" v={completion ? String(completion.practiceStreakUpdated) : "—"} />
-          <DRow k="protocol streak updated" v={completion ? String(completion.protocolStreakUpdated) : "—"} />
-          <DRow
-            k="daily minimum count"
-            v={
-              completion
-                ? `${[
-                    completion.dailyProgress.breathworkCompleted,
-                    completion.dailyProgress.meditationCompleted || completion.dailyProgress.mindfulnessCompleted,
-                    completion.dailyProgress.trainingCompleted || completion.dailyProgress.mobilityCompleted || completion.dailyProgress.pilatesCompleted,
-                    completion.dailyProgress.nutritionCompleted,
-                    completion.dailyProgress.journalCompleted,
-                    completion.dailyProgress.coldExposureCompleted,
-                    completion.dailyProgress.heatExposureCompleted,
-                  ].filter(Boolean).length} / 3`
-                : "—"
-            }
-          />
-          <DRow k="dailyMinimumMet" v={completion ? String(completion.dailyProgress.dailyMinimumMet) : "—"} />
-          <DRow k="fullProtocolCompleted" v={completion ? String(completion.dailyProgress.fullProtocolCompleted) : "—"} />
-          <DRow k="DP today (total)" v={completion ? String(completion.dailyProgress.disciplinePointsToday) : "—"} />
-          <DRow
-            k="completedPracticeIdsToday"
-            v={completion ? (completion.dailyProgress.completedPracticeIdsToday.join(", ") || "—") : "—"}
-          />
-          <DRow k="localStorage keys written" v={completion ? completion.keysWritten.join(", ") : "—"} />
-        </div>
+          <div className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-[11px] font-mono space-y-1">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Practice debug</p>
+            <DRow k="practiceId" v={practice.id} />
+            <DRow k="audioAssetId" v={audioAsset?.id ?? "—"} />
+            <DRow k="audioStatus" v={audioAsset?.status ?? "—"} />
+            <DRow k="category" v={practice.category} />
+            <DRow k="route" v={practice.route} />
+            <DRow k="subRoute" v={practice.subRoute ?? "—"} />
+            <DRow k="dailyActionKey" v={practice.dailyActionKey} />
+            <DRow k="source" v={source} />
+            <DRow k="linkedCoachRoute" v={linkedCoachRoute ?? "—"} />
+            <DRow k="started" v={String(started)} />
+            <DRow k="completion saved" v={String(!!completion)} />
+            <DRow k="duplicate today" v={completion ? String(completion.duplicate) : "—"} />
+            <DRow k="DP awarded" v={completion ? `+${completion.pointsAwarded}` : "—"} />
+            <DRow k="daily action updated" v={completion ? (completion.dailyActionUpdated ?? "none") : "—"} />
+            <DRow k="practice streak updated" v={completion ? String(completion.practiceStreakUpdated) : "—"} />
+            <DRow k="protocol streak updated" v={completion ? String(completion.protocolStreakUpdated) : "—"} />
+            <DRow
+              k="daily minimum count"
+              v={
+                completion
+                  ? `${[
+                      completion.dailyProgress.breathworkCompleted,
+                      completion.dailyProgress.meditationCompleted || completion.dailyProgress.mindfulnessCompleted,
+                      completion.dailyProgress.trainingCompleted || completion.dailyProgress.mobilityCompleted || completion.dailyProgress.pilatesCompleted,
+                      completion.dailyProgress.nutritionCompleted,
+                      completion.dailyProgress.journalCompleted,
+                      completion.dailyProgress.coldExposureCompleted,
+                      completion.dailyProgress.heatExposureCompleted,
+                    ].filter(Boolean).length} / 3`
+                  : "—"
+              }
+            />
+            <DRow k="dailyMinimumMet" v={completion ? String(completion.dailyProgress.dailyMinimumMet) : "—"} />
+            <DRow k="fullProtocolCompleted" v={completion ? String(completion.dailyProgress.fullProtocolCompleted) : "—"} />
+            <DRow k="DP today (total)" v={completion ? String(completion.dailyProgress.disciplinePointsToday) : "—"} />
+            <DRow
+              k="completedPracticeIdsToday"
+              v={completion ? (completion.dailyProgress.completedPracticeIdsToday.join(", ") || "—") : "—"}
+            />
+            <DRow k="localStorage keys written" v={completion ? completion.keysWritten.join(", ") : "—"} />
+          </div>
         )}
       </div>
     </>
