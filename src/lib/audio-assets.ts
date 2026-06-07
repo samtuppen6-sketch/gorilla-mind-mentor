@@ -105,7 +105,7 @@ export const AUDIO_ASSETS: AudioAsset[] = [
       "This is not emergency support. If you are in immediate danger, contact emergency services or a trusted support person now.",
     voiceStyle: "calm, controlled, masculine",
     status: "placeholder",
-    linkedPracticeIds: ["meditation_urge_surfing_5min"],
+    linkedPracticeIds: ["urge_reset_10min", "meditation_urge_surfing_5min"],
   },
   {
     id: "relapse_repair_7min_audio",
@@ -119,7 +119,7 @@ export const AUDIO_ASSETS: AudioAsset[] = [
       "This is a support practice, not medical or crisis care.",
     voiceStyle: "calm, controlled, masculine",
     status: "placeholder",
-    linkedPracticeIds: ["journal_checkin_3min"],
+    linkedPracticeIds: ["relapse_repair_7min"],
   },
   {
     id: "grounding_reset_5min_audio",
