@@ -367,7 +367,6 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     placeholderVisualUrl: PLACEHOLDER_VISUAL,
     practicePath: path("journal_checkin_3min"),
     completionRules: TIMED_RULES,
-    audioAssetId: "relapse_repair_7min_audio",
     description:
       "A short, honest check-in against one standard. No story, no spin — just the operator log.",
     instructionText:
