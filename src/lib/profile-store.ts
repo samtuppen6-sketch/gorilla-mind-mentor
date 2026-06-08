@@ -384,11 +384,21 @@ export function getProfile(): UserProfile {
   profileCacheRaw = raw;
   if (!raw) {
     profileCache = hasDemoAuthFlag() ? createDemoProfile() : DEFAULT_PROFILE;
+    if (hasDemoAuthFlag()) {
+      const serialized = JSON.stringify(profileCache);
+      localStorage.setItem(PROFILE_KEY, serialized);
+      profileCacheRaw = serialized;
+    }
     return profileCache;
   }
   try {
     profileCache = { ...DEFAULT_PROFILE, ...JSON.parse(raw) };
-    if (hasDemoAuthFlag() && !isDemoProfileShape(profileCache)) profileCache = createDemoProfile(profileCache);
+    if (hasDemoAuthFlag() && !isDemoProfileShape(profileCache)) {
+      profileCache = createDemoProfile(profileCache);
+      const serialized = JSON.stringify(profileCache);
+      localStorage.setItem(PROFILE_KEY, serialized);
+      profileCacheRaw = serialized;
+    }
   }
   catch { profileCache = DEFAULT_PROFILE; }
   return profileCache;
