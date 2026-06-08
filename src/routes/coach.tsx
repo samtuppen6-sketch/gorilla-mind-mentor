@@ -436,7 +436,7 @@ function CoachPage() {
             <textarea
               value={seed}
               onChange={(e) => setSeed(e.target.value)}
-              placeholder="Ask the Coach…"
+              placeholder="Tell the coach what's going on..."
               rows={4}
               className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
             />
@@ -448,6 +448,19 @@ function CoachPage() {
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               {loading ? "Searching the knowledge base…" : "Ask the Coach"}
             </button>
+            <div className="mt-3 space-y-1">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Try</p>
+              {FREE_TEXT_EXAMPLES.map((ex) => (
+                <button
+                  key={ex}
+                  type="button"
+                  onClick={() => setSeed(ex)}
+                  className="block w-full text-left text-xs italic text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  "{ex}"
+                </button>
+              ))}
+            </div>
           </form>
         )}
 
