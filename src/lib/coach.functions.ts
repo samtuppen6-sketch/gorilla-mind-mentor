@@ -1979,7 +1979,7 @@ export function prescribeBreathwork(
   profile: Profile | null,
   journal: Journal | null,
   temporal: TemporalContext,
-  progress: PracticeProgressSnapshot | null,
+  progress: DailyProgressCtx | null,
 ): BreathworkPrescription {
   const m = (message ?? "").toLowerCase();
   const dayPart = temporal.dayPart;
