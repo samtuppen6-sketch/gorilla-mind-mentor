@@ -60,7 +60,7 @@ function TodayPage() {
   // but onboarding incomplete, route to /onboarding. Completed users see the
   // Today dashboard as before. Runs post-mount to avoid SSR hydration jank.
   useEffect(() => {
-    const dest = getUserEntryRoute(profile);
+    const dest = getUserEntryRoute(profile, "/");
     if (dest === "/auth") navigate({ to: "/auth" });
     else if (dest === "/onboarding") navigate({ to: "/onboarding" });
   }, [profile.identityProfile, profile.onboardingComplete, navigate]);

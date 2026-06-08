@@ -1,10 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import {
+  activateDemoSession,
   getProfile,
+  getUserEntryRoute,
   setProfile,
+  useProfile,
   type AuthProvider,
   type IdentityProfile,
 } from "@/lib/profile-store";
@@ -47,6 +50,7 @@ function buildIdentity(partial: Partial<IdentityProfile> & { authProvider: AuthP
 
 function AuthPage() {
   const navigate = useNavigate();
+  const profile = useProfile();
   const [mode, setMode] = useState<"choose" | "email">("choose");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -54,6 +58,11 @@ function AuthPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [consent, setConsent] = useState(false);
+
+  useEffect(() => {
+    const dest = getUserEntryRoute(profile, "/auth");
+    if (dest !== "/auth") navigate({ to: dest });
+  }, [profile.identityProfile, profile.onboardingComplete, navigate]);
 
   const placeholderAuth = (provider: "google" | "apple") => {
     // TODO: integrate real Google/Apple OAuth when configured
@@ -120,33 +129,11 @@ function AuthPage() {
               e.preventDefault();
               e.stopPropagation();
               if (import.meta.env.DEV) console.log("[demo] Demo mode selected");
-              const identity = buildIdentity({
-                userId: "demo_user_sam",
-                firstName: "Sam",
-                lastName: "Demo",
-                fullName: "Sam Demo",
-                email: "demo@gorillamind.local",
-                authProvider: "local_placeholder",
-              });
-              identity.onboardingComplete = true;
-              const current = getProfile();
-              setProfile({
-                ...current,
-                name: "Sam",
-                identityProfile: identity,
-                onboardingComplete: true,
-                onboardingCompletedAt: new Date().toISOString(),
-              });
+              activateDemoSession();
               if (import.meta.env.DEV) console.log("[demo] Demo session created");
               toast.success("Demo Mode active");
               if (import.meta.env.DEV) console.log("[demo] Navigating to app");
-              // Hard navigation to ensure fresh route state and no stale
-              // auth-gate redirect loops back to /auth.
-              if (typeof window !== "undefined") {
-                window.location.assign("/coach");
-              } else {
-                navigate({ to: "/coach" });
-              }
+              navigate({ to: "/coach" });
             }}
             className="w-full rounded-lg border border-dashed border-gold/60 px-4 py-3 text-sm text-gold hover:bg-gold/5"
           >

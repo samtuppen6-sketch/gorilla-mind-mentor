@@ -281,7 +281,7 @@ function CoachPage() {
 
   // Auth/onboarding gate: send unauthenticated or pre-onboarding users away.
   useEffect(() => {
-    const dest = getUserEntryRoute(profile);
+    const dest = getUserEntryRoute(profile, "/coach");
     if (dest !== "/coach") navigate({ to: dest });
   }, [profile.identityProfile, profile.onboardingComplete, navigate]);
 
