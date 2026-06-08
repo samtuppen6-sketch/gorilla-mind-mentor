@@ -32,6 +32,8 @@ export type AudioAsset = {
   linkedPracticeIds: string[];
 };
 
+import boxBreathingAsset from "@/assets/box-breathing.mp3.asset.json";
+
 export const AUDIO_ASSETS: AudioAsset[] = [
   {
     id: "box_breathing_5min_audio",
