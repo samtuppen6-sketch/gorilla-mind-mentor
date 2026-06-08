@@ -599,18 +599,24 @@ function CoachPage() {
                   </button>
                 </div>
                 {lastAssistant && lastAssistant.quickReplies.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {lastAssistant.quickReplies.map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        disabled={loading}
-                        onClick={() => send(q)}
-                        className="text-[11px] uppercase tracking-[0.15em] rounded-full border border-gold/50 px-3 py-1.5 text-gold hover:bg-gold/10 disabled:opacity-50 transition-colors"
-                      >
-                        {q}
-                      </button>
-                    ))}
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Try</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {lastAssistant.quickReplies.map((q) => (
+                        <button
+                          key={q}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => {
+                            setReply(q);
+                            setTimeout(() => textareaRef.current?.focus(), 0);
+                          }}
+                          className="text-[11px] italic rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:text-foreground hover:border-gold/40 disabled:opacity-50 transition-colors"
+                        >
+                          {q.toLowerCase()}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 <form
@@ -621,7 +627,7 @@ function CoachPage() {
                     ref={textareaRef}
                     value={reply}
                     onChange={(e) => setReply(e.target.value)}
-                    placeholder="Reply to the coach..."
+                    placeholder="Tell the coach what happened..."
                     rows={3}
                     className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
                     onKeyDown={(e) => {
