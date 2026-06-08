@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import {
   activateDemoSession,
   getProfile,
+  getUserEntryRoute,
   setProfile,
+  useProfile,
   type AuthProvider,
   type IdentityProfile,
 } from "@/lib/profile-store";
@@ -48,6 +50,7 @@ function buildIdentity(partial: Partial<IdentityProfile> & { authProvider: AuthP
 
 function AuthPage() {
   const navigate = useNavigate();
+  const profile = useProfile();
   const [mode, setMode] = useState<"choose" | "email">("choose");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -55,6 +58,11 @@ function AuthPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [consent, setConsent] = useState(false);
+
+  useEffect(() => {
+    const dest = getUserEntryRoute(profile, "/auth");
+    if (dest !== "/auth") navigate({ to: dest });
+  }, [profile.identityProfile, profile.onboardingComplete, navigate]);
 
   const placeholderAuth = (provider: "google" | "apple") => {
     // TODO: integrate real Google/Apple OAuth when configured
