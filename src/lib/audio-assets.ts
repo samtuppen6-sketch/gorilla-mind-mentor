@@ -37,14 +37,14 @@ import boxBreathingAsset from "@/assets/box-breathing.mp3.asset.json";
 export const AUDIO_ASSETS: AudioAsset[] = [
   {
     id: "box_breathing_5min_audio",
-    title: "Box Breathing — 5 Minutes",
+    title: "Box Breathing — 6 Minutes",
     category: "breathwork",
-    durationMinutes: 5,
-    audioUrl: "/audio/box-breathing-5min.mp3",
+    durationMinutes: 6,
+    audioUrl: boxBreathingAsset.url,
     description:
-      "Controlled 4-4-4-4 box breathing. Morning activation before phone or caffeine.",
+      "Controlled 4-4-4-4 box breathing. 16 rounds. Morning activation before phone or caffeine.",
     voiceStyle: "calm, controlled, masculine",
-    status: "placeholder",
+    status: "ready",
     linkedPracticeIds: ["box_breathing_5min"],
   },
   {
