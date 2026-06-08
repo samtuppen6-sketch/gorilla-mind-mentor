@@ -2663,7 +2663,7 @@ export const askCoach = createServerFn({ method: "POST" })
     ].filter(Boolean).join("\n");
 
     const guidedPracticeInstruction = guidedPractice
-      ? `\n\nGUIDED PRACTICE SECTION: After TODAY'S NON-NEGOTIABLES (or ${ordersHeading} for life-stuck) and before COACH CLOSE, add a section labelled exactly "GUIDED PRACTICE" with two short lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
+      ? `\n\nGUIDED PRACTICE / GUIDED TOOL SECTION: Add a short section labelled exactly "GUIDED TOOL" (or "GUIDED PRACTICE" for plan-building routes) before CHECK-IN / COACH CLOSE with two lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
       : "";
 
     const guidedWorkoutInstruction = guidedWorkout
