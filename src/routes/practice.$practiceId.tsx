@@ -115,6 +115,8 @@ function PracticePlayerPage() {
             <ExtendedExhalePlayer asset={audioAsset} started={started} />
           ) : practice.id === "urge_reset_3min" ? (
             <UrgeResetPlayer asset={audioAsset} started={started} />
+          ) : practice.id === "energising_breath_3min" ? (
+            <EnergisingBreathPlayer asset={audioAsset} started={started} />
           ) : (
             <GuidedAudioPlayer asset={audioAsset} started={started} />
           )
