@@ -472,8 +472,8 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     practicePath: path("box_breathing_5min"),
     completionRules: TIMED_RULES,
     audioAssetId: "box_breathing_5min_audio",
-    description: "Morning control protocol: 4 in / 4 hold / 4 out / 4 hold. Five rounds. Phone stays down.",
-    instructionText: "Seated. Spine tall. Phone away.\n\nInhale 4 seconds.\nHold 4 seconds.\nExhale 4 seconds.\nHold 4 seconds.\n\n5 rounds. Use it in the morning before phone or caffeine.",
+    description: "Morning control protocol: 4 in / 4 hold / 4 out / 4 hold. 16 rounds. Phone stays down.",
+    instructionText: "Seated. Spine tall. Phone away.\n\nInhale 4 seconds.\nHold 4 seconds.\nExhale 4 seconds.\nHold 4 seconds.\n\n16 rounds. Use it in the morning before phone or caffeine.",
     primaryButtonLabel: "Start Box Breathing",
   },
   {
