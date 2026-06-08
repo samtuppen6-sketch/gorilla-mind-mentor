@@ -35,6 +35,7 @@ export type AudioAsset = {
 import boxBreathingAsset from "@/assets/box-breathing.mp3.asset.json";
 import extendedExhaleAsset from "@/assets/extended-exhale.mp3.asset.json";
 import urgeResetAsset from "@/assets/urge-reset.mp3.asset.json";
+import energisingBreathAsset from "@/assets/energising-breath.mp3.asset.json";
 
 export const AUDIO_ASSETS: AudioAsset[] = [
   {
@@ -60,6 +61,18 @@ export const AUDIO_ASSETS: AudioAsset[] = [
     voiceStyle: "calm, controlled, masculine",
     status: "ready",
     linkedPracticeIds: ["extended_exhale_3min"],
+  },
+  {
+    id: "energising_breath_3min_audio",
+    title: "Energising Breath — 4 Minutes",
+    category: "breathwork",
+    durationMinutes: 4,
+    audioUrl: energisingBreathAsset.url,
+    description:
+      "Sharp nasal inhale 3, controlled exhale 3. 20 rounds. Wake the system up and turn energy into action.",
+    voiceStyle: "calm, controlled, masculine",
+    status: "ready",
+    linkedPracticeIds: ["energising_breath_3min"],
   },
   {
     id: "morning_identity_reset_5min_audio",

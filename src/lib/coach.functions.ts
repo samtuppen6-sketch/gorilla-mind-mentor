@@ -1919,8 +1919,8 @@ const BREATHWORK_PROTOCOL_META: Record<BreathworkProtocolId, { title: string; du
     payoff: "Resets your nervous system, clears your head, and gives your mind a clean signal.",
   },
   energising_breath_3min: {
-    title: "Energising Breath", durationMinutes: 3, buttonLabel: "Start Energising Breath",
-    payoff: "Wakes the system up, sharpens your body, and turns energy into action.",
+    title: "Energising Breath", durationMinutes: 4, buttonLabel: "Start Energising Breath",
+    payoff: "Wakes the system up, sharpens the body, and turns energy into action.",
   },
   extended_exhale_3min: {
     title: "Extended Exhale", durationMinutes: 4, buttonLabel: "Start Extended Exhale",
