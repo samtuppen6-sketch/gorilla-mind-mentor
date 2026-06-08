@@ -109,6 +109,8 @@ function PracticePlayerPage() {
         {audioAsset ? (
           practice.id === "box_breathing_5min" ? (
             <BoxBreathingPlayer asset={audioAsset} started={started} />
+          ) : practice.id === "extended_exhale_3min" ? (
+            <ExtendedExhalePlayer asset={audioAsset} started={started} />
           ) : (
             <GuidedAudioPlayer asset={audioAsset} started={started} />
           )
