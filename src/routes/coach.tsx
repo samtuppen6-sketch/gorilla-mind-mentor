@@ -28,6 +28,34 @@ const coachSearchSchema = z.object({
   prefill: z.string().max(2000).optional(),
 });
 
+// Strip basic markdown syntax so the coach UI renders clean headings and text
+// without showing raw `**`, `__`, `#`, or `` ` `` symbols.
+function stripMarkdown(input: string): string {
+  if (!input) return input;
+  return input
+    // fenced code blocks
+    .replace(/```[a-zA-Z0-9]*\n?/g, "")
+    .replace(/```/g, "")
+    // inline code
+    .replace(/`([^`]+)`/g, "$1")
+    // bold/italic markers (**, __, *, _) — keep inner text
+    .replace(/\*\*\*(.+?)\*\*\*/g, "$1")
+    .replace(/___(.+?)___/g, "$1")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/(?<!\w)\*(?!\s)([^*\n]+?)\*(?!\w)/g, "$1")
+    .replace(/(?<!\w)_(?!\s)([^_\n]+?)_(?!\w)/g, "$1")
+    // ATX headings — strip leading #'s and any trailing #'s
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/\s+#{1,6}\s*$/gm, "")
+    // blockquote markers
+    .replace(/^\s{0,3}>\s?/gm, "")
+    // unordered list bullets like "- " or "* " at line start → keep as "• "
+    .replace(/^\s{0,3}[-*+]\s+/gm, "• ")
+    // markdown links [text](url) → text
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
+}
+
 export const Route = createFileRoute("/coach")({
   validateSearch: coachSearchSchema,
   head: () => ({
@@ -449,7 +477,7 @@ function CoachPage() {
                   ) : (
                     <div className="rounded-xl border border-border bg-card p-5">
                       <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Coach</p>
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{stripMarkdown(m.content)}</p>
                     </div>
                   )}
                   {m.guidedPractice && (

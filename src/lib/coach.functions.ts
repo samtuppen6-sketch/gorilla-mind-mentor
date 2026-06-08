@@ -1167,7 +1167,20 @@ function detectRoute(
     };
   }
 
-  if (/\b(breath|breathwork|box breathing|panic|panicky|anxious|anxiety|grounding|stressed|wired|overwhelm|racing thoughts|switch off|activated|unfocused|scattered|distracted|mentally noisy|wind ?down)\b/i.test(message)) {
+  if (/\b(breath|breathwork|breath ?work|breathing|box breathing|panic|panicky|anxious|anxiety|grounding|stressed|wired|overwhelm|racing thoughts|switch off|activated|unfocused|scattered|distracted|mentally noisy|wind ?down)\b/i.test(message)) {
+    // Morning breathwork ask → route to morning activation (Box Breathing),
+    // not the calming default. Only when there is no calming / sleep cue.
+    const calmingCue = /\b(stress|stressed|wired|anxious|anxiety|overwhelm|overwhelmed|panic|panicky|sleep|wind ?down|bedtime|evening|night|can'?t sleep|downregulate|calm down|nervous system|angry)\b/i.test(message);
+    const morningCue = /\bmorning\b/i.test(message) || temporal?.dayPart === "MORNING";
+    const breathworkAsk = /\b(breath ?work|breathing|box breathing|breath)\b/i.test(message);
+    if (breathworkAsk && morningCue && !calmingCue) {
+      return {
+        route: "BREATHWORK_MEDITATION_REQUEST",
+        reason: "Breathwork ask with morning context — morning activation (Box Breathing), not downregulating extended exhale.",
+        query: "box breathing morning activation focus control nervous system 4 4 4 4 nasal",
+        breathworkSubRoute: "FOCUS",
+      };
+    }
     const sub = detectBreathworkSubRoute(message, profile, journal);
     return {
       route: "BREATHWORK",
@@ -1815,7 +1828,7 @@ const PLAN_GUIDED_CARDS: Record<string, GuidedPracticeRecommendation> = {
     id: "box_breathing_5min",
     title: "Box Breathing",
     category: "breathwork",
-    durationMinutes: 5,
+    durationMinutes: 6,
     reason: "Best for morning control and state regulation before phone use.",
     buttonLabel: "Start Box Breathing",
   },
