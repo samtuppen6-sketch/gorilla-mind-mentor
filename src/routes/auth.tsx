@@ -115,7 +115,11 @@ function AuthPage() {
             onClick={() => setMode("email")}
           />
           <button
-            onClick={() => {
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (import.meta.env.DEV) console.log("[demo] Demo mode selected");
               const identity = buildIdentity({
                 userId: "demo_user_sam",
                 firstName: "Sam",
@@ -133,8 +137,16 @@ function AuthPage() {
                 onboardingComplete: true,
                 onboardingCompletedAt: new Date().toISOString(),
               });
+              if (import.meta.env.DEV) console.log("[demo] Demo session created");
               toast.success("Demo Mode active");
-              navigate({ to: "/coach" });
+              if (import.meta.env.DEV) console.log("[demo] Navigating to app");
+              // Hard navigation to ensure fresh route state and no stale
+              // auth-gate redirect loops back to /auth.
+              if (typeof window !== "undefined") {
+                window.location.assign("/coach");
+              } else {
+                navigate({ to: "/coach" });
+              }
             }}
             className="w-full rounded-lg border border-dashed border-gold/60 px-4 py-3 text-sm text-gold hover:bg-gold/5"
           >
