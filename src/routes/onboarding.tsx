@@ -51,7 +51,7 @@ function OnboardingPage() {
   // Auth/onboarding gate: must have identity. If already onboarded, bounce
   // to /coach. Runs post-mount so we don't navigate during render.
   useEffect(() => {
-    const dest = getUserEntryRoute(profile);
+    const dest = getUserEntryRoute(profile, "/onboarding");
     if (dest !== "/onboarding") navigate({ to: dest });
   }, [profile.identityProfile, profile.onboardingComplete, navigate]);
 
