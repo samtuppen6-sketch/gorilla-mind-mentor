@@ -233,6 +233,7 @@ function buildFailureDebug(temporal: TemporalContext, err: unknown): CoachDebug 
     activePlanType: null,
     activePlanLength: null,
     guidedPracticeRecommendation: null,
+    breathworkPrescription: null,
     calorieTargetUsed: null,
     calorieSource: "not_available",
     calorieMissingFields: [],
