@@ -184,12 +184,14 @@ export type AuthProvider = "google" | "apple" | "email" | "local_placeholder";
 
 export type IdentityProfile = {
   userId: string;
+  name?: string;
   firstName: string;
   lastName: string;
   fullName: string;
   email: string;
   phoneNumber: string;
   authProvider: AuthProvider;
+  mode?: "demo";
   onboardingComplete: boolean;
   createdAt: string;
   updatedAt: string;
@@ -307,6 +309,8 @@ export const DEFAULT_JOURNAL: JournalEntry = {
 
 const PROFILE_KEY = "gm.userProfile.v1";
 const JOURNAL_KEY = "gm.latestJournal.v1";
+const DEMO_AUTH_KEY = "gm.demoAuth.v1";
+const DEMO_EMAIL = "demo@gorillamind.local";
 
 const listeners = new Set<() => void>();
 function emit() { listeners.forEach((l) => l()); }
@@ -317,13 +321,75 @@ let profileCacheRaw: string | null = "__init__";
 let journalCache: JournalEntry | null = null;
 let journalCacheRaw: string | null = "__init__";
 
+function hasDemoAuthFlag(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(DEMO_AUTH_KEY) === "true";
+}
+
+function setDemoAuthFlag(active: boolean) {
+  if (typeof window === "undefined") return;
+  if (active) localStorage.setItem(DEMO_AUTH_KEY, "true");
+  else localStorage.removeItem(DEMO_AUTH_KEY);
+}
+
+function isDemoProfileShape(profile: Pick<UserProfile, "identityProfile" | "onboardingComplete">): boolean {
+  const identity = profile.identityProfile;
+  if (!identity) return false;
+  const onboardingComplete = profile.onboardingComplete === true || identity.onboardingComplete === true;
+  return onboardingComplete && (
+    identity.email === DEMO_EMAIL ||
+    identity.authProvider === "local_placeholder" ||
+    identity.mode === "demo"
+  );
+}
+
+export function createDemoProfile(base: UserProfile = DEFAULT_PROFILE): UserProfile {
+  const now = new Date().toISOString();
+  return {
+    ...base,
+    name: "Sam",
+    onboardingComplete: true,
+    onboardingCompletedAt: base.onboardingCompletedAt ?? now,
+    identityProfile: {
+      userId: "demo_user_sam",
+      name: "Sam Demo",
+      firstName: "Sam",
+      lastName: "Demo",
+      fullName: "Sam Demo",
+      email: DEMO_EMAIL,
+      phoneNumber: "",
+      authProvider: "local_placeholder",
+      mode: "demo",
+      onboardingComplete: true,
+      createdAt: base.identityProfile?.createdAt ?? now,
+      updatedAt: now,
+    },
+  };
+}
+
+export function isDemoAuthenticated(profile?: Pick<UserProfile, "identityProfile" | "onboardingComplete">): boolean {
+  return hasDemoAuthFlag() || (!!profile && isDemoProfileShape(profile));
+}
+
+export function activateDemoSession(): UserProfile {
+  const profile = createDemoProfile(getProfile());
+  setProfile(profile);
+  return profile;
+}
+
 export function getProfile(): UserProfile {
   if (typeof window === "undefined") return DEFAULT_PROFILE;
   const raw = localStorage.getItem(PROFILE_KEY);
   if (raw === profileCacheRaw) return profileCache;
   profileCacheRaw = raw;
-  if (!raw) { profileCache = DEFAULT_PROFILE; return profileCache; }
-  try { profileCache = { ...DEFAULT_PROFILE, ...JSON.parse(raw) }; }
+  if (!raw) {
+    profileCache = hasDemoAuthFlag() ? createDemoProfile() : DEFAULT_PROFILE;
+    return profileCache;
+  }
+  try {
+    profileCache = { ...DEFAULT_PROFILE, ...JSON.parse(raw) };
+    if (hasDemoAuthFlag() && !isDemoProfileShape(profileCache)) profileCache = createDemoProfile(profileCache);
+  }
   catch { profileCache = DEFAULT_PROFILE; }
   return profileCache;
 }
@@ -343,6 +409,7 @@ export function setProfile(p: UserProfile) {
   if (typeof window === "undefined") return;
   const serialized = JSON.stringify(p);
   localStorage.setItem(PROFILE_KEY, serialized);
+  setDemoAuthFlag(isDemoProfileShape(p));
   profileCache = p;
   profileCacheRaw = serialized;
   emit();
@@ -381,10 +448,35 @@ export function setJournal(j: JournalEntry | null) {
 // localStorage-backed identity for a Supabase session without changing the
 // callers.
 export type EntryRoute = "/auth" | "/onboarding" | "/coach";
-export function getUserEntryRoute(profile: Pick<UserProfile, "identityProfile" | "onboardingComplete">): EntryRoute {
-  if (!profile.identityProfile) return "/auth";
-  if (!profile.onboardingComplete) return "/onboarding";
-  return "/coach";
+export function getUserEntryRoute(
+  profile: Pick<UserProfile, "identityProfile" | "onboardingComplete">,
+  path?: string,
+): EntryRoute {
+  const identity = profile.identityProfile;
+  const hasIdentityProfile = !!identity;
+  const email = identity?.email ?? null;
+  const onboardingComplete = profile.onboardingComplete === true || identity?.onboardingComplete === true;
+  const demoAuth = isDemoAuthenticated(profile);
+  const decision: EntryRoute = demoAuth
+    ? "/coach"
+    : !hasIdentityProfile
+      ? "/auth"
+      : !onboardingComplete
+        ? "/onboarding"
+        : "/coach";
+
+  if (import.meta.env.DEV && typeof window !== "undefined") {
+    console.log("[auth-guard]", {
+      path: path ?? window.location.pathname,
+      hasIdentityProfile,
+      email,
+      onboardingComplete,
+      demoAuth,
+      decision,
+    });
+  }
+
+  return decision;
 }
 
 // Dev-only reset. Hidden behind the debug-mode toggle in the UI.
@@ -392,6 +484,7 @@ export function clearProfile() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(PROFILE_KEY);
   localStorage.removeItem(JOURNAL_KEY);
+  localStorage.removeItem(DEMO_AUTH_KEY);
   profileCache = DEFAULT_PROFILE;
   profileCacheRaw = null;
   journalCache = null;
