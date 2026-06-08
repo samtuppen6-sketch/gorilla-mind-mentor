@@ -33,6 +33,7 @@ export type AudioAsset = {
 };
 
 import boxBreathingAsset from "@/assets/box-breathing.mp3.asset.json";
+import extendedExhaleAsset from "@/assets/extended-exhale.mp3.asset.json";
 
 export const AUDIO_ASSETS: AudioAsset[] = [
   {
