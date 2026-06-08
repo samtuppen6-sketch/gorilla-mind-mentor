@@ -460,6 +460,7 @@ export type CoachDebug = {
   activePlanType: string | null;
   activePlanLength: string | null;
   guidedPracticeRecommendation: GuidedPracticeRecommendation | null;
+  breathworkPrescription: BreathworkPrescription | null;
   calorieTargetUsed: number | null;
   calorieSource: "profile" | "calculated" | "not_available";
   calorieMissingFields: string[];
