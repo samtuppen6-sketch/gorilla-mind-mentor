@@ -2635,21 +2635,49 @@ export const askCoach = createServerFn({ method: "POST" })
       ? selectGuidedPracticeForPlan(routing.route, temporal.dayPart)
       : null;
 
+    // ---------- Breathwork Prescription Engine ----------
+    const breathworkRoutes = new Set<CoachRoute>([
+      "BREATHWORK", "BREATHWORK_MEDITATION_REQUEST", "SLEEP_WIND_DOWN",
+      "STRESS_RESET", "URGE_RESET", "MISSED_DAY_REPAIR", "MISSED_MORNING",
+      "RECOVERY_STRUCTURE",
+    ]);
+    const explicitBreathworkAsk = detectExplicitBreathworkRequest(data.question);
+    const breathworkMessageCue = /\b(breath ?work|breathing|breath)\b/i.test(data.question);
+    const runBreathworkEngine = !isSafetyCrisis && (
+      !!explicitBreathworkAsk || breathworkRoutes.has(routing.route) || breathworkMessageCue
+    );
+    const breathPrescription: BreathworkPrescription | null = runBreathworkEngine
+      ? prescribeBreathwork(data.question, profile, journal, temporal, progress)
+      : null;
+
     // If a plan card exists, override the generic guidedPractice so the
     // recommended button matches the prescription word-for-word.
-    const effectiveGuidedPractice: GuidedPracticeRec | null = planCard
+    const breathCardFromEngine: GuidedPracticeRecommendation | null = breathPrescription
       ? {
-          id: planCard.id,
-          title: planCard.title,
-          category: planCard.category === "breathwork" ? "Breathwork"
-            : planCard.category === "meditation" ? "Meditation"
-            : planCard.category === "morning_protocol" ? "Meditation"
-            : planCard.category === "sleep" ? "Breathwork"
-            : planCard.category === "cold_water" ? "Cold Exposure"
+          id: breathPrescription.selectedBreathworkProtocol,
+          title: BREATHWORK_PROTOCOL_META[breathPrescription.selectedBreathworkProtocol].title,
+          category: "breathwork",
+          durationMinutes: BREATHWORK_PROTOCOL_META[breathPrescription.selectedBreathworkProtocol].durationMinutes,
+          reason: breathPrescription.reason,
+          buttonLabel: BREATHWORK_PROTOCOL_META[breathPrescription.selectedBreathworkProtocol].buttonLabel,
+        }
+      : null;
+
+    // Resolution priority: breathwork engine > plan card > generic guidedPractice
+    const resolvedCard = breathCardFromEngine ?? planCard;
+    const effectiveGuidedPractice: GuidedPracticeRec | null = resolvedCard
+      ? {
+          id: resolvedCard.id,
+          title: resolvedCard.title,
+          category: resolvedCard.category === "breathwork" ? "Breathwork"
+            : resolvedCard.category === "meditation" ? "Meditation"
+            : resolvedCard.category === "morning_protocol" ? "Meditation"
+            : resolvedCard.category === "sleep" ? "Breathwork"
+            : resolvedCard.category === "cold_water" ? "Cold Exposure"
             : "Mobility",
-          durationMinutes: planCard.durationMinutes,
-          reason: planCard.reason,
-          buttonLabel: planCard.buttonLabel,
+          durationMinutes: resolvedCard.durationMinutes,
+          reason: resolvedCard.reason,
+          buttonLabel: resolvedCard.buttonLabel,
         }
       : guidedPractice;
 
