@@ -50,14 +50,14 @@ export const AUDIO_ASSETS: AudioAsset[] = [
   },
   {
     id: "extended_exhale_3min_audio",
-    title: "Extended Exhale — 3 Minutes",
+    title: "Extended Exhale — 4 Minutes",
     category: "breathwork",
-    durationMinutes: 3,
-    audioUrl: "/audio/extended-exhale-3min.mp3",
+    durationMinutes: 4,
+    audioUrl: extendedExhaleAsset.url,
     description:
-      "Nasal inhale 4, slow exhale 6–8. Downshift the nervous system before sleep.",
+      "Nasal inhale 4, slow exhale 6. 15 rounds. Downshift the nervous system before sleep.",
     voiceStyle: "calm, controlled, masculine",
-    status: "placeholder",
+    status: "ready",
     linkedPracticeIds: ["extended_exhale_3min"],
   },
   {
