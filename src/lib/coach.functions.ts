@@ -1891,6 +1891,291 @@ function selectGuidedPracticeForPlan(route: CoachRoute, dayPart: DayPart): Guide
   }
 }
 
+// ===========================================================================
+// Breathwork Prescription Engine
+// ===========================================================================
+
+export type BreathworkState =
+  | "morning_energised" | "morning_flat" | "morning_anxious" | "morning_scattered"
+  | "focus_reset" | "post_walk_lock_in" | "low_motivation" | "low_energy"
+  | "pre_training_activation" | "post_training_downshift" | "anxious" | "wired"
+  | "angry" | "overwhelmed" | "panic_like" | "evening_shutdown" | "sleep_wind_down"
+  | "urge_or_compulsion" | "addiction_drift" | "phone_scroll_loop"
+  | "missed_day_reentry" | "identity_reset" | "recovery" | "unknown";
+
+export type BreathworkOutcome =
+  | "activate" | "energise" | "focus" | "calm" | "downshift" | "sleep"
+  | "interrupt_urge" | "reset_nervous_system" | "lock_in_state_shift"
+  | "prepare_for_training" | "recover" | "regain_control";
+
+export type BreathworkProtocolId =
+  | "box_breathing_5min" | "energising_breath_3min" | "extended_exhale_3min"
+  | "urge_reset_3min" | "identity_reset_breath_5min" | "recovery_breath_5min";
+
+const BREATHWORK_PROTOCOL_META: Record<BreathworkProtocolId, { title: string; durationMinutes: number; buttonLabel: string; payoff: string }> = {
+  box_breathing_5min: {
+    title: "Box Breathing", durationMinutes: 6, buttonLabel: "Start Box Breathing",
+    payoff: "Resets your nervous system, clears your head, and gives your mind a clean signal.",
+  },
+  energising_breath_3min: {
+    title: "Energising Breath", durationMinutes: 3, buttonLabel: "Start Energising Breath",
+    payoff: "Wakes the system up, sharpens your body, and turns energy into action.",
+  },
+  extended_exhale_3min: {
+    title: "Extended Exhale Breathing", durationMinutes: 3, buttonLabel: "Start Extended Exhale",
+    payoff: "Brings the system down, slows the stress response, and prepares you to switch off.",
+  },
+  urge_reset_3min: {
+    title: "Urge Reset Breath", durationMinutes: 3, buttonLabel: "Start Urge Reset Breath",
+    payoff: "Creates space between urge and action, breaks the loop, and gives control back.",
+  },
+  identity_reset_breath_5min: {
+    title: "Identity Reset Breath", durationMinutes: 5, buttonLabel: "Start Identity Reset Breath",
+    payoff: "Stops the shame loop and re-anchors the standard.",
+  },
+  recovery_breath_5min: {
+    title: "Recovery Breath", durationMinutes: 5, buttonLabel: "Start Recovery Breath",
+    payoff: "Signals safety, lowers intensity, and helps the body recover.",
+  },
+};
+
+export type BreathworkPrescription = {
+  breathworkState: BreathworkState;
+  desiredOutcome: BreathworkOutcome;
+  explicitBreathworkRequest: string | null;
+  selectedBreathworkProtocol: BreathworkProtocolId;
+  reason: string;
+  payoff: string;
+  timeOfDayInfluence: string;
+  completionStateInfluence: string;
+  journalProfileInfluence: string;
+};
+
+function detectExplicitBreathworkRequest(message: string): { id: BreathworkProtocolId; label: string } | null {
+  const m = message.toLowerCase();
+  if (/\b(box breathing|box breath|4[\s-]?4[\s-]?4[\s-]?4|square breathing)\b/.test(m)) {
+    return { id: "box_breathing_5min", label: "box_breathing" };
+  }
+  if (/\b(energising breath|energizing breath|activation breath)\b/.test(m)) {
+    return { id: "energising_breath_3min", label: "energising_breath" };
+  }
+  if (/\b(extended exhale|long exhale|4[\s-]?6 breathing|4[\s-]?7[\s-]?8|wind ?down breath)\b/.test(m)) {
+    return { id: "extended_exhale_3min", label: "extended_exhale" };
+  }
+  if (/\b(urge reset|interrupt breath)\b/.test(m)) {
+    return { id: "urge_reset_3min", label: "urge_reset" };
+  }
+  if (/\b(identity reset breath)\b/.test(m)) {
+    return { id: "identity_reset_breath_5min", label: "identity_reset_breath" };
+  }
+  if (/\b(recovery breath)\b/.test(m)) {
+    return { id: "recovery_breath_5min", label: "recovery_breath" };
+  }
+  return null;
+}
+
+export function prescribeBreathwork(
+  message: string,
+  profile: Profile | null,
+  journal: Journal | null,
+  temporal: TemporalContext,
+  progress: PracticeProgressSnapshot | null,
+): BreathworkPrescription {
+  const m = (message ?? "").toLowerCase();
+  const dayPart = temporal.dayPart;
+
+  // 1. Safety / medical risk → calm extended exhale
+  const medicalRisk = /\b(panic|panicky|dizzy|dizziness|faint|chest pain|pregnan|seizure|heart|cardiac|trauma|unsafe)\b/i.test(message);
+
+  // 2. Explicit named request — give them that protocol unless unsafe
+  const explicit = detectExplicitBreathworkRequest(message);
+
+  // 3. Signals
+  const energised = /\b(energis(ed|ing)|energiz(ed|ing)|attack the day|slept (great|well|good)|feel(ing)? (great|strong|amazing)|ready to go|fired up)\b/i.test(message);
+  const flat = /\b(flat|sluggish|foggy|brain fog|tired|low energy|drained|heavy)\b/i.test(message);
+  const scattered = /\b(scattered|unfocused|distracted|can'?t focus|mentally noisy|all over)\b/i.test(message);
+  const anxious = /\b(anxious|anxiety|nervous|on edge|panicky)\b/i.test(message);
+  const wired = /\b(wired|can'?t switch off|cannot switch off|racing thoughts|tense|overstimulated)\b/i.test(message);
+  const angry = /\b(angry|furious|rage|pissed|annoyed)\b/i.test(message);
+  const overwhelmed = /\b(overwhelm(ed)?|too much|drowning)\b/i.test(message);
+  const postWalk = /\b(done my walk|did my walk|after (my )?walk|finished (my )?walk|just walked|post[- ]walk|been for a walk)\b/i.test(message);
+  const preTraining = /\b(before (training|workout|gym|session)|pre[- ]training|about to train|going to (the )?gym|warm[- ]?up)\b/i.test(message);
+  const postTraining = /\b(after (training|workout|gym|session)|post[- ]training|just trained|finished training)\b/i.test(message);
+  const urge = /\b(urge|craving|porn|gambl|relapse|binge|compulsi|substance|drink(ing)?|drugs?)\b/i.test(message);
+  const scrolling = /\b(scroll(ing)?|phone loop|tiktok|instagram|reels|slipping)\b/i.test(message);
+  const missed = /\b(missed (a )?day|missed two days|fell off|lost it|haven'?t (done|trained))\b/i.test(message);
+  const shame = /\b(shame|hate myself|loser|pathetic|disgust(ed|ing))\b/i.test(message);
+  const sleepCue = /\b(sleep|bedtime|before bed|wind ?down|switch off|night|tonight)\b/i.test(message);
+  const lateNight = dayPart === "LATE_NIGHT" || (() => {
+    const h = parseInt((temporal.localTime ?? "00:00").split(":")[0] ?? "0", 10);
+    return h >= 22 || h < 5;
+  })();
+  const morningCue = dayPart === "MORNING" || /\b(this morning|morning|woke up)\b/i.test(message);
+  const eveningCue = dayPart === "EVENING" || lateNight || /\b(evening|tonight)\b/i.test(message);
+
+  // Journal/profile influences
+  const poorSleep = (journal && typeof journal.sleep === "number" && journal.sleep < 6) || /\b(slept (badly|poorly)|no sleep|bad sleep|barely slept)\b/i.test(message);
+  const profileX = (profile as unknown as Record<string, unknown> | null) ?? null;
+  const compulsion = Array.isArray(profileX?.compulsionTypes) && (profileX!.compulsionTypes as unknown[]).length > 0;
+  const relapseRisk = typeof profileX?.relapseRisk === "string" ? (profileX!.relapseRisk as string) : null;
+  const breathworkDoneToday = !!progress?.breathworkCompleted;
+
+  let state: BreathworkState = "unknown";
+  let outcome: BreathworkOutcome = "reset_nervous_system";
+  let id: BreathworkProtocolId = "box_breathing_5min";
+  let reason = "Default control protocol.";
+
+  // 1. SAFETY override
+  if (medicalRisk) {
+    state = "panic_like";
+    outcome = "calm";
+    id = "extended_exhale_3min";
+    reason = "Safety/medical signal — use calm extended exhale, no breath holds.";
+  }
+  // 2. EXPLICIT request override (only if safe)
+  else if (explicit) {
+    state = "focus_reset";
+    outcome = explicit.id === "energising_breath_3min" ? "energise"
+      : explicit.id === "extended_exhale_3min" ? "downshift"
+      : explicit.id === "urge_reset_3min" ? "interrupt_urge"
+      : explicit.id === "identity_reset_breath_5min" ? "regain_control"
+      : explicit.id === "recovery_breath_5min" ? "recover"
+      : "focus";
+    id = explicit.id;
+    reason = `User explicitly asked for ${BREATHWORK_PROTOCOL_META[id].title}.`;
+  }
+  // 3. URGE / addiction drift — high priority
+  else if (urge || (scrolling && (compulsion || relapseRisk === "high" || relapseRisk === "active"))) {
+    state = urge ? "urge_or_compulsion" : "addiction_drift";
+    outcome = "interrupt_urge";
+    id = "urge_reset_3min";
+    reason = "Urge / compulsion / scroll-loop signal — break the loop and create space before action.";
+  }
+  else if (scrolling) {
+    state = "phone_scroll_loop";
+    outcome = "interrupt_urge";
+    id = "urge_reset_3min";
+    reason = "Phone scroll-loop signal — short interrupt protocol breaks the loop without shame.";
+  }
+  // 4. MISSED day re-entry / shame
+  else if (missed || shame) {
+    state = missed ? "missed_day_reentry" : "identity_reset";
+    outcome = "regain_control";
+    id = "identity_reset_breath_5min";
+    reason = "Missed-day / shame signal — identity reset breath re-anchors the standard, no punishment.";
+  }
+  // 5. Pre/post training
+  else if (preTraining) {
+    state = "pre_training_activation";
+    outcome = "prepare_for_training";
+    id = poorSleep ? "box_breathing_5min" : "energising_breath_3min";
+    reason = poorSleep
+      ? "Pre-training but poor sleep — control protocol, not energising."
+      : "Pre-training activation — sharpen the system before the session.";
+  }
+  else if (postTraining) {
+    state = "post_training_downshift";
+    outcome = "recover";
+    id = "recovery_breath_5min";
+    reason = "Post-training — signal safety, lower intensity, recover the system.";
+  }
+  // 6. Late night / sleep cue
+  else if (lateNight || (eveningCue && sleepCue)) {
+    state = "sleep_wind_down";
+    outcome = "sleep";
+    id = "extended_exhale_3min";
+    reason = "Late / sleep window — downshift, protect sleep.";
+  }
+  // 7. Evening + wired/anxious/angry
+  else if (eveningCue && (wired || anxious || angry || overwhelmed)) {
+    state = wired ? "wired" : anxious ? "anxious" : angry ? "angry" : "overwhelmed";
+    outcome = "downshift";
+    id = "extended_exhale_3min";
+    reason = "Evening + activated state — extended exhale brings the system down.";
+  }
+  // 8. Post-walk lock-in
+  else if (postWalk) {
+    state = "post_walk_lock_in";
+    outcome = "lock_in_state_shift";
+    id = "box_breathing_5min";
+    reason = "Post-walk — lock in the state shift before drift returns.";
+  }
+  // 9. Morning logic
+  else if (morningCue) {
+    if (anxious || wired) {
+      state = "morning_anxious";
+      outcome = "calm";
+      id = "extended_exhale_3min";
+      reason = "Morning anxious — regulate without killing momentum.";
+    } else if (scattered) {
+      state = "morning_scattered";
+      outcome = "focus";
+      id = "box_breathing_5min";
+      reason = "Morning scattered — Box Breathing controls the mind before the day takes over.";
+    } else if (flat) {
+      state = "morning_flat";
+      outcome = "activate";
+      id = poorSleep ? "box_breathing_5min" : "energising_breath_3min";
+      reason = poorSleep
+        ? "Morning flat + poor sleep — gentle control protocol, not intense activation."
+        : "Morning flat — wake the body and sharpen the system.";
+    } else if (energised) {
+      state = "morning_energised";
+      outcome = "energise";
+      id = "energising_breath_3min";
+      reason = "Morning energised — build drive, turn energy into action. Do not downshift.";
+    } else {
+      state = "morning_scattered";
+      outcome = "focus";
+      id = "box_breathing_5min";
+      reason = "Morning default — control protocol before phone or caffeine.";
+    }
+  }
+  // 10. Activated states (any time)
+  else if (anxious || wired || angry || overwhelmed) {
+    state = anxious ? "anxious" : wired ? "wired" : angry ? "angry" : "overwhelmed";
+    outcome = "downshift";
+    id = "extended_exhale_3min";
+    reason = "Activated nervous system — extended exhale brings it back to baseline.";
+  }
+  else if (scattered) {
+    state = "focus_reset";
+    outcome = "focus";
+    id = "box_breathing_5min";
+    reason = "Scattered / distracted — Box Breathing for focus.";
+  }
+  else if (flat) {
+    state = "low_energy";
+    outcome = "activate";
+    id = poorSleep ? "box_breathing_5min" : "energising_breath_3min";
+    reason = poorSleep ? "Low energy + poor sleep — gentle control." : "Low energy — short activation.";
+  }
+  else {
+    state = "focus_reset";
+    outcome = "focus";
+    id = "box_breathing_5min";
+    reason = "No specific signal — Box Breathing as the safe daily control protocol.";
+  }
+
+  const meta = BREATHWORK_PROTOCOL_META[id];
+  const timeOfDayInfluence = `dayPart=${dayPart}; localTime=${temporal.localTime ?? "?"}; lateNight=${lateNight}`;
+  const completionStateInfluence = `breathworkCompletedToday=${breathworkDoneToday}`;
+  const journalProfileInfluence = `poorSleep=${poorSleep}; compulsion=${compulsion}; relapseRisk=${relapseRisk ?? "none"}`;
+
+  return {
+    breathworkState: state,
+    desiredOutcome: outcome,
+    explicitBreathworkRequest: explicit?.label ?? null,
+    selectedBreathworkProtocol: id,
+    reason,
+    payoff: meta.payoff,
+    timeOfDayInfluence,
+    completionStateInfluence,
+    journalProfileInfluence,
+  };
+}
+
+
 type CalorieResolution = ReturnType<typeof resolveCalorieTarget>;
 
 function buildNutritionBlock(calorie: CalorieResolution): string {
