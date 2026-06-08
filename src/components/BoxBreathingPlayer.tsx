@@ -222,7 +222,7 @@ export function BoxBreathingPlayer({ asset, started, onEnded, onClose }: Props) 
           style={{
             transform: `scale(${scale})`,
             background:
-              "radial-gradient(circle at 50% 45%, hsl(var(--gold) / 0.9), hsl(var(--gold) / 0.15) 60%, transparent 75%)",
+              "radial-gradient(circle at 50% 45%, color-mix(in oklab, var(--gold) 90%, transparent), color-mix(in oklab, var(--gold) 15%, transparent) 60%, transparent 75%)",
             opacity: glow,
             filter: "blur(2px)",
           }}
