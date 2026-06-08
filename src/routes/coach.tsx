@@ -581,7 +581,7 @@ function CoachPage() {
                 className="w-full h-12 px-4 flex items-center justify-between text-left text-sm text-muted-foreground"
               >
                 <span className="truncate">
-                  {reply.trim() ? reply : "Reply to the coach..."}
+                  {reply.trim() ? reply : "Tell the coach what happened..."}
                 </span>
                 <Send className="w-4 h-4 text-gold shrink-0" />
               </button>
