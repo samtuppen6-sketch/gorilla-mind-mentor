@@ -223,7 +223,7 @@ export function BoxBreathingPlayer({ asset, started, onEnded, onClose }: Props) 
       {/* Orb */}
       <div className="relative mx-auto my-4 flex items-center justify-center h-64 w-64">
         <div
-          className="absolute inset-0 rounded-full transition-transform duration-1000 ease-in-out"
+          className="absolute inset-0 rounded-full"
           style={{
             transform: `scale(${scale})`,
             background:
@@ -233,7 +233,7 @@ export function BoxBreathingPlayer({ asset, started, onEnded, onClose }: Props) 
           }}
         />
         <div
-          className="absolute rounded-full border border-gold/40 transition-transform duration-1000 ease-in-out"
+          className="absolute rounded-full border border-gold/40"
           style={{
             width: "16rem",
             height: "16rem",
