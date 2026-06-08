@@ -63,6 +63,18 @@ export const AUDIO_ASSETS: AudioAsset[] = [
     linkedPracticeIds: ["extended_exhale_3min"],
   },
   {
+    id: "energising_breath_3min_audio",
+    title: "Energising Breath — 4 Minutes",
+    category: "breathwork",
+    durationMinutes: 4,
+    audioUrl: energisingBreathAsset.url,
+    description:
+      "Sharp nasal inhale 3, controlled exhale 3. 20 rounds. Wake the system up and turn energy into action.",
+    voiceStyle: "calm, controlled, masculine",
+    status: "ready",
+    linkedPracticeIds: ["energising_breath_3min"],
+  },
+  {
     id: "morning_identity_reset_5min_audio",
     title: "Morning Identity Reset — 5 Minutes",
     category: "identity",
