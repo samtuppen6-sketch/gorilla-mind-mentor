@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import { GuidedAudioPlayer } from "@/components/GuidedAudioPlayer";
+import { BoxBreathingPlayer } from "@/components/BoxBreathingPlayer";
 import { getPracticeById } from "@/lib/practices";
 import {
   getAudioAssetById,
