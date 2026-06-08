@@ -6,6 +6,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { GuidedAudioPlayer } from "@/components/GuidedAudioPlayer";
 import { BoxBreathingPlayer } from "@/components/BoxBreathingPlayer";
 import { ExtendedExhalePlayer } from "@/components/ExtendedExhalePlayer";
+import { UrgeResetPlayer } from "@/components/UrgeResetPlayer";
 import { getPracticeById } from "@/lib/practices";
 import {
   getAudioAssetById,
@@ -111,6 +112,8 @@ function PracticePlayerPage() {
             <BoxBreathingPlayer asset={audioAsset} started={started} />
           ) : practice.id === "extended_exhale_3min" ? (
             <ExtendedExhalePlayer asset={audioAsset} started={started} />
+          ) : practice.id === "urge_reset_3min" ? (
+            <UrgeResetPlayer asset={audioAsset} started={started} />
           ) : (
             <GuidedAudioPlayer asset={audioAsset} started={started} />
           )
