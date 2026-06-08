@@ -1828,7 +1828,7 @@ const PLAN_GUIDED_CARDS: Record<string, GuidedPracticeRecommendation> = {
     id: "box_breathing_5min",
     title: "Box Breathing",
     category: "breathwork",
-    durationMinutes: 5,
+    durationMinutes: 6,
     reason: "Best for morning control and state regulation before phone use.",
     buttonLabel: "Start Box Breathing",
   },
