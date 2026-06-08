@@ -125,8 +125,13 @@ export function BoxBreathingPlayer({ asset, started, onEnded, onClose }: Props) 
 
   if (phase === "PREPARE") {
     const p = (current % 6) / 6;
-    scale = 0.6 + Math.sin(p * Math.PI * 2) * 0.04;
-    glow = 0.4;
+    const base = 0.6 + Math.sin(p * Math.PI * 2) * 0.04;
+    // Smoothly settle to SCALE_MIN in the final 2s before INHALE starts,
+    // so the transition into the first inhale has no pop.
+    const tToStart = BREATHING_START - current;
+    const settle = Math.max(0, Math.min(1, 1 - tToStart / 2));
+    scale = lerp(base, SCALE_MIN, easeInOutCubic(settle));
+    glow = lerp(0.4, 0.4, settle);
   } else if (phase === "OUTRO") {
     scale = 0.7;
     glow = 0.5;
