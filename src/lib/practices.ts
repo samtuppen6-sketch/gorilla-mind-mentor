@@ -460,7 +460,7 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     route: "BREATHWORK",
     routes: ["BREATHWORK", "MORNING_PROTOCOL", "FULL_REBUILD_PLAN", "MORNING_PROTOCOL_REQUEST"],
     subRoute: "MORNING_ACTIVATION",
-    durationMinutes: 5,
+    durationMinutes: 6,
     intensity: "low",
     disciplinePoints: 30,
     dailyActionKey: "breathworkCompleted",
