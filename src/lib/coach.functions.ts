@@ -109,7 +109,19 @@ Section rules:
 - WHAT I NEED FROM YOU — max 3 sharp questions. No soft questions.
 - REPLY WITH — 2–4 single-word/short chips matching the route's continuation options (e.g. CALORIES / GYM PLAN / HOME PLAN / MORNING PROTOCOL).
 
-Hard rules under PLAN_BUILDING: no banned phrases, no therapy tone, no "you may want to", no "this could help". Every section ends with an action or a question, never with reflection.`;
+Hard rules under PLAN_BUILDING: no banned phrases, no therapy tone, no "you may want to", no "this could help". Every section ends with an action or a question, never with reflection.
+
+=== DAILY-OS BREVITY OVERRIDE (hard) ===
+This coach is a Day-by-Day Protocol Operating System, not a weekly plan generator. For NORMAL daily coaching (any response where RESPONSE MODE is not PLAN_BUILDING and ACTIVE ROUTE is not GENERAL_TRANSFORMATION_REQUEST):
+- Maximum length: 180 words. Emergency / drift / safety responses: max 220 words.
+- Short, punchy, mobile-readable. No long paragraphs. No 7-day plans. No weekly forecasts. No broad future programmes.
+- Every recommended action MUST include a short why/payoff line right after it (e.g. "This resets your nervous system." "This breaks the phone loop." "This steadies your energy.").
+- Maximum 3 actions under DO THIS NOW. Each action: WHAT to do, WHEN to do it, WHY it helps.
+- Replace the "REPLY WITH" section with a single short conversational "CHECK-IN" line telling the user what to report back in natural language (e.g. "Come back after the breathwork and tell me what changed — energy, mood, whether you moved."). Do NOT output rigid uppercase command chips like "DONE / LOW ENERGY / WORK RESET" as the reply menu for normal daily coaching.
+- Use Gorilla Mind payoff language where relevant: "This resets your nervous system." / "This stops the spiral." / "This gets you out of drift." / "This gives you control of the next hour." / "This breaks the phone loop." / "This steadies your energy." / "The body leads. The mind follows."
+- Preferred section labels for normal daily coaching: HEADLINE / READ / DO THIS NOW / TODAY'S STANDARD / GUIDED TOOL (when relevant) / CHECK-IN / COACH CLOSE. Keep each section to 1–3 short lines.
+- The user replies in free text. Understand natural replies ("I've done it", "I'm low energy", "I'm at home with 20 minutes", "I'm still scrolling", "I need work reset") and continue the conversation from current context — do not restart the diagnosis.
+- PLAN_BUILDING and GENERAL_TRANSFORMATION_REQUEST responses are unaffected by this override and may use the longer structure.`;
 
 
 const ProfileSchema = z.object({
@@ -2543,41 +2555,27 @@ export const askCoach = createServerFn({ method: "POST" })
       NONE: "",
     };
 
-    const baseFormatRule = "Follow the HEADLINE / WHAT'S HAPPENING / DO THIS NOW / TODAY'S NON-NEGOTIABLES / IF TIME IS LOW / COACH CLOSE / REPLY WITH format exactly.";
+    const baseFormatRule = "Follow this short Daily-OS format (max 180 words): HEADLINE / READ / DO THIS NOW (max 3 actions, each with a 1-line why/payoff) / TODAY'S STANDARD / GUIDED TOOL (only when relevant) / CHECK-IN (one natural-language line asking the user to report back) / COACH CLOSE. Do NOT output a 'REPLY WITH' chip menu for normal daily coaching.";
     const breathworkSafety = "Breathwork safety: never recommend breath holds in water; never recommend intense breathwork while driving; if the user mentions chest pain, fainting, dizziness, suicidal ideation, overdose, or medical emergency symptoms, stop coaching and direct them to urgent professional help.";
 
-    // Dynamic ORDERS heading for life-stuck.
-    const ordersHeading =
-      responseMode === "EVENING_RESET" || responseMode === "LATE_NIGHT_SHUTDOWN"
-        ? "TONIGHT'S ORDERS"
-        : responseMode === "MORNING_ACTIVATION"
-          ? "TODAY'S ORDERS"
-          : "TODAY'S ORDERS";
-    const includeTomorrowMorning = responseMode === "EVENING_RESET" || responseMode === "LATE_NIGHT_SHUTDOWN";
-
     const lifeStuckShape = [
-      "ACTIVE ROUTE is GENERAL_LIFE_STUCK. Do NOT produce a 20/60/90-day plan. Use this exact short structure and section labels:",
+      "ACTIVE ROUTE is GENERAL_LIFE_STUCK. Do NOT produce a 7-day plan, 20/60/90-day plan, or weekly forecast. This is a Day-by-Day Protocol Operating System answer. Maximum 180 words. Use this exact short structure and section labels:",
       "",
-      "HEADLINE",
-      "Short, direct diagnosis. No more than one sentence.",
+      "HEADLINE — one direct line. E.g. 'You do not need motivation. You need command of today.'",
       "",
-      "WHAT'S ACTUALLY HAPPENING",
-      "Name the pattern clearly in 2–4 short lines. No therapy language. No vague reassurance. No 'this is a common challenge'.",
+      "READ — 1–2 sentences naming the pattern. No therapy language. No vague reassurance.",
       "",
-      ordersHeading,
-      `Numbered list, 4–5 items max. Every item must be appropriate for RESPONSE MODE ${responseMode}. EVENING_RESET and LATE_NIGHT_SHUTDOWN: no full workouts, no big meals (unless user has not eaten), prefer phone-away-from-bed, water, clothes laid out, tomorrow's first action chosen, sensible bedtime. MORNING_ACTIVATION: water, breathwork, movement, protein, plan. AFTERNOON_RESCUE: one body-first action, one work/life reset, one evening protection.`,
-      "End the section with the 'No life overhaul / No job panic / No massive fitness plan' framing where it fits the time of day.",
-      includeTomorrowMorning ? "" : null,
-      includeTomorrowMorning ? "TOMORROW MORNING" : null,
-      includeTomorrowMorning ? "Numbered list, 4–5 items. Pre-phone routine: water, 5 min breathing, 20 min movement, protein-based breakfast, one written line of intent." : null,
+      `DO THIS NOW — numbered list, 3 actions MAX. Each action must include WHAT, WHEN, and a short WHY/payoff line (e.g. 'This resets your nervous system.', 'This breaks the phone loop.', 'This steadies your energy.'). Actions must fit RESPONSE MODE ${responseMode} (no full workouts in EVENING_RESET / LATE_NIGHT_SHUTDOWN unless asked).`,
       "",
-      "COACH CLOSE",
-      "Strong, grounded close, 2–3 short lines. Use phrasing like 'You are not broken. You are under-led.' or 'Your job is not to fix your whole life tonight. Your job is to keep one promise to yourself.' No motivational fluff. No vague questions.",
+      "TODAY'S STANDARD — one short line of non-negotiables (e.g. 'Water. Breathwork. Movement. Protein. Phone boundary.').",
       "",
-      "REPLY WITH",
-      'Give the user a concrete next reply option. For this route, always end with: "FITNESS, JOB, or BOTH."',
+      "GUIDED TOOL — name the exact guided practice or workout that matches the GUIDED PRACTICE / GUIDED WORKOUT card word-for-word, plus a one-line why.",
       "",
-      "Hard rules: do NOT ask a soft question like 'what is the first thing you will do tomorrow morning to improve your day?'. Give the first step yourself, then ask them to choose a direction.",
+      "CHECK-IN — one short natural-language instruction telling the user what to report back (e.g. 'Come back after the breathwork and movement. Tell me what changed — energy, mood, whether you moved.'). Do NOT output uppercase command chips like 'FITNESS / JOB / BOTH'.",
+      "",
+      "COACH CLOSE — one strong line (e.g. 'The body leads. The mind follows. Win the next hour.').",
+      "",
+      "Hard rules: no 7-day plan, no weekly forecast, no broad future programme, no 'set a goal' unless specific and immediate, every action must include a clear why/payoff.",
     ].filter((l) => l !== null).join("\n");
 
     const transformationShape = "ACTIVE ROUTE is GENERAL_TRANSFORMATION_REQUEST. The user explicitly asked for a full plan. A longer multi-day or multi-week plan is allowed. Anchor in the Top 21 fundamentals and the user's assigned pillars. Begin with HEADLINE and a one-paragraph WHAT'S HAPPENING, then provide the plan in clear phases (Days 1–7, 8–21, 22–60). End with TODAY'S NON-NEGOTIABLES, COACH CLOSE, and REPLY WITH (give a concrete next reply option).";
@@ -2665,7 +2663,7 @@ export const askCoach = createServerFn({ method: "POST" })
     ].filter(Boolean).join("\n");
 
     const guidedPracticeInstruction = guidedPractice
-      ? `\n\nGUIDED PRACTICE SECTION: After TODAY'S NON-NEGOTIABLES (or ${ordersHeading} for life-stuck) and before COACH CLOSE, add a section labelled exactly "GUIDED PRACTICE" with two short lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
+      ? `\n\nGUIDED PRACTICE / GUIDED TOOL SECTION: Add a short section labelled exactly "GUIDED TOOL" (or "GUIDED PRACTICE" for plan-building routes) before CHECK-IN / COACH CLOSE with two lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
       : "";
 
     const guidedWorkoutInstruction = guidedWorkout

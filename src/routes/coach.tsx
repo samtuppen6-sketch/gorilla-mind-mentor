@@ -71,7 +71,13 @@ export const Route = createFileRoute("/coach")({
   ),
 });
 
-const SEED = "I hate my job, I feel stuck, I'm not motivated but want to get fit. What should I do?";
+const SEED = "";
+const FREE_TEXT_EXAMPLES = [
+  "I've done the breathwork.",
+  "I'm low energy.",
+  "I'm at home with 20 minutes.",
+  "I need help with work.",
+];
 
 type ErrorKind =
   | "offline"
@@ -430,7 +436,7 @@ function CoachPage() {
             <textarea
               value={seed}
               onChange={(e) => setSeed(e.target.value)}
-              placeholder="Ask the Coach…"
+              placeholder="Tell the coach what's going on..."
               rows={4}
               className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
             />
@@ -442,6 +448,19 @@ function CoachPage() {
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               {loading ? "Searching the knowledge base…" : "Ask the Coach"}
             </button>
+            <div className="mt-3 space-y-1">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Try</p>
+              {FREE_TEXT_EXAMPLES.map((ex) => (
+                <button
+                  key={ex}
+                  type="button"
+                  onClick={() => setSeed(ex)}
+                  className="block w-full text-left text-xs italic text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  "{ex}"
+                </button>
+              ))}
+            </div>
           </form>
         )}
 
@@ -562,7 +581,7 @@ function CoachPage() {
                 className="w-full h-12 px-4 flex items-center justify-between text-left text-sm text-muted-foreground"
               >
                 <span className="truncate">
-                  {reply.trim() ? reply : "Reply to the coach..."}
+                  {reply.trim() ? reply : "Tell the coach what happened..."}
                 </span>
                 <Send className="w-4 h-4 text-gold shrink-0" />
               </button>
@@ -580,18 +599,24 @@ function CoachPage() {
                   </button>
                 </div>
                 {lastAssistant && lastAssistant.quickReplies.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {lastAssistant.quickReplies.map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        disabled={loading}
-                        onClick={() => send(q)}
-                        className="text-[11px] uppercase tracking-[0.15em] rounded-full border border-gold/50 px-3 py-1.5 text-gold hover:bg-gold/10 disabled:opacity-50 transition-colors"
-                      >
-                        {q}
-                      </button>
-                    ))}
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Try</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {lastAssistant.quickReplies.map((q) => (
+                        <button
+                          key={q}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => {
+                            setReply(q);
+                            setTimeout(() => textareaRef.current?.focus(), 0);
+                          }}
+                          className="text-[11px] italic rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:text-foreground hover:border-gold/40 disabled:opacity-50 transition-colors"
+                        >
+                          {q.toLowerCase()}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 <form
@@ -602,7 +627,7 @@ function CoachPage() {
                     ref={textareaRef}
                     value={reply}
                     onChange={(e) => setReply(e.target.value)}
-                    placeholder="Reply to the coach..."
+                    placeholder="Tell the coach what happened..."
                     rows={3}
                     className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
                     onKeyDown={(e) => {

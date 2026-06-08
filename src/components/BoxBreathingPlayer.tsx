@@ -112,39 +112,44 @@ export function BoxBreathingPlayer({ asset, started, onEnded, onClose }: Props) 
   const pct = duration > 0 ? Math.min(100, (current / duration) * 100) : 0;
   const remaining = Math.max(0, duration - current);
 
-  // Orb scale: inhale grows 0.55 -> 1, exhale shrinks 1 -> 0.55, hold stays.
-  let scale = 0.55;
+  // Compute orb scale from current audio time as the single source of truth.
+  // Smooth easing on inhale/exhale, hold stays still — no transitions, no pops.
+  const SCALE_MIN = 0.75;
+  const SCALE_MAX = 1.25;
+  const easeInOutCubic = (x: number) =>
+    x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+  let scale = SCALE_MIN;
   let glow = 0.4;
-  if (phase === "INHALE") {
-    const inRound = (current - BREATHING_START) % ROUND_LENGTH;
-    const inPhase = inRound % PHASE_LENGTH;
-    scale = 0.55 + (inPhase / PHASE_LENGTH) * 0.45;
-    glow = 0.4 + (inPhase / PHASE_LENGTH) * 0.6;
-  } else if (phase === "EXHALE") {
-    const inRound = (current - BREATHING_START) % ROUND_LENGTH;
-    const inPhase = inRound % PHASE_LENGTH;
-    scale = 1 - (inPhase / PHASE_LENGTH) * 0.45;
-    glow = 1 - (inPhase / PHASE_LENGTH) * 0.6;
-  } else if (phase === "HOLD") {
-    // Stay where we are. Determine which hold from phaseIndex.
-    const elapsed = current - BREATHING_START;
-    const inRound = elapsed - Math.floor(elapsed / ROUND_LENGTH) * ROUND_LENGTH;
-    const phaseIndex = Math.floor(inRound / PHASE_LENGTH);
-    if (phaseIndex === 1) {
-      scale = 1;
-      glow = 1;
-    } else {
-      scale = 0.55;
-      glow = 0.4;
-    }
-  } else if (phase === "OUTRO") {
-    scale = 0.7;
-    glow = 0.5;
-  } else if (phase === "PREPARE") {
-    // Subtle slow pulse during prep
+
+  if (phase === "PREPARE") {
     const p = (current % 6) / 6;
     scale = 0.6 + Math.sin(p * Math.PI * 2) * 0.04;
     glow = 0.4;
+  } else if (phase === "OUTRO") {
+    scale = 0.7;
+    glow = 0.5;
+  } else {
+    // INHALE / HOLD / EXHALE / HOLD — derive directly from current audio time.
+    const elapsed = current - BREATHING_START;
+    const inRound = elapsed - Math.floor(elapsed / ROUND_LENGTH) * ROUND_LENGTH;
+    const phaseIndex = Math.floor(inRound / PHASE_LENGTH); // 0=inhale,1=hold,2=exhale,3=hold
+    const phaseTime = inRound - phaseIndex * PHASE_LENGTH; // 0..4
+    const progress = Math.max(0, Math.min(1, phaseTime / PHASE_LENGTH));
+    if (phaseIndex === 0) {
+      scale = lerp(SCALE_MIN, SCALE_MAX, easeInOutCubic(progress));
+      glow = lerp(0.4, 1, easeInOutCubic(progress));
+    } else if (phaseIndex === 1) {
+      scale = SCALE_MAX;
+      glow = 1;
+    } else if (phaseIndex === 2) {
+      scale = lerp(SCALE_MAX, SCALE_MIN, easeInOutCubic(progress));
+      glow = lerp(1, 0.4, easeInOutCubic(progress));
+    } else {
+      scale = SCALE_MIN;
+      glow = 0.4;
+    }
   }
 
   const phaseLabel =
@@ -218,7 +223,7 @@ export function BoxBreathingPlayer({ asset, started, onEnded, onClose }: Props) 
       {/* Orb */}
       <div className="relative mx-auto my-4 flex items-center justify-center h-64 w-64">
         <div
-          className="absolute inset-0 rounded-full transition-transform duration-1000 ease-in-out"
+          className="absolute inset-0 rounded-full"
           style={{
             transform: `scale(${scale})`,
             background:
@@ -228,7 +233,7 @@ export function BoxBreathingPlayer({ asset, started, onEnded, onClose }: Props) 
           }}
         />
         <div
-          className="absolute rounded-full border border-gold/40 transition-transform duration-1000 ease-in-out"
+          className="absolute rounded-full border border-gold/40"
           style={{
             width: "16rem",
             height: "16rem",
