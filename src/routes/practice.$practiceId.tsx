@@ -106,7 +106,11 @@ function PracticePlayerPage() {
 
         {/* Guided audio — or quiet placeholder card. No dead-end "coming soon" copy. */}
         {audioAsset ? (
-          <GuidedAudioPlayer asset={audioAsset} started={started} />
+          practice.id === "box_breathing_5min" ? (
+            <BoxBreathingPlayer asset={audioAsset} started={started} />
+          ) : (
+            <GuidedAudioPlayer asset={audioAsset} started={started} />
+          )
         ) : (
           <div className="rounded-2xl border border-border bg-card p-5 space-y-1">
             <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Guided session</p>
