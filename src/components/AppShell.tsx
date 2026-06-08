@@ -2,7 +2,7 @@ import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Home, ListChecks, MessageSquare, BookOpen, User } from "lucide-react";
 import { useDebugMode } from "@/lib/debug-mode";
-import { clearProfile, useProfile } from "@/lib/profile-store";
+import { clearProfile, isDemoAuthenticated, useProfile } from "@/lib/profile-store";
 
 const tabs = [
   { to: "/", label: "Today", icon: Home },
@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const debugMode = useDebugMode();
   const navigate = useNavigate();
   const profile = useProfile();
-  const isDemo = profile.identityProfile?.authProvider === "local_placeholder";
+  const isDemo = isDemoAuthenticated(profile);
 
   const devReset = () => {
     if (!confirm("Dev reset: clear profile and sign out?")) return;
