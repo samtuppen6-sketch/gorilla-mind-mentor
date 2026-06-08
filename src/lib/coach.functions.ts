@@ -1923,7 +1923,7 @@ const BREATHWORK_PROTOCOL_META: Record<BreathworkProtocolId, { title: string; du
     payoff: "Wakes the system up, sharpens your body, and turns energy into action.",
   },
   extended_exhale_3min: {
-    title: "Extended Exhale Breathing", durationMinutes: 3, buttonLabel: "Start Extended Exhale",
+    title: "Extended Exhale", durationMinutes: 4, buttonLabel: "Start Extended Exhale",
     payoff: "Brings the system down, slows the stress response, and prepares you to switch off.",
   },
   urge_reset_3min: {

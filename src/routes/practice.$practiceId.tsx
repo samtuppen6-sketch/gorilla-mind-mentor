@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import { GuidedAudioPlayer } from "@/components/GuidedAudioPlayer";
 import { BoxBreathingPlayer } from "@/components/BoxBreathingPlayer";
+import { ExtendedExhalePlayer } from "@/components/ExtendedExhalePlayer";
 import { getPracticeById } from "@/lib/practices";
 import {
   getAudioAssetById,
@@ -108,6 +109,8 @@ function PracticePlayerPage() {
         {audioAsset ? (
           practice.id === "box_breathing_5min" ? (
             <BoxBreathingPlayer asset={audioAsset} started={started} />
+          ) : practice.id === "extended_exhale_3min" ? (
+            <ExtendedExhalePlayer asset={audioAsset} started={started} />
           ) : (
             <GuidedAudioPlayer asset={audioAsset} started={started} />
           )
