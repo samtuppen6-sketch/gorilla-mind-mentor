@@ -2,7 +2,7 @@ import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Home, ListChecks, MessageSquare, BookOpen, User } from "lucide-react";
 import { useDebugMode } from "@/lib/debug-mode";
-import { clearProfile } from "@/lib/profile-store";
+import { clearProfile, useProfile } from "@/lib/profile-store";
 
 const tabs = [
   { to: "/", label: "Today", icon: Home },
@@ -16,6 +16,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { location } = useRouterState();
   const debugMode = useDebugMode();
   const navigate = useNavigate();
+  const profile = useProfile();
+  const isDemo = profile.identityProfile?.authProvider === "local_placeholder";
 
   const devReset = () => {
     if (!confirm("Dev reset: clear profile and sign out?")) return;
@@ -43,7 +45,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="w-2 h-2 rounded-full bg-gold" />
           <span className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Gorilla Mind</span>
         </div>
-        <span className="text-xs text-muted-foreground">v0.1</span>
+        <div className="flex items-center gap-2">
+          {isDemo && (
+            <span className="rounded-full bg-gold/15 border border-gold/40 px-2 py-0.5 text-[9px] uppercase tracking-[0.25em] text-gold font-mono">
+              Demo Mode
+            </span>
+          )}
+          <span className="text-xs text-muted-foreground">v0.1</span>
+        </div>
       </header>
       <main className="flex-1 pb-24">{children}</main>
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card/95 backdrop-blur border-t border-border">

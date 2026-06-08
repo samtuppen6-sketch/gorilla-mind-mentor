@@ -114,6 +114,35 @@ function AuthPage() {
             primary
             onClick={() => setMode("email")}
           />
+          <button
+            onClick={() => {
+              const identity = buildIdentity({
+                userId: "demo_user_sam",
+                firstName: "Sam",
+                lastName: "Demo",
+                fullName: "Sam Demo",
+                email: "demo@gorillamind.local",
+                authProvider: "local_placeholder",
+              });
+              identity.onboardingComplete = true;
+              const current = getProfile();
+              setProfile({
+                ...current,
+                name: "Sam",
+                identityProfile: identity,
+                onboardingComplete: true,
+                onboardingCompletedAt: new Date().toISOString(),
+              });
+              toast.success("Demo Mode active");
+              navigate({ to: "/coach" });
+            }}
+            className="w-full rounded-lg border border-dashed border-gold/60 px-4 py-3 text-sm text-gold hover:bg-gold/5"
+          >
+            Continue in Demo Mode
+          </button>
+          <p className="text-[10px] text-muted-foreground text-center">
+            Demo Mode skips sign-in for testing. Sam Demo · demo@gorillamind.local
+          </p>
           <ConsentText />
         </div>
       )}
