@@ -380,11 +380,20 @@ export function activateDemoSession(): UserProfile {
 export function getProfile(): UserProfile {
   if (typeof window === "undefined") return DEFAULT_PROFILE;
   const raw = localStorage.getItem(PROFILE_KEY);
-  if (raw === profileCacheRaw) return profileCache;
+  const demoFlag = hasDemoAuthFlag();
+  if (raw === profileCacheRaw) {
+    if (demoFlag && !isDemoProfileShape(profileCache)) {
+      profileCache = createDemoProfile(profileCache);
+      const serialized = JSON.stringify(profileCache);
+      localStorage.setItem(PROFILE_KEY, serialized);
+      profileCacheRaw = serialized;
+    }
+    return profileCache;
+  }
   profileCacheRaw = raw;
   if (!raw) {
-    profileCache = hasDemoAuthFlag() ? createDemoProfile() : DEFAULT_PROFILE;
-    if (hasDemoAuthFlag()) {
+    profileCache = demoFlag ? createDemoProfile() : DEFAULT_PROFILE;
+    if (demoFlag) {
       const serialized = JSON.stringify(profileCache);
       localStorage.setItem(PROFILE_KEY, serialized);
       profileCacheRaw = serialized;
@@ -393,7 +402,7 @@ export function getProfile(): UserProfile {
   }
   try {
     profileCache = { ...DEFAULT_PROFILE, ...JSON.parse(raw) };
-    if (hasDemoAuthFlag() && !isDemoProfileShape(profileCache)) {
+    if (demoFlag && !isDemoProfileShape(profileCache)) {
       profileCache = createDemoProfile(profileCache);
       const serialized = JSON.stringify(profileCache);
       localStorage.setItem(PROFILE_KEY, serialized);
