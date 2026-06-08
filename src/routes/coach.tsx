@@ -477,7 +477,7 @@ function CoachPage() {
                   ) : (
                     <div className="rounded-xl border border-border bg-card p-5">
                       <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-2">Coach</p>
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{stripMarkdown(m.content)}</p>
                     </div>
                   )}
                   {m.guidedPractice && (
