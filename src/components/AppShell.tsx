@@ -16,6 +16,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { location } = useRouterState();
   const debugMode = useDebugMode();
   const navigate = useNavigate();
+  const profile = useProfile();
+  const isDemo = profile.identityProfile?.authProvider === "local_placeholder";
 
   const devReset = () => {
     if (!confirm("Dev reset: clear profile and sign out?")) return;
