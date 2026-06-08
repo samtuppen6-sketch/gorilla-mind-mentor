@@ -2977,8 +2977,12 @@ export const askCoach = createServerFn({ method: "POST" })
       data.question,
     ].filter(Boolean).join("\n");
 
-    const guidedPracticeInstruction = guidedPractice
-      ? `\n\nGUIDED PRACTICE / GUIDED TOOL SECTION: Add a short section labelled exactly "GUIDED TOOL" (or "GUIDED PRACTICE" for plan-building routes) before CHECK-IN / COACH CLOSE with two lines:\nRecommended: ${guidedPractice.title} (${guidedPractice.durationMinutes} min, ${guidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${guidedPractice.title}".`
+    const breathworkPrescriptionInstruction = breathPrescription && effectiveGuidedPractice
+      ? `\n\nBREATHWORK PRESCRIPTION (authoritative — use this exact protocol):\nselectedBreathworkProtocol: ${breathPrescription.selectedBreathworkProtocol}\ntitle: ${effectiveGuidedPractice.title}\nstate: ${breathPrescription.breathworkState}\ndesiredOutcome: ${breathPrescription.desiredOutcome}\nreason: ${breathPrescription.reason}\npayoff: ${breathPrescription.payoff}\n\nIn the response, the GUIDED TOOL section MUST name "${effectiveGuidedPractice.title}" word-for-word. Do NOT recommend any other breathwork name (do NOT default to Box Breathing or Extended Exhale unless that IS the protocol above). Use the payoff line inside DO THIS NOW. Do NOT invent unmapped protocols (no "coherent breathing", no random "calm breathing", no random "focus breathing").`
+      : "";
+
+    const guidedPracticeInstruction = effectiveGuidedPractice
+      ? `\n\nGUIDED PRACTICE / GUIDED TOOL SECTION: Add a short section labelled exactly "GUIDED TOOL" (or "GUIDED PRACTICE" for plan-building routes) before CHECK-IN / COACH CLOSE with two lines:\nRecommended: ${effectiveGuidedPractice.title} (${effectiveGuidedPractice.durationMinutes} min, ${effectiveGuidedPractice.category})\nStart the guided version inside the app.\nDo NOT invent a different practice name. Use exactly "${effectiveGuidedPractice.title}".${breathworkPrescriptionInstruction}`
       : "";
 
     const guidedWorkoutInstruction = guidedWorkout
