@@ -71,7 +71,13 @@ export const Route = createFileRoute("/coach")({
   ),
 });
 
-const SEED = "I hate my job, I feel stuck, I'm not motivated but want to get fit. What should I do?";
+const SEED = "";
+const FREE_TEXT_EXAMPLES = [
+  "I've done the breathwork.",
+  "I'm low energy.",
+  "I'm at home with 20 minutes.",
+  "I need help with work.",
+];
 
 type ErrorKind =
   | "offline"
