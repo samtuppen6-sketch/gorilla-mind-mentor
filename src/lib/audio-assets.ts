@@ -34,6 +34,7 @@ export type AudioAsset = {
 
 import boxBreathingAsset from "@/assets/box-breathing.mp3.asset.json";
 import extendedExhaleAsset from "@/assets/extended-exhale.mp3.asset.json";
+import urgeResetAsset from "@/assets/urge-reset.mp3.asset.json";
 
 export const AUDIO_ASSETS: AudioAsset[] = [
   {
@@ -95,6 +96,20 @@ export const AUDIO_ASSETS: AudioAsset[] = [
     voiceStyle: "calm, controlled, masculine",
     status: "placeholder",
     linkedPracticeIds: ["breathwork_wind_down_5min"],
+  },
+  {
+    id: "urge_reset_3min_audio",
+    title: "Urge Reset Breath — 5 Minutes",
+    category: "urge_reset",
+    durationMinutes: 5,
+    audioUrl: urgeResetAsset.url,
+    description:
+      "Nasal inhale 4, long mouth exhale 8. 12 rounds. Break the urge loop and create space before action.",
+    safetyNote:
+      "If urges involve self-harm or suicidal ideation: stop and contact a crisis line or emergency services immediately.",
+    voiceStyle: "calm, controlled, masculine",
+    status: "ready",
+    linkedPracticeIds: ["urge_reset_3min"],
   },
   {
     id: "urge_reset_10min_audio",

@@ -1927,7 +1927,7 @@ const BREATHWORK_PROTOCOL_META: Record<BreathworkProtocolId, { title: string; du
     payoff: "Brings the system down, slows the stress response, and prepares you to switch off.",
   },
   urge_reset_3min: {
-    title: "Urge Reset Breath", durationMinutes: 3, buttonLabel: "Start Urge Reset Breath",
+    title: "Urge Reset Breath", durationMinutes: 5, buttonLabel: "Start Urge Reset",
     payoff: "Creates space between urge and action, breaks the loop, and gives control back.",
   },
   identity_reset_breath_5min: {
