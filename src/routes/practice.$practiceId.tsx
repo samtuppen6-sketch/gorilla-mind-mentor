@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader } from "@/components/SectionHeader";
 import { GuidedAudioPlayer } from "@/components/GuidedAudioPlayer";
+import { BoxBreathingPlayer } from "@/components/BoxBreathingPlayer";
 import { getPracticeById } from "@/lib/practices";
 import {
   getAudioAssetById,
@@ -105,7 +106,11 @@ function PracticePlayerPage() {
 
         {/* Guided audio — or quiet placeholder card. No dead-end "coming soon" copy. */}
         {audioAsset ? (
-          <GuidedAudioPlayer asset={audioAsset} started={started} />
+          practice.id === "box_breathing_5min" ? (
+            <BoxBreathingPlayer asset={audioAsset} started={started} />
+          ) : (
+            <GuidedAudioPlayer asset={audioAsset} started={started} />
+          )
         ) : (
           <div className="rounded-2xl border border-border bg-card p-5 space-y-1">
             <p className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Guided session</p>
