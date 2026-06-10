@@ -86,7 +86,10 @@ const QUALIFIER_PATTERNS = [
 ];
 
 function hasAnyQualifier(message: string): boolean {
-  return QUALIFIER_PATTERNS.some((re) => re.test(message));
+  // Strip negated clauses ("don't feel great", "not anxious") so the positive
+  // surface form inside them doesn't masquerade as a qualifier.
+  const stripped = message.replace(/\b(?:don'?t|do not|isn'?t|aren'?t|wasn'?t|never|not)\s+feel(?:ing)?\s+(?:great|good|right|amazing|myself|well|brilliant|fresh|clear|ready)\b/gi, "");
+  return QUALIFIER_PATTERNS.some((re) => re.test(stripped));
 }
 
 /**
