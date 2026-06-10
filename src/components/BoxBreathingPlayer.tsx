@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, X } from "lucide-react";
 import type { AudioAsset } from "@/lib/audio-assets";
+import { useBreathworkGate } from "@/lib/breathwork-gate";
 
 type Props = {
   asset: AudioAsset;
   started: boolean;
   onEnded?: () => void;
   onClose?: () => void;
+  onCanComplete?: () => void;
 };
 
 const BREATHING_START = 55;
@@ -53,13 +55,20 @@ function computeState(t: number): {
   };
 }
 
-export function BoxBreathingPlayer({ asset, started, onEnded, onClose }: Props) {
+export function BoxBreathingPlayer({ asset, started, onEnded, onClose, onCanComplete }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState(false);
+
+  useBreathworkGate({
+    audioRef,
+    breathingStart: BREATHING_START,
+    breathingEnd: BREATHING_END,
+    onUnlock: () => onCanComplete?.(),
+  });
 
   // Smooth animation tick using rAF while playing
   useEffect(() => {
