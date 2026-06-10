@@ -132,7 +132,6 @@ export function interpretUserState(
 ): UserStateInterpretation {
   const m = message ?? "";
   const denied = buildDeniedSignalSet(m);
-  const lower = m.toLowerCase();
 
   // Active signal flags (after negation suppression)
   const has = (re: RegExp, deny?: string) => re.test(m) && !(deny && denied.has(deny));
