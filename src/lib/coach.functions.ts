@@ -1902,7 +1902,9 @@ export type BreathworkState =
   | "pre_training_activation" | "post_training_downshift" | "anxious" | "wired"
   | "angry" | "overwhelmed" | "panic_like" | "evening_shutdown" | "sleep_wind_down"
   | "urge_or_compulsion" | "addiction_drift" | "phone_scroll_loop"
-  | "missed_day_reentry" | "identity_reset" | "recovery" | "unknown";
+  | "missed_day_reentry" | "identity_reset" | "recovery"
+  | "effort_to_recovery" | "physical_fatigue" | "body_overworked" | "recovery_downshift"
+  | "unknown";
 
 export type BreathworkOutcome =
   | "activate" | "energise" | "focus" | "calm" | "downshift" | "sleep"
