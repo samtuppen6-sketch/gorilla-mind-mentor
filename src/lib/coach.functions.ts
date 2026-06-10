@@ -2008,7 +2008,9 @@ export function prescribeBreathwork(
   const physicalFatigue = /\b(sore|soreness|aching|achy|doms|stiff|fatigued|exhausted|smashed|wrecked|knackered|legs are done|body is done)\b/i.test(message);
   const heatExposure = /\b(sauna|hot bath|heat exposure|steam room)\b/i.test(message);
   const coldExposure = /\b(cold (plunge|shower|exposure|dip)|ice bath|just plunged)\b/i.test(message);
-  const bodyComeDown = /\b(bring (my )?body down|body down|come down|wind down (my )?body|switch (off|down) my body|nervous system down|recover(y)? (downshift|now)|need to recover|recover properly)\b/i.test(message);
+  const bodyComeDown = /\b(bring (my )?body down|body down|come down|wind down (my )?body|switch (off|down) my body|nervous system down|recover(y)? (downshift|now)|need to recover|recover properly|need a reset after|that walk took it out|took it out of me)\b/i.test(message);
+  const bodyHeavy = /\b((legs|body|arms) (are|feel|felt|'?s|is) (tired|heavy|done|drained|sore|wrecked|smashed|knackered)|heavy legs|tired legs|physically (drained|tired|done|spent)|feel (drained|wiped|wiped out|spent)|smashed me|wiped me out|legs are gone)\b/i.test(message);
+  const positiveState = /\b(feel (great|good|amazing|fresh|clear|calm|focused|ready|switched on|on point|sharp|locked in|clear[- ]?headed)|clear[- ]?headed|in a good headspace|good headspace|stay locked in|stay in this headspace|keep this (going|headspace)|want to (stay|keep) (in this|locked)|get on with (the |my )?day|ready to (get on|attack|go)|what should i do next|need to focus|get my head right|switched on)\b/i.test(message);
   const urge = /\b(urge|craving|porn|gambl|relapse|binge|compulsi|substance|drink(ing)?|drugs?)\b/i.test(message);
   const scrolling = /\b(scroll(ing)?|phone loop|tiktok|instagram|reels|slipping)\b/i.test(message);
   const missed = /\b(missed (a )?day|missed two days|fell off|lost it|haven'?t (done|trained))\b/i.test(message);
