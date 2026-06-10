@@ -2000,8 +2000,13 @@ export function prescribeBreathwork(
   const angry = /\b(angry|furious|rage|pissed|annoyed)\b/i.test(message);
   const overwhelmed = /\b(overwhelm(ed)?|too much|drowning)\b/i.test(message);
   const postWalk = /\b(done my walk|did my walk|after (my )?walk|finished (my )?walk|just walked|post[- ]walk|been for a walk)\b/i.test(message);
+  const longWalk = /\b(long walk|big walk|hike|hiked)\b/i.test(message);
   const preTraining = /\b(before (training|workout|gym|session)|pre[- ]training|about to train|going to (the )?gym|warm[- ]?up)\b/i.test(message);
-  const postTraining = /\b(after (training|workout|gym|session)|post[- ]training|just trained|finished training)\b/i.test(message);
+  const postTraining = /\b(after (training|workout|gym|session|lifting)|post[- ]training|just trained|finished (training|the (gym|workout|session)|my (gym|workout|session|lift)|lifting)|done (training|the gym|my workout|my session|lifting)|just (lifted|worked out))\b/i.test(message);
+  const physicalFatigue = /\b(sore|soreness|aching|achy|doms|stiff|fatigued|exhausted|smashed|wrecked|knackered|legs are done|body is done)\b/i.test(message);
+  const heatExposure = /\b(sauna|hot bath|heat exposure|steam room)\b/i.test(message);
+  const coldExposure = /\b(cold (plunge|shower|exposure|dip)|ice bath|just plunged)\b/i.test(message);
+  const bodyComeDown = /\b(bring (my )?body down|body down|come down|wind down (my )?body|switch (off|down) my body|nervous system down|recover(y)? (downshift|now)|need to recover|recover properly)\b/i.test(message);
   const urge = /\b(urge|craving|porn|gambl|relapse|binge|compulsi|substance|drink(ing)?|drugs?)\b/i.test(message);
   const scrolling = /\b(scroll(ing)?|phone loop|tiktok|instagram|reels|slipping)\b/i.test(message);
   const missed = /\b(missed (a )?day|missed two days|fell off|lost it|haven'?t (done|trained))\b/i.test(message);
