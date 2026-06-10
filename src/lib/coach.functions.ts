@@ -2001,7 +2001,7 @@ export function prescribeBreathwork(
   const wired = /\b(wired|can'?t switch off|cannot switch off|racing thoughts|tense|overstimulated)\b/i.test(message);
   const angry = /\b(angry|furious|rage|pissed|annoyed)\b/i.test(message);
   const overwhelmed = /\b(overwhelm(ed)?|too much|drowning)\b/i.test(message);
-  const postWalk = /\b(done my walk|did my walk|after (my )?walk|finished (my )?walk|just walked|post[- ]walk|been for a walk)\b/i.test(message);
+  const postWalk = /\b(done my walk|did my walk|after (my |the |a )?walk|finished (my |the |a )?walk|just walked|post[- ]walk|been for a walk|went for a walk|gone for a walk|got back from (a |my |the )?walk|back from (a |my |the )?walk|from (a |my |the )?walk|walked for|out walking|been out walking|had a walk)\b/i.test(message);
   const longWalk = /\b(long walk|big walk|hike|hiked)\b/i.test(message);
   const preTraining = /\b(before (training|workout|gym|session)|pre[- ]training|about to train|going to (the )?gym|warm[- ]?up)\b/i.test(message);
   const postTraining = /\b(after (training|workout|gym|session|lifting)|post[- ]training|just trained|finished (training|the (gym|workout|session)|my (gym|workout|session|lift)|lifting)|done (training|the gym|my workout|my session|lifting)|just (lifted|worked out))\b/i.test(message);
