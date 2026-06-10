@@ -2158,6 +2158,13 @@ export function prescribeBreathwork(
       reason = "Morning default — control protocol before phone or caffeine.";
     }
   }
+  // 9b. Energised / attack-the-day signal at any hour (not late-night, not evening)
+  else if (energised && !lateNight && !eveningCue) {
+    state = "morning_energised";
+    outcome = "energise";
+    id = "energising_breath_3min";
+    reason = "Energised / attack-the-day signal — turn energy into action.";
+  }
   // 10. Activated states (any time)
   else if (anxious || wired || angry || overwhelmed) {
     state = anxious ? "anxious" : wired ? "wired" : angry ? "angry" : "overwhelmed";
