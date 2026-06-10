@@ -173,7 +173,7 @@ export function RecoveryBreathPlayer({ asset, started, onEnded, onClose }: Props
     phase === "PREPARE"
       ? "Settle. Let the body come down."
       : phase === "OUTRO"
-        ? "Recovery started. Standard protected."
+        ? "Body settled. Recovery started."
         : phase === "INHALE"
           ? "Through the nose"
           : phase === "HOLD"
