@@ -89,6 +89,18 @@ export const AUDIO_ASSETS: AudioAsset[] = [
     linkedPracticeIds: ["identity_reset_breath_5min"],
   },
   {
+    id: "recovery_breath_5min_audio",
+    title: "Recovery Breath — 5 Minutes",
+    category: "recovery",
+    durationMinutes: 5,
+    audioUrl: recoveryBreathAsset.url,
+    description:
+      "Nasal inhale 4, hold 2, slow exhale 8. 10 rounds. Post-training downshift — signals safety and starts recovery.",
+    voiceStyle: "calm, controlled, masculine",
+    status: "ready",
+    linkedPracticeIds: ["recovery_breath_5min"],
+  },
+  {
     id: "morning_protocol_lock_in_audio",
     title: "Morning Protocol Lock-In",
     category: "morning_protocol",
