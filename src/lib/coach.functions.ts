@@ -2701,9 +2701,21 @@ export const askCoach = createServerFn({ method: "POST" })
       ? prescribeBreathwork(data.question, profile, journal, temporal, progress)
       : null;
 
+    // Central natural-language interpreter — sits between raw text and the
+    // route layer. Surfaces structured state for debug AND lets us suppress
+    // a forced breathwork card when the message is too vague.
+    const { interpretUserState } = await import("./state-interpreter");
+    const naturalLanguageInterpretation = interpretUserState(data.question, {
+      prescription: breathPrescription,
+      dayPart: temporal.dayPart,
+      localTime: temporal.localTime,
+    });
+    const suppressBreathCardForAmbiguity =
+      naturalLanguageInterpretation.clarificationNeeded && !explicitBreathworkAsk;
+
     // If a plan card exists, override the generic guidedPractice so the
     // recommended button matches the prescription word-for-word.
-    const breathCardFromEngine: GuidedPracticeRecommendation | null = breathPrescription
+    const breathCardFromEngine: GuidedPracticeRecommendation | null = breathPrescription && !suppressBreathCardForAmbiguity
       ? {
           id: breathPrescription.selectedBreathworkProtocol,
           title: BREATHWORK_PROTOCOL_META[breathPrescription.selectedBreathworkProtocol].title,
@@ -2715,7 +2727,7 @@ export const askCoach = createServerFn({ method: "POST" })
       : null;
 
     // Resolution priority: breathwork engine > plan card > generic guidedPractice
-    const resolvedCard = breathCardFromEngine ?? planCard;
+    const resolvedCard = breathCardFromEngine ?? (suppressBreathCardForAmbiguity ? null : planCard);
     const effectiveGuidedPractice: GuidedPracticeRec | null = resolvedCard
       ? {
           id: resolvedCard.id,
