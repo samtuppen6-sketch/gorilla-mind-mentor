@@ -2012,9 +2012,10 @@ export function prescribeBreathwork(
   const urge = /\b(urge|craving|porn|gambl|relapse|binge|compulsi|substance|drink(ing)?|drugs?)\b/i.test(message);
   const scrolling = /\b(scroll(ing)?|phone loop|tiktok|instagram|reels|slipping)\b/i.test(message);
   const missed = /\b(missed (a )?day|missed two days|fell off|lost it|haven'?t (done|trained))\b/i.test(message);
-  const shame = /\b(shame|hate myself|loser|pathetic|disgust(ed|ing))\b/i.test(message);
+  const shame = /\b(shame|ashamed|hate myself|loser|pathetic|disgust(ed|ing))\b/i.test(message);
   const sleepCue = /\b(sleep|bedtime|before bed|wind ?down|switch off|night|tonight)\b/i.test(message);
-  const lateNight = dayPart === "LATE_NIGHT" || (() => {
+  const explicitLateCue = /\b(it'?s late|so late|getting late|late night|late and|too late)\b/i.test(message);
+  const lateNight = explicitLateCue || dayPart === "LATE_NIGHT" || (() => {
     const h = parseInt((temporal.localTime ?? "00:00").split(":")[0] ?? "0", 10);
     return h >= 22 || h < 5;
   })();
@@ -2156,6 +2157,13 @@ export function prescribeBreathwork(
       id = "box_breathing_5min";
       reason = "Morning default — control protocol before phone or caffeine.";
     }
+  }
+  // 9b. Energised / attack-the-day signal at any hour (not late-night, not evening)
+  else if (energised && !lateNight && !eveningCue) {
+    state = "morning_energised";
+    outcome = "energise";
+    id = "energising_breath_3min";
+    reason = "Energised / attack-the-day signal — turn energy into action.";
   }
   // 10. Activated states (any time)
   else if (anxious || wired || angry || overwhelmed) {
