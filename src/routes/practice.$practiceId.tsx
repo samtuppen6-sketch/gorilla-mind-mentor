@@ -118,6 +118,8 @@ function PracticePlayerPage() {
             <UrgeResetPlayer asset={audioAsset} started={started} />
           ) : practice.id === "energising_breath_3min" ? (
             <EnergisingBreathPlayer asset={audioAsset} started={started} />
+          ) : practice.id === "identity_reset_breath_5min" ? (
+            <IdentityResetBreathPlayer asset={audioAsset} started={started} />
           ) : (
             <GuidedAudioPlayer asset={audioAsset} started={started} />
           )
