@@ -36,6 +36,7 @@ import boxBreathingAsset from "@/assets/box-breathing.mp3.asset.json";
 import extendedExhaleAsset from "@/assets/extended-exhale.mp3.asset.json";
 import urgeResetAsset from "@/assets/urge-reset.mp3.asset.json";
 import energisingBreathAsset from "@/assets/energising-breath.mp3.asset.json";
+import identityResetBreathAsset from "@/assets/identity-reset-breath.mp3.asset.json";
 
 export const AUDIO_ASSETS: AudioAsset[] = [
   {
