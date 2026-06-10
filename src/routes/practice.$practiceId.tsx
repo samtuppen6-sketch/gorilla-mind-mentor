@@ -9,6 +9,7 @@ import { ExtendedExhalePlayer } from "@/components/ExtendedExhalePlayer";
 import { UrgeResetPlayer } from "@/components/UrgeResetPlayer";
 import { EnergisingBreathPlayer } from "@/components/EnergisingBreathPlayer";
 import { IdentityResetBreathPlayer } from "@/components/IdentityResetBreathPlayer";
+import { RecoveryBreathPlayer } from "@/components/RecoveryBreathPlayer";
 import { getPracticeById } from "@/lib/practices";
 import {
   getAudioAssetById,
@@ -120,6 +121,8 @@ function PracticePlayerPage() {
             <EnergisingBreathPlayer asset={audioAsset} started={started} />
           ) : practice.id === "identity_reset_breath_5min" ? (
             <IdentityResetBreathPlayer asset={audioAsset} started={started} />
+          ) : practice.id === "recovery_breath_5min" ? (
+            <RecoveryBreathPlayer asset={audioAsset} started={started} />
           ) : (
             <GuidedAudioPlayer asset={audioAsset} started={started} />
           )
