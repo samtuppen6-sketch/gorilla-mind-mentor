@@ -58,6 +58,7 @@ function PracticePlayerPage() {
 
   const [started, setStarted] = useState(false);
   const [completion, setCompletion] = useState<CompletionResult | null>(null);
+  const [canCompleteGate, setCanCompleteGate] = useState(false);
 
   if (!practice) {
     return (
