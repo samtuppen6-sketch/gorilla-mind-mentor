@@ -9,6 +9,7 @@ import { ExtendedExhalePlayer } from "@/components/ExtendedExhalePlayer";
 import { UrgeResetPlayer } from "@/components/UrgeResetPlayer";
 import { EnergisingBreathPlayer } from "@/components/EnergisingBreathPlayer";
 import { IdentityResetBreathPlayer } from "@/components/IdentityResetBreathPlayer";
+import { RecoveryBreathPlayer } from "@/components/RecoveryBreathPlayer";
 import { getPracticeById } from "@/lib/practices";
 import {
   getAudioAssetById,
