@@ -55,13 +55,20 @@ function computeState(t: number): {
   };
 }
 
-export function BoxBreathingPlayer({ asset, started, onEnded, onClose }: Props) {
+export function BoxBreathingPlayer({ asset, started, onEnded, onClose, onCanComplete }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState(false);
+
+  useBreathworkGate({
+    audioRef,
+    breathingStart: BREATHING_START,
+    breathingEnd: BREATHING_END,
+    onUnlock: () => onCanComplete?.(),
+  });
 
   // Smooth animation tick using rAF while playing
   useEffect(() => {
