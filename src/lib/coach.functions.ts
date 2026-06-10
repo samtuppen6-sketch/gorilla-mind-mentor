@@ -497,6 +497,8 @@ export type CoachDebug = {
   professionalSupportSuggested: boolean;
   profileCompletenessScore: number | null;
   missingProfileFields: string[];
+  // Natural-language interpreter (optional, debug-only)
+  naturalLanguageInterpretation?: import("./state-interpreter").UserStateInterpretation | null;
 };
 
 export type GuidedPracticeRecommendation = {
