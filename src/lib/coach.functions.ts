@@ -2079,11 +2079,29 @@ export function prescribeBreathwork(
       ? "Pre-training but poor sleep — control protocol, not energising."
       : "Pre-training activation — sharpen the system before the session.";
   }
-  else if (postTraining) {
-    state = "post_training_downshift";
+  else if (postTraining || physicalFatigue || heatExposure || coldExposure || longWalk || bodyComeDown) {
+    state = postTraining
+      ? "post_training_downshift"
+      : (heatExposure || coldExposure)
+        ? "effort_to_recovery"
+        : physicalFatigue
+          ? "physical_fatigue"
+          : longWalk
+            ? "body_overworked"
+            : "recovery_downshift";
     outcome = "recover";
     id = "recovery_breath_5min";
-    reason = "Post-training — signal safety, lower intensity, recover the system.";
+    reason = postTraining
+      ? "Post-training — signal safety, lower intensity, recover the system."
+      : heatExposure
+        ? "Heat exposure — bring the body down and start recovery."
+        : coldExposure
+          ? "Cold exposure — close out the stressor and recover the system."
+          : physicalFatigue
+            ? "Physical fatigue / soreness — recovery downshift, not activation."
+            : longWalk
+              ? "Long walk / hike — body overworked, signal recovery, not lock-in."
+              : "Recovery downshift requested — bring the body down properly.";
   }
   // 6. Late night / sleep cue
   else if (lateNight || (eveningCue && sleepCue)) {
