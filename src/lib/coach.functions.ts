@@ -1987,34 +1987,42 @@ export function prescribeBreathwork(
   const m = (message ?? "").toLowerCase();
   const dayPart = temporal.dayPart;
 
+  // Negation sanitiser — collect words the user explicitly denies
+  // ("I'm not anxious", "not tired") so downstream regexes don't mis-fire.
+  const NEG_TOKENS = ["anxious","wired","tired","stressed","ashamed","panicky","overwhelmed","scattered","flat","low","sore","drained","heavy","knackered","wiped","great","good","fresh","ready","clear","sad","angry"];
+  const negPattern = new RegExp(`\\b(?:not|n[o']t|don'?t|never|isn'?t|aren'?t|wasn'?t)\\s+(?:feeling\\s+|feel\\s+)?(${NEG_TOKENS.join("|")})\\b`, "gi");
+  const denied = new Set<string>();
+  for (const mt of message.matchAll(negPattern)) denied.add(mt[1].toLowerCase());
+  const notDenied = (word: string, hit: boolean) => hit && !denied.has(word);
+
   // 1. Safety / medical risk → calm extended exhale
   const medicalRisk = /\b(panic|panicky|dizzy|dizziness|faint|chest pain|pregnan|seizure|heart|cardiac|trauma|unsafe)\b/i.test(message);
 
   // 2. Explicit named request — give them that protocol unless unsafe
   const explicit = detectExplicitBreathworkRequest(message);
 
-  // 3. Signals
-  const energised = /\b(energis(ed|ing)|energiz(ed|ing)|attack the day|slept (great|well|good)|feel(ing)? (great|strong|amazing)|ready to go|fired up)\b/i.test(message);
-  const flat = /\b(flat|sluggish|foggy|brain fog|tired|low energy|drained|heavy)\b/i.test(message);
-  const scattered = /\b(scattered|unfocused|distracted|can'?t focus|mentally noisy|all over)\b/i.test(message);
-  const anxious = /\b(anxious|anxiety|nervous|on edge|panicky)\b/i.test(message);
-  const wired = /\b(wired|can'?t switch off|cannot switch off|racing thoughts|tense|overstimulated)\b/i.test(message);
-  const angry = /\b(angry|furious|rage|pissed|annoyed)\b/i.test(message);
-  const overwhelmed = /\b(overwhelm(ed)?|too much|drowning)\b/i.test(message);
+  // 3. Signals (natural-language expanded, negation-aware)
+  const energised = notDenied("great", /\b(energis(ed|ing)|energiz(ed|ing)|attack the day|slept (great|well|good)|feel(ing)? (great|strong|amazing|fresh|ready|sharp|switched on|locked in)|ready to (go|attack|train)|fired up|want to train|want to move)\b/i.test(message));
+  const flat = notDenied("tired", /\b(flat|sluggish|foggy|brain fog|tired|low energy|drained|heavy|low mood|no drive|can'?t be bothered|cba|bit rough|feel off|feel weird|feel flat|not myself|struggling today|not with it)\b/i.test(message));
+  const scattered = /\b(scattered|unfocused|distracted|can'?t focus|mentally noisy|all over|head'?s all over|head is all over|head is fried|can'?t think straight|overthinking|need (clarity|control|to focus|to lock in|to get my head right))\b/i.test(message);
+  const anxious = notDenied("anxious", /\b(anxious|anxiety|nervous|on edge|panicky|stressed|heart racing|need to calm down|come down mentally)\b/i.test(message));
+  const wired = notDenied("wired", /\b(wired|can'?t switch off|cannot switch off|racing thoughts|tense|overstimulated|can'?t sleep)\b/i.test(message));
+  const angry = notDenied("angry", /\b(angry|furious|rage|pissed|annoyed)\b/i.test(message));
+  const overwhelmed = notDenied("overwhelmed", /\b(overwhelm(ed)?|too much|drowning)\b/i.test(message));
   const postWalk = /\b(done my walk|did my walk|after (my |the |a )?walk|finished (my |the |a )?walk|just walked|post[- ]walk|been for a walk|went for a walk|gone for a walk|got back from (a |my |the )?walk|back from (a |my |the )?walk|from (a |my |the )?walk|walked for|out walking|been out walking|had a walk)\b/i.test(message);
   const longWalk = /\b(long walk|big walk|hike|hiked)\b/i.test(message);
   const preTraining = /\b(before (training|workout|gym|session)|pre[- ]training|about to train|going to (the )?gym|warm[- ]?up)\b/i.test(message);
   const postTraining = /\b(after (training|workout|gym|session|lifting)|post[- ]training|just trained|finished (training|the (gym|workout|session)|my (gym|workout|session|lift)|lifting)|done (training|the gym|my workout|my session|lifting)|just (lifted|worked out))\b/i.test(message);
-  const physicalFatigue = /\b(sore|soreness|aching|achy|doms|stiff|fatigued|exhausted|smashed|wrecked|knackered|legs are done|body is done)\b/i.test(message);
+  const physicalFatigue = notDenied("tired", /\b(sore|soreness|aching|achy|doms|stiff|fatigued|exhausted|smashed|wrecked|knackered|wiped( out)?|legs are done|body is done|physically tired)\b/i.test(message));
   const heatExposure = /\b(sauna|hot bath|heat exposure|steam room)\b/i.test(message);
   const coldExposure = /\b(cold (plunge|shower|exposure|dip)|ice bath|just plunged)\b/i.test(message);
-  const bodyComeDown = /\b(bring (my )?body down|body down|come down|wind down (my )?body|switch (off|down) my body|nervous system down|recover(y)? (downshift|now)|need to recover|recover properly|need a reset after|that walk took it out|took it out of me)\b/i.test(message);
-  const bodyHeavy = /\b((legs|body|arms) (are|feel|felt|'?s|is) (tired|heavy|done|drained|sore|wrecked|smashed|knackered)|heavy legs|tired legs|physically (drained|tired|done|spent)|feel (drained|wiped|wiped out|spent)|smashed me|wiped me out|legs are gone)\b/i.test(message);
-  const positiveState = /\b(feel (great|good|amazing|fresh|clear|calm|focused|ready|switched on|on point|sharp|locked in|clear[- ]?headed)|clear[- ]?headed|in a good headspace|good headspace|stay locked in|stay in this headspace|keep this (going|headspace)|want to (stay|keep) (in this|locked)|get on with (the |my )?day|ready to (get on|attack|go)|what should i do next|need to focus|get my head right|switched on)\b/i.test(message);
-  const urge = /\b(urge|craving|porn|gambl|relapse|binge|compulsi|substance|drink(ing)?|drugs?)\b/i.test(message);
+  const bodyComeDown = /\b(bring (my )?body down|body down|come down|wind down (my )?body|switch (off|down) my body|nervous system down|recover(y)? (downshift|now)|need to recover|recover properly|need a reset after|that walk took it out|took it out of me|long walk took it out of me)\b/i.test(message);
+  const bodyHeavy = /\b((legs|body|arms) (are|feel|felt|'?s|is) (tired|heavy|done|drained|sore|wrecked|smashed|knackered|gone)|heavy legs|tired legs|physically (drained|tired|done|spent)|feel (drained|wiped|wiped out|spent)|smashed me|wiped me out|legs are gone)\b/i.test(message);
+  const positiveState = /\b(feel (great|good|amazing|fresh|clear|calm|focused|ready|switched on|on point|sharp|locked in|clear[- ]?headed)|clear[- ]?headed|in a good headspace|good headspace|stay locked in|stay in this headspace|keep this (going|headspace)|want to (stay|keep) (in this|locked)|get on with (the |my )?day|ready to (get on|attack|go)|what should i do next|need to focus|get my head right|switched on)\b/i.test(message) && !/\bdon'?t feel (great|good|amazing|fresh|clear|ready)\b/i.test(message);
+  const urge = /\b(urge|craving|porn|gambl|relapse|binge|compulsi|substance|drink(ing)?|drugs?|want to (use|drink|gamble|scroll)|about to (slip|relapse|use|scroll|gamble|drink)|stuck scrolling|can'?t stop scrolling|old pattern|close to slipping|itchy feeling|impulse|old urge)\b/i.test(message);
   const scrolling = /\b(scroll(ing)?|phone loop|tiktok|instagram|reels|slipping)\b/i.test(message);
-  const missed = /\b(missed (a )?day|missed two days|fell off|lost it|haven'?t (done|trained))\b/i.test(message);
-  const shame = /\b(shame|ashamed|hate myself|loser|pathetic|disgust(ed|ing))\b/i.test(message);
+  const missed = /\b(missed (a |two |three |a few |some |several )?day|fell off|fallen off|haven'?t checked in|haven'?t (done|trained)|back to square one|lost (my standard|momentum)|old me( is back)?|failed again|need to get back on track|re[- ]?enter)\b/i.test(message);
+  const shame = notDenied("ashamed", /\b(shame|ashamed|hate myself|loser|pathetic|disgust(ed|ing)|guilty|guilt|messed up)\b/i.test(message));
   const sleepCue = /\b(sleep|bedtime|before bed|wind ?down|switch off|night|tonight)\b/i.test(message);
   const explicitLateCue = /\b(it'?s late|so late|getting late|late night|late and|too late)\b/i.test(message);
   const lateNight = explicitLateCue || dayPart === "LATE_NIGHT" || (() => {
