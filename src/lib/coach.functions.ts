@@ -2084,16 +2084,14 @@ export function prescribeBreathwork(
       ? "Pre-training but poor sleep — control protocol, not energising."
       : "Pre-training activation — sharpen the system before the session.";
   }
-  else if (postTraining || physicalFatigue || heatExposure || coldExposure || longWalk || bodyComeDown) {
+  else if (postTraining || physicalFatigue || heatExposure || coldExposure || bodyComeDown || bodyHeavy) {
     state = postTraining
       ? "post_training_downshift"
       : (heatExposure || coldExposure)
         ? "effort_to_recovery"
-        : physicalFatigue
+        : (physicalFatigue || bodyHeavy)
           ? "physical_fatigue"
-          : longWalk
-            ? "body_overworked"
-            : "recovery_downshift";
+          : "recovery_downshift";
     outcome = "recover";
     id = "recovery_breath_5min";
     reason = postTraining
@@ -2102,11 +2100,25 @@ export function prescribeBreathwork(
         ? "Heat exposure — bring the body down and start recovery."
         : coldExposure
           ? "Cold exposure — close out the stressor and recover the system."
-          : physicalFatigue
-            ? "Physical fatigue / soreness — recovery downshift, not activation."
-            : longWalk
-              ? "Long walk / hike — body overworked, signal recovery, not lock-in."
-              : "Recovery downshift requested — bring the body down properly.";
+          : (physicalFatigue || bodyHeavy)
+            ? "Physical fatigue / heavy body — recovery downshift, not activation."
+            : "Recovery downshift requested — bring the body down properly.";
+  }
+  // 5b. WALK context — disambiguate by described state
+  else if (postWalk || longWalk) {
+    if (anxious || wired || angry || overwhelmed || (eveningCue && sleepCue) || lateNight) {
+      state = anxious ? "anxious" : wired ? "wired" : "sleep_wind_down";
+      outcome = lateNight || (eveningCue && sleepCue) ? "sleep" : "downshift";
+      id = "extended_exhale_3min";
+      reason = "Walk + activated/sleep signal — downshift, not lock-in.";
+    } else {
+      state = "post_walk_lock_in";
+      outcome = "lock_in_state_shift";
+      id = "box_breathing_5min";
+      reason = positiveState
+        ? "Walk + positive state — lock in clarity with Box Breathing."
+        : "Post-walk — lock in the state shift before drift returns.";
+    }
   }
   // 6. Late night / sleep cue
   else if (lateNight || (eveningCue && sleepCue)) {
@@ -2121,13 +2133,6 @@ export function prescribeBreathwork(
     outcome = "downshift";
     id = "extended_exhale_3min";
     reason = "Evening + activated state — extended exhale brings the system down.";
-  }
-  // 8. Post-walk lock-in
-  else if (postWalk) {
-    state = "post_walk_lock_in";
-    outcome = "lock_in_state_shift";
-    id = "box_breathing_5min";
-    reason = "Post-walk — lock in the state shift before drift returns.";
   }
   // 9. Morning logic
   else if (morningCue) {
