@@ -83,11 +83,23 @@ function PracticePlayerPage() {
 
   function handleComplete() {
     if (!practice || !started || completion) return;
+    if (isGatedBreathwork && !canCompleteGate) return;
     const result = completePracticeSession({ practice, source, linkedCoachRoute });
     setCompletion(result);
   }
 
-  const canComplete = started && !completion;
+  const gatedBreathworkIds = new Set([
+    "box_breathing_5min",
+    "extended_exhale_3min",
+    "urge_reset_3min",
+    "energising_breath_3min",
+    "identity_reset_breath_5min",
+    "recovery_breath_5min",
+  ]);
+  const isGatedBreathwork = !!practice && gatedBreathworkIds.has(practice.id);
+  const canComplete =
+    started && !completion && (!isGatedBreathwork || canCompleteGate);
+  const handleUnlock = () => setCanCompleteGate(true);
 
   return (
     <>
