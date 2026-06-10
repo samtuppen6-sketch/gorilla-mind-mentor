@@ -2878,6 +2878,7 @@ export const askCoach = createServerFn({ method: "POST" })
       professionalSupportSuggested,
       profileCompletenessScore,
       missingProfileFields,
+      naturalLanguageInterpretation,
     };
 
     const programState: ProgramState = {
