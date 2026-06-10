@@ -1931,7 +1931,7 @@ const BREATHWORK_PROTOCOL_META: Record<BreathworkProtocolId, { title: string; du
     payoff: "Creates space between urge and action, breaks the loop, and gives control back.",
   },
   identity_reset_breath_5min: {
-    title: "Identity Reset Breath", durationMinutes: 5, buttonLabel: "Start Identity Reset Breath",
+    title: "Identity Reset Breath", durationMinutes: 5, buttonLabel: "Start Identity Reset",
     payoff: "Stops the shame loop and re-anchors the standard.",
   },
   recovery_breath_5min: {
