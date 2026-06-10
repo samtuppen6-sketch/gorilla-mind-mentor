@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, X } from "lucide-react";
 import type { AudioAsset } from "@/lib/audio-assets";
+import { useBreathworkGate } from "@/lib/breathwork-gate";
 
 type Props = {
   asset: AudioAsset;
   started: boolean;
   onEnded?: () => void;
   onClose?: () => void;
+  onCanComplete?: () => void;
 };
 
 // Timing map (seconds) — audio.currentTime is the single source of truth.
@@ -73,13 +75,20 @@ function computeState(t: number): {
   };
 }
 
-export function IdentityResetBreathPlayer({ asset, started, onEnded, onClose }: Props) {
+export function IdentityResetBreathPlayer({ asset, started, onEnded, onClose, onCanComplete }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState(false);
+
+  useBreathworkGate({
+    audioRef,
+    breathingStart: BREATHING_START,
+    breathingEnd: BREATHING_END,
+    onUnlock: () => onCanComplete?.(),
+  });
 
   useEffect(() => {
     function tick() {
