@@ -36,6 +36,7 @@ import boxBreathingAsset from "@/assets/box-breathing.mp3.asset.json";
 import extendedExhaleAsset from "@/assets/extended-exhale.mp3.asset.json";
 import urgeResetAsset from "@/assets/urge-reset.mp3.asset.json";
 import energisingBreathAsset from "@/assets/energising-breath.mp3.asset.json";
+import identityResetBreathAsset from "@/assets/identity-reset-breath.mp3.asset.json";
 
 export const AUDIO_ASSETS: AudioAsset[] = [
   {
@@ -75,16 +76,16 @@ export const AUDIO_ASSETS: AudioAsset[] = [
     linkedPracticeIds: ["energising_breath_3min"],
   },
   {
-    id: "morning_identity_reset_5min_audio",
-    title: "Morning Identity Reset — 5 Minutes",
-    category: "identity",
+    id: "identity_reset_breath_5min_audio",
+    title: "Identity Reset Breath — 5 Minutes",
+    category: "breathwork",
     durationMinutes: 5,
-    audioUrl: "/audio/morning-identity-reset-5min.mp3",
+    audioUrl: identityResetBreathAsset.url,
     description:
-      "Phone down. Re-anchor the operator. Identity first, then today's one non-negotiable.",
+      "Nasal inhale 4, hold 2, slow exhale 6. 12 rounds. Stops the shame loop and re-anchors the standard.",
     voiceStyle: "calm, controlled, masculine",
-    status: "placeholder",
-    linkedPracticeIds: ["morning_identity_reset_5min"],
+    status: "ready",
+    linkedPracticeIds: ["identity_reset_breath_5min"],
   },
   {
     id: "morning_protocol_lock_in_audio",

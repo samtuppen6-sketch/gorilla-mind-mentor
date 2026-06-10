@@ -679,9 +679,10 @@ export const PRACTICE_REGISTRY: GuidedPractice[] = [
     placeholderVisualUrl: PLACEHOLDER_VISUAL,
     practicePath: path("identity_reset_breath_5min"),
     completionRules: TIMED_RULES,
-    description: "Stops the shame loop and re-anchors the standard. Breath + identity in one block.",
-    instructionText: "Seated. Phone face-down.\n\nSlow nasal breath: inhale 4, exhale 6.\nEvery exhale, silently state one line: 'I am back under command.'\n\nRepeat for 5 minutes. No shame. No story.",
-    primaryButtonLabel: "Start Identity Reset Breath",
+    audioAssetId: "identity_reset_breath_5min_audio",
+    description: "Re-entry breath. Nasal inhale 4, hold 2, slow exhale 6. 12 rounds. Stops the shame loop and re-anchors the standard.",
+    instructionText: "Seated. Spine tall. Phone face-down.\n\nNasal inhale 4 seconds.\nHold 2 seconds.\nSlow exhale 6 seconds.\n\n12 rounds. No shame. No story. Re-enter clean.",
+    primaryButtonLabel: "Start Identity Reset",
   },
   {
     id: "recovery_breath_5min",
