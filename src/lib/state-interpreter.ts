@@ -77,7 +77,7 @@ const VAGUE_LOW_STATE =
 const QUALIFIER_PATTERNS = [
   /\b(anxious|anxiety|wired|on edge|panicky|stressed|heart racing|tense|overwhelmed|can'?t switch off|can'?t sleep|need to calm down)\b/i,
   /\b(urge|craving|relapse|slip|slipping|scroll(ing)?|porn|gambl|drink|drugs?|use|binge|impulse|itchy|old pattern)\b/i,
-  /\b(missed (a |two |three |a few |some |several )?day|fell off|fallen off|haven'?t checked in|ashamed|guilt|messed up|back to square one|lost (my standard|momentum)|old me|failed again|need to get back on track|re[- ]?enter)\b/i,
+  /\b(missed (a |two |three |a few |some |several )?days?|fell off|fallen off|haven'?t checked in|ashamed|guilt|messed up|back to square one|lost (my standard|momentum)|old me|failed again|need to get back on track|re[- ]?enter)\b/i,
   /\b(sore|soreness|aching|achy|doms|knackered|wiped( out)?|drained|exhausted|smashed|wrecked|legs? (are|feel)? ?(tired|heavy|done|drained|gone)|body (feels|is) (heavy|drained|done)|physically (tired|drained|done|spent)|finished (the |my )?(gym|training|workout|session|lifting)|after (training|workout|gym|session)|sauna|cold (plunge|shower|exposure)|need to recover|body (needs to )?come down)\b/i,
   /\b(head'?s all over|head is fried|can'?t think straight|can'?t focus|scattered|distracted|overthinking|need (clarity|control|to focus|to lock in|to get my head right))\b/i,
   /\b(feel (great|good|fresh|ready|clear|amazing|sharp|switched on|locked in)|clear[- ]?headed|good headspace|slept (well|great|good)|attack the day|want to train|ready to (go|attack))\b/i,
@@ -141,7 +141,7 @@ export function interpretUserState(
   const anxious = has(/\b(anxious|anxiety|nervous|on edge|panicky|stressed|heart racing|need to calm down|come down mentally)\b/i, "anxious");
   const wired = has(/\b(wired|can'?t switch off|cannot switch off|racing thoughts|tense|overstimulated|can'?t sleep)\b/i, "wired");
   const overwhelmed = has(/\b(overwhelm(ed)?|too much|drowning)\b/i, "overwhelmed");
-  const missed = /\b(missed (a |two |three |a few |some |several )?day|fell off|fallen off|haven'?t checked in|haven'?t (done|trained)|back to square one|lost (my standard|momentum)|old me( is back)?|failed again|need to get back on track|re[- ]?enter)\b/i.test(m);
+  const missed = /\b(missed (a |two |three |a few |some |several )?days?|fell off|fallen off|haven'?t checked in|haven'?t (done|trained)|back to square one|lost (my standard|momentum)|old me( is back)?|failed again|need to get back on track|re[- ]?enter)\b/i.test(m);
   const shame = has(/\b(shame|ashamed|guilty|guilt|hate myself|loser|pathetic|disgust(ed|ing)|messed up)\b/i, "ashamed");
   const physicalFatigue = has(/\b(sore|soreness|aching|achy|doms|stiff|fatigued|exhausted|smashed|wrecked|knackered|wiped( out)?|drained|legs are done|body is done)\b/i, "tired");
   const bodyHeavy = /\b((legs|body|arms) (are|feel|felt|'?s|is) (tired|heavy|done|drained|sore|wrecked|smashed|knackered|gone)|heavy legs|tired legs|physically (drained|tired|done|spent))\b/i.test(m);
