@@ -235,6 +235,4 @@ export function interpretUserState(
     clarificationNeeded,
   };
 
-  // Silence lint for `lower` (kept intentionally for future expansion)
-  void lower;
 }
