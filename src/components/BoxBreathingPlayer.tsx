@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, X } from "lucide-react";
 import type { AudioAsset } from "@/lib/audio-assets";
+import { useBreathworkGate } from "@/lib/breathwork-gate";
 
 type Props = {
   asset: AudioAsset;
   started: boolean;
   onEnded?: () => void;
   onClose?: () => void;
+  onCanComplete?: () => void;
 };
 
 const BREATHING_START = 55;
