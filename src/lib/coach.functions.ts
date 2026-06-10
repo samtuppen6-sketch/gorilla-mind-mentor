@@ -1902,7 +1902,9 @@ export type BreathworkState =
   | "pre_training_activation" | "post_training_downshift" | "anxious" | "wired"
   | "angry" | "overwhelmed" | "panic_like" | "evening_shutdown" | "sleep_wind_down"
   | "urge_or_compulsion" | "addiction_drift" | "phone_scroll_loop"
-  | "missed_day_reentry" | "identity_reset" | "recovery" | "unknown";
+  | "missed_day_reentry" | "identity_reset" | "recovery"
+  | "effort_to_recovery" | "physical_fatigue" | "body_overworked" | "recovery_downshift"
+  | "unknown";
 
 export type BreathworkOutcome =
   | "activate" | "energise" | "focus" | "calm" | "downshift" | "sleep"
@@ -2000,8 +2002,13 @@ export function prescribeBreathwork(
   const angry = /\b(angry|furious|rage|pissed|annoyed)\b/i.test(message);
   const overwhelmed = /\b(overwhelm(ed)?|too much|drowning)\b/i.test(message);
   const postWalk = /\b(done my walk|did my walk|after (my )?walk|finished (my )?walk|just walked|post[- ]walk|been for a walk)\b/i.test(message);
+  const longWalk = /\b(long walk|big walk|hike|hiked)\b/i.test(message);
   const preTraining = /\b(before (training|workout|gym|session)|pre[- ]training|about to train|going to (the )?gym|warm[- ]?up)\b/i.test(message);
-  const postTraining = /\b(after (training|workout|gym|session)|post[- ]training|just trained|finished training)\b/i.test(message);
+  const postTraining = /\b(after (training|workout|gym|session|lifting)|post[- ]training|just trained|finished (training|the (gym|workout|session)|my (gym|workout|session|lift)|lifting)|done (training|the gym|my workout|my session|lifting)|just (lifted|worked out))\b/i.test(message);
+  const physicalFatigue = /\b(sore|soreness|aching|achy|doms|stiff|fatigued|exhausted|smashed|wrecked|knackered|legs are done|body is done)\b/i.test(message);
+  const heatExposure = /\b(sauna|hot bath|heat exposure|steam room)\b/i.test(message);
+  const coldExposure = /\b(cold (plunge|shower|exposure|dip)|ice bath|just plunged)\b/i.test(message);
+  const bodyComeDown = /\b(bring (my )?body down|body down|come down|wind down (my )?body|switch (off|down) my body|nervous system down|recover(y)? (downshift|now)|need to recover|recover properly)\b/i.test(message);
   const urge = /\b(urge|craving|porn|gambl|relapse|binge|compulsi|substance|drink(ing)?|drugs?)\b/i.test(message);
   const scrolling = /\b(scroll(ing)?|phone loop|tiktok|instagram|reels|slipping)\b/i.test(message);
   const missed = /\b(missed (a )?day|missed two days|fell off|lost it|haven'?t (done|trained))\b/i.test(message);
@@ -2074,11 +2081,29 @@ export function prescribeBreathwork(
       ? "Pre-training but poor sleep — control protocol, not energising."
       : "Pre-training activation — sharpen the system before the session.";
   }
-  else if (postTraining) {
-    state = "post_training_downshift";
+  else if (postTraining || physicalFatigue || heatExposure || coldExposure || longWalk || bodyComeDown) {
+    state = postTraining
+      ? "post_training_downshift"
+      : (heatExposure || coldExposure)
+        ? "effort_to_recovery"
+        : physicalFatigue
+          ? "physical_fatigue"
+          : longWalk
+            ? "body_overworked"
+            : "recovery_downshift";
     outcome = "recover";
     id = "recovery_breath_5min";
-    reason = "Post-training — signal safety, lower intensity, recover the system.";
+    reason = postTraining
+      ? "Post-training — signal safety, lower intensity, recover the system."
+      : heatExposure
+        ? "Heat exposure — bring the body down and start recovery."
+        : coldExposure
+          ? "Cold exposure — close out the stressor and recover the system."
+          : physicalFatigue
+            ? "Physical fatigue / soreness — recovery downshift, not activation."
+            : longWalk
+              ? "Long walk / hike — body overworked, signal recovery, not lock-in."
+              : "Recovery downshift requested — bring the body down properly.";
   }
   // 6. Late night / sleep cue
   else if (lateNight || (eveningCue && sleepCue)) {
