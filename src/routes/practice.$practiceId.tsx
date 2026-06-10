@@ -125,17 +125,17 @@ function PracticePlayerPage() {
         {/* Guided audio — or quiet placeholder card. No dead-end "coming soon" copy. */}
         {audioAsset ? (
           practice.id === "box_breathing_5min" ? (
-            <BoxBreathingPlayer asset={audioAsset} started={started} />
+            <BoxBreathingPlayer asset={audioAsset} started={started} onCanComplete={handleUnlock} />
           ) : practice.id === "extended_exhale_3min" ? (
-            <ExtendedExhalePlayer asset={audioAsset} started={started} />
+            <ExtendedExhalePlayer asset={audioAsset} started={started} onCanComplete={handleUnlock} />
           ) : practice.id === "urge_reset_3min" ? (
-            <UrgeResetPlayer asset={audioAsset} started={started} />
+            <UrgeResetPlayer asset={audioAsset} started={started} onCanComplete={handleUnlock} />
           ) : practice.id === "energising_breath_3min" ? (
-            <EnergisingBreathPlayer asset={audioAsset} started={started} />
+            <EnergisingBreathPlayer asset={audioAsset} started={started} onCanComplete={handleUnlock} />
           ) : practice.id === "identity_reset_breath_5min" ? (
-            <IdentityResetBreathPlayer asset={audioAsset} started={started} />
+            <IdentityResetBreathPlayer asset={audioAsset} started={started} onCanComplete={handleUnlock} />
           ) : practice.id === "recovery_breath_5min" ? (
-            <RecoveryBreathPlayer asset={audioAsset} started={started} />
+            <RecoveryBreathPlayer asset={audioAsset} started={started} onCanComplete={handleUnlock} />
           ) : (
             <GuidedAudioPlayer asset={audioAsset} started={started} />
           )
