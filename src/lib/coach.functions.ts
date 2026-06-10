@@ -2001,14 +2001,16 @@ export function prescribeBreathwork(
   const wired = /\b(wired|can'?t switch off|cannot switch off|racing thoughts|tense|overstimulated)\b/i.test(message);
   const angry = /\b(angry|furious|rage|pissed|annoyed)\b/i.test(message);
   const overwhelmed = /\b(overwhelm(ed)?|too much|drowning)\b/i.test(message);
-  const postWalk = /\b(done my walk|did my walk|after (my )?walk|finished (my )?walk|just walked|post[- ]walk|been for a walk)\b/i.test(message);
+  const postWalk = /\b(done my walk|did my walk|after (my |the |a )?walk|finished (my |the |a )?walk|just walked|post[- ]walk|been for a walk|went for a walk|gone for a walk|got back from (a |my |the )?walk|back from (a |my |the )?walk|from (a |my |the )?walk|walked for|out walking|been out walking|had a walk)\b/i.test(message);
   const longWalk = /\b(long walk|big walk|hike|hiked)\b/i.test(message);
   const preTraining = /\b(before (training|workout|gym|session)|pre[- ]training|about to train|going to (the )?gym|warm[- ]?up)\b/i.test(message);
   const postTraining = /\b(after (training|workout|gym|session|lifting)|post[- ]training|just trained|finished (training|the (gym|workout|session)|my (gym|workout|session|lift)|lifting)|done (training|the gym|my workout|my session|lifting)|just (lifted|worked out))\b/i.test(message);
   const physicalFatigue = /\b(sore|soreness|aching|achy|doms|stiff|fatigued|exhausted|smashed|wrecked|knackered|legs are done|body is done)\b/i.test(message);
   const heatExposure = /\b(sauna|hot bath|heat exposure|steam room)\b/i.test(message);
   const coldExposure = /\b(cold (plunge|shower|exposure|dip)|ice bath|just plunged)\b/i.test(message);
-  const bodyComeDown = /\b(bring (my )?body down|body down|come down|wind down (my )?body|switch (off|down) my body|nervous system down|recover(y)? (downshift|now)|need to recover|recover properly)\b/i.test(message);
+  const bodyComeDown = /\b(bring (my )?body down|body down|come down|wind down (my )?body|switch (off|down) my body|nervous system down|recover(y)? (downshift|now)|need to recover|recover properly|need a reset after|that walk took it out|took it out of me)\b/i.test(message);
+  const bodyHeavy = /\b((legs|body|arms) (are|feel|felt|'?s|is) (tired|heavy|done|drained|sore|wrecked|smashed|knackered)|heavy legs|tired legs|physically (drained|tired|done|spent)|feel (drained|wiped|wiped out|spent)|smashed me|wiped me out|legs are gone)\b/i.test(message);
+  const positiveState = /\b(feel (great|good|amazing|fresh|clear|calm|focused|ready|switched on|on point|sharp|locked in|clear[- ]?headed)|clear[- ]?headed|in a good headspace|good headspace|stay locked in|stay in this headspace|keep this (going|headspace)|want to (stay|keep) (in this|locked)|get on with (the |my )?day|ready to (get on|attack|go)|what should i do next|need to focus|get my head right|switched on)\b/i.test(message);
   const urge = /\b(urge|craving|porn|gambl|relapse|binge|compulsi|substance|drink(ing)?|drugs?)\b/i.test(message);
   const scrolling = /\b(scroll(ing)?|phone loop|tiktok|instagram|reels|slipping)\b/i.test(message);
   const missed = /\b(missed (a )?day|missed two days|fell off|lost it|haven'?t (done|trained))\b/i.test(message);
@@ -2082,16 +2084,14 @@ export function prescribeBreathwork(
       ? "Pre-training but poor sleep — control protocol, not energising."
       : "Pre-training activation — sharpen the system before the session.";
   }
-  else if (postTraining || physicalFatigue || heatExposure || coldExposure || longWalk || bodyComeDown) {
+  else if (postTraining || physicalFatigue || heatExposure || coldExposure || bodyComeDown || bodyHeavy) {
     state = postTraining
       ? "post_training_downshift"
       : (heatExposure || coldExposure)
         ? "effort_to_recovery"
-        : physicalFatigue
+        : (physicalFatigue || bodyHeavy)
           ? "physical_fatigue"
-          : longWalk
-            ? "body_overworked"
-            : "recovery_downshift";
+          : "recovery_downshift";
     outcome = "recover";
     id = "recovery_breath_5min";
     reason = postTraining
@@ -2100,11 +2100,25 @@ export function prescribeBreathwork(
         ? "Heat exposure — bring the body down and start recovery."
         : coldExposure
           ? "Cold exposure — close out the stressor and recover the system."
-          : physicalFatigue
-            ? "Physical fatigue / soreness — recovery downshift, not activation."
-            : longWalk
-              ? "Long walk / hike — body overworked, signal recovery, not lock-in."
-              : "Recovery downshift requested — bring the body down properly.";
+          : (physicalFatigue || bodyHeavy)
+            ? "Physical fatigue / heavy body — recovery downshift, not activation."
+            : "Recovery downshift requested — bring the body down properly.";
+  }
+  // 5b. WALK context — disambiguate by described state
+  else if (postWalk || longWalk) {
+    if (anxious || wired || angry || overwhelmed || (eveningCue && sleepCue) || lateNight) {
+      state = anxious ? "anxious" : wired ? "wired" : "sleep_wind_down";
+      outcome = lateNight || (eveningCue && sleepCue) ? "sleep" : "downshift";
+      id = "extended_exhale_3min";
+      reason = "Walk + activated/sleep signal — downshift, not lock-in.";
+    } else {
+      state = "post_walk_lock_in";
+      outcome = "lock_in_state_shift";
+      id = "box_breathing_5min";
+      reason = positiveState
+        ? "Walk + positive state — lock in clarity with Box Breathing."
+        : "Post-walk — lock in the state shift before drift returns.";
+    }
   }
   // 6. Late night / sleep cue
   else if (lateNight || (eveningCue && sleepCue)) {
@@ -2119,13 +2133,6 @@ export function prescribeBreathwork(
     outcome = "downshift";
     id = "extended_exhale_3min";
     reason = "Evening + activated state — extended exhale brings the system down.";
-  }
-  // 8. Post-walk lock-in
-  else if (postWalk) {
-    state = "post_walk_lock_in";
-    outcome = "lock_in_state_shift";
-    id = "box_breathing_5min";
-    reason = "Post-walk — lock in the state shift before drift returns.";
   }
   // 9. Morning logic
   else if (morningCue) {
